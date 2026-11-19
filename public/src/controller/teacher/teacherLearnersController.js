@@ -2,6 +2,10 @@ const db = require('../../../../db/db');
 const { resolveSchoolId } = require('../../services/schoolScope');
 const NotificationService = require('../../services/notificationService');
 const academicMlService = require('../../services/academicMlService');
+const { enrolmentSql, enrolledInSubject, validateMark } = require('../../../../lib/assessmentAccess');
+const { teacherIsAssigned } = require('./assessmentOpenController');
+const marksheetSubmissions = require('../../services/marksheetSubmissionService');
+const calculationAuthorizations = require('../../services/calculationAuthorizationService');
 
 function extractGradeFromClass(clsStr) {
     if (!clsStr) return null;
@@ -88,22 +92,8 @@ exports.getMyLearners = async (req, res) => {
         let subjectCondition = '';
 
         if (filterSubjects && filterSubjects.length > 0) {
-            params.push(filterSubjects);
-            const pIdx = params.length;
-            // Match if child has explicit subjects overlapping, or stream defaults match
-            subjectCondition = `
-              AND (
-                c.subjects && $${pIdx}::text[]
-                OR (
-                  c.subjects IS NULL AND (
-                    (c.stream = 'Science' AND $${pIdx}::text[] && ARRAY['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Life Orientation']) OR
-                    (c.stream = 'Commerce' AND $${pIdx}::text[] && ARRAY['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Life Orientation']) OR
-                    (c.stream = 'Tourism' AND $${pIdx}::text[] && ARRAY['Tourism', 'Geography', 'Mathematical Literacy', 'English FAL', 'Life Orientation']) OR
-                    (c.stream = 'General')
-                  )
-                )
-              )
-            `;
+            params.push(filterSubjects[0]);
+            subjectCondition = `AND ${enrolmentSql(params.length)}`;
         }
 
         const query = `
@@ -223,6 +213,10 @@ exports.getClassList = async (req, res) => {
             conditions.push(`(cl.name ILIKE $${pIdx} OR cl.id::text = $${pIdx})`);
         }
 
+        if (subjectParam) {
+            conditions.push(enrolmentSql(1));
+        }
+
         let whereClause = `WHERE ` + conditions.join(' AND ');
 
         params.push(termParam);
@@ -272,7 +266,7 @@ exports.getClassList = async (req, res) => {
 
         // Fallback: ONLY if NO specific grade or class was requested (e.g. 'all' view)
         // If a specific grade was requested and has 0 learners, return 0 learners (never leak other grades)
-        if (result.rows.length === 0 && (!classParam || classParam.toLowerCase() === 'all') && !req.query.grade) {
+        if (result.rows.length === 0 && !subjectParam && (!classParam || classParam.toLowerCase() === 'all') && !req.query.grade) {
             result = await db.query(`
                 SELECT DISTINCT ON (c.id)
                        c.id, 
@@ -468,11 +462,9 @@ exports.saveClassMarks = async (req, res) => {
 
     // Normalize subject names for consistency across tables
     const subLow = subject.toLowerCase();
-    if (subLow === 'maths' || subLow === 'math' || subLow.includes('mathematics')) subject = 'Mathematics';
-    else if (subLow.includes('physic') || subLow === 'physics') subject = 'Physical Sciences';
-    else if (subLow.includes('life sc') || subLow === 'biology') subject = 'Life Sciences';
-    else if (subLow.includes('english')) subject = 'English FAL';
-    else if (subLow.includes('orient')) subject = 'Life Orientation';
+    if (subLow === 'maths' || subLow === 'math') subject = 'Mathematics';
+    else if (subLow === 'physics') subject = 'Physical Sciences';
+    else if (subLow === 'biology') subject = 'Life Sciences';
 
     if (!Array.isArray(marks) && typeof marks === 'object' && marks !== null) {
         marks = Object.entries(marks).map(([child_id, val]) => ({
@@ -484,11 +476,39 @@ exports.saveClassMarks = async (req, res) => {
     if (!Array.isArray(marks) || marks.length === 0) {
         return res.status(400).json({ success: false, error: 'Missing marks records.' });
     }
+    if (req.user && req.user.is_superadmin) {
+        return res.status(403).json({ success: false, error: 'Marks are recorded by the teacher assigned to this subject and class.' });
+    }
+    const schoolId = parseInt(resolveSchoolId(req), 10);
+    if (!Number.isInteger(schoolId)) {
+        return res.status(403).json({ success: false, error: 'This account is not linked to a school.' });
+    }
+    const assigned = teacherId
+        ? await teacherIsAssigned(teacherId, subject, grade, classParam)
+        : false;
+    if (!assigned) {
+        return res.status(403).json({ success: false, error: 'You can record marks only for a subject and class assigned to you.' });
+    }
 
     const maxMark = parseFloat(total_mark) || 100;
     const termNum = parseInt(String(term).replace(/[^0-9]/g, ''), 10) || 1;
 
     try {
+        const locked = await marksheetSubmissions.findLocked({
+            schoolId,
+            academicYear: parseInt(req.body.academic_year, 10) || new Date().getFullYear(),
+            grade,
+            className: classParam,
+            subject,
+            assessmentName: assessmentTitle,
+            term
+        });
+        if (locked) {
+            return res.status(409).json({
+                success: false,
+                error: 'This marksheet has been submitted. Ask the school to reopen it before changing marks.'
+            });
+        }
         let employeeId = null;
         if (teacherId) {
             try {
@@ -498,90 +518,40 @@ exports.saveClassMarks = async (req, res) => {
         }
 
         let savedCount = 0;
+        let rejectedCount = 0;
 
         for (const m of marks) {
             const rawId = m.child_id || m.learner_id || m.id;
             const scoreCandidate = m.mark_obtained !== undefined ? m.mark_obtained : (m.mark !== undefined ? m.mark : (m.score !== undefined ? m.score : m.grade));
-            const rawScore = parseFloat(scoreCandidate);
+            if (scoreCandidate === '' || scoreCandidate === null || scoreCandidate === undefined) continue;
+            const checked = validateMark(scoreCandidate, maxMark);
+            if (!checked.ok) {
+                rejectedCount += 1;
+                continue;
+            }
+            const rawScore = checked.score;
 
-            if (rawId && !isNaN(rawScore)) {
-                // Resolve canonical child record
-                // Resolve canonical child record with fallback verification
+            if (rawId) {
                 const idStr = rawId.toString().trim();
-                let childRes = await db.query(
-                    `SELECT id, learner_user_id, parent_id, grade, full_name, surname, learner_number, school_id 
-                     FROM children 
-                     WHERE id::text = $1 OR learner_user_id::text = $1 OR learner_number = $1 
+                const childRes = await db.query(
+                    `SELECT id, learner_user_id, parent_id, grade, full_name, surname, learner_number, school_id, subjects
+                     FROM children
+                     WHERE school_id = $2
+                       AND (id::text = $1 OR learner_user_id::text = $1 OR learner_number = $1)
                      LIMIT 1`,
-                    [idStr]
+                    [idStr, schoolId]
                 );
-
-                let childId = null;
-                let learnerUserId = null;
-                let parentId = null;
-                let learnerFullName = 'Learner';
-                let childGrade = grade;
-                let childSchoolId = null;
-
-                if (childRes.rows.length > 0) {
-                    const row = childRes.rows[0];
-                    childId = row.id;
-                    learnerUserId = row.learner_user_id;
-                    parentId = row.parent_id;
-                    learnerFullName = `${row.full_name || ''} ${row.surname || ''}`.trim();
-                    childGrade = row.grade || grade;
-                    childSchoolId = row.school_id;
-                } else if (!isNaN(parseInt(idStr, 10))) {
-                    const parsedNum = parseInt(idStr, 10);
-                    const chCheck = await db.query(
-                        `SELECT id, learner_user_id, parent_id, grade, full_name, surname, school_id 
-                         FROM children WHERE id = $1`,
-                        [parsedNum]
-                    );
-                    if (chCheck.rows.length > 0) {
-                        const row = chCheck.rows[0];
-                        childId = row.id;
-                        learnerUserId = row.learner_user_id;
-                        parentId = row.parent_id;
-                        childGrade = row.grade || grade;
-                        childSchoolId = row.school_id;
-                    } else {
-                        // Check if it's a user in users table (e.g. role_id = 3 learner)
-                        const uCheck = await db.query(
-                            `SELECT id, full_name, surname, school_id FROM users WHERE id = $1`,
-                            [parsedNum]
-                        );
-                        if (uCheck.rows.length > 0) {
-                            const uRow = uCheck.rows[0];
-                            const chByUser = await db.query(
-                                `SELECT id, grade, school_id FROM children WHERE learner_user_id = $1`,
-                                [uRow.id]
-                            );
-                            if (chByUser.rows.length > 0) {
-                                childId = chByUser.rows[0].id;
-                                learnerUserId = uRow.id;
-                                childGrade = chByUser.rows[0].grade || grade;
-                                childSchoolId = chByUser.rows[0].school_id;
-                            } else {
-                                // Insert linked child record to satisfy FK
-                                const newChild = await db.query(
-                                    `INSERT INTO children (full_name, surname, learner_user_id, school_id, grade, created_at, updated_at)
-                                     VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-                                     RETURNING id`,
-                                    [uRow.full_name || 'Learner', uRow.surname || '', uRow.id, uRow.school_id || 14, grade]
-                                );
-                                childId = newChild.rows[0].id;
-                                learnerUserId = uRow.id;
-                                childSchoolId = uRow.school_id || 14;
-                            }
-                        }
-                    }
-                }
-
-                if (!childId) {
-                    console.warn(`[SAVE MARKS] Could not resolve valid child record for rawId: ${rawId}, skipping.`);
+                const row = childRes.rows[0];
+                if (!row || !enrolledInSubject(row.subjects, subject)) {
+                    rejectedCount += 1;
                     continue;
                 }
+                const childId = row.id;
+                const learnerUserId = row.learner_user_id;
+                const parentId = row.parent_id;
+                const learnerFullName = `${row.full_name || ''} ${row.surname || ''}`.trim();
+                const childGrade = row.grade || grade;
+                const childSchoolId = row.school_id;
 
                 // Calculate percentage score (0 - 100)
                 let pctScore = rawScore;
@@ -702,8 +672,18 @@ exports.saveClassMarks = async (req, res) => {
                 ? `Successfully published marks for ${savedCount} learners, posted announcement, and notified recipients!`
                 : `Marks for ${savedCount} learners successfully saved as draft in database.`,
             saved_count: savedCount,
+            rejected_count: rejectedCount,
             is_published: isPublished
         });
+        if (savedCount > 0) {
+            calculationAuthorizations.invalidate({
+                schoolId,
+                grade,
+                className: classParam,
+                subject,
+                termNumber: termNum
+            }).catch((invalidateError) => console.warn('Calculation invalidation skipped:', invalidateError.message));
+        }
     } catch (err) {
         console.error('Error saving class marks:', err);
         res.status(500).json({ success: false, error: 'Failed to save marks: ' + err.message });
@@ -718,24 +698,37 @@ exports.getClassRoster = exports.getClassList;
 exports.recordMark = async (req, res) => {
     const { childId, subject, mark, notes, term = 'Term 1', assessmentTitle } = req.body;
 
-    if (!childId || !subject || mark === undefined) {
+    if (!childId || !subject || mark === undefined || mark === null || mark === '') {
         return res.status(400).json({ error: 'Child ID, subject, and mark are required.' });
+    }
+    if (req.user && req.user.is_superadmin) {
+        return res.status(403).json({ error: 'Marks are recorded by the teacher assigned to this subject and class.' });
+    }
+    const checked = validateMark(mark, 100);
+    if (!checked.ok) {
+        return res.status(400).json({ error: checked.reason });
     }
 
     try {
+        const schoolId = parseInt(resolveSchoolId(req), 10);
+        const childRes = await db.query(
+            `SELECT c.id, c.learner_user_id, c.parent_id, c.full_name, c.surname, c.grade, c.school_id, c.subjects
+             FROM children c WHERE c.id = $1 AND c.school_id = $2 LIMIT 1`,
+            [childId, schoolId]
+        );
+        if (!childRes.rows[0] || !enrolledInSubject(childRes.rows[0].subjects, subject)) {
+            return res.status(403).json({ error: 'This learner is not enrolled in that subject at your school.' });
+        }
+        const assigned = await teacherIsAssigned(req.user && req.user.id, subject, childRes.rows[0].grade, '');
+        if (!assigned) {
+            return res.status(403).json({ error: 'You can record marks only for a subject assigned to you.' });
+        }
         await db.query(
             `INSERT INTO progress (child_id, subject, term, grade, notes) VALUES ($1, $2, $3, $4, $5)`,
-            [childId, subject, term, parseInt(mark, 10), notes || assessmentTitle || 'Recorded mark']
+            [childId, subject, term, checked.score, notes || assessmentTitle || 'Recorded mark']
         );
 
-        // Fetch child details for parent/learner notification
-        const childRes = await db.query(`
-            SELECT c.id, c.learner_user_id, c.parent_id, c.full_name, c.surname, c.grade
-            FROM children c WHERE c.id = $1 LIMIT 1
-        `, [childId]);
-
-        if (childRes.rows.length > 0) {
-            const child = childRes.rows[0];
+        const child = childRes.rows[0];
             const noticeTitle = `New Mark Recorded: ${subject} (${mark}%)`;
             const noticeMsg = `A new mark of ${mark}% for ${notes || assessmentTitle || 'Class Assessment'} in ${subject} has been recorded for ${child.full_name || 'student'}.`;
 
@@ -766,7 +759,6 @@ exports.recordMark = async (req, res) => {
                     sendEmail: false
                 }).catch(err => console.error('[RECORD MARK PARENT NOTIFICATION ERROR]', err));
             }
-        }
 
         res.json({ message: 'Mark recorded successfully and notification sent.' });
     } catch (err) {

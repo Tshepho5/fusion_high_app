@@ -44,6 +44,29 @@ router.get('/overview-stats', teacherController.getTeacherOverviewStats);
 router.get('/my-subjects-overview', teacherController.getMySubjectsOverview);
 router.get('/performance-overview', teacherController.getTeacherPerformanceOverview);
 router.post('/marks/save', teacherController.saveClassMarks);
+router.post('/marksheets/submit', require('../controller/teacher/marksheetController').submitMarksheet);
+router.post('/marksheets/reopen-request', require('../controller/teacher/marksheetController').requestReopen);
+router.post('/calculations/preview', require('../controller/teacher/calculationController').previewCalculation);
+router.post('/calculations/authorize', require('../controller/teacher/calculationController').authorizeCalculation);
+router.get('/report-cards/classes', require('../controller/teacher/reportVerificationController').listClassReports);
+router.post('/report-cards/decision', require('../controller/teacher/reportVerificationController').decideReportBatch);
+router.post('/assessments/open', require('../controller/teacher/assessmentOpenController').openAssessment);
+const scanUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 }
+});
+const answerSheets = require('../controller/teacher/answerSheetController');
+router.get('/answer-sheets', answerSheets.listAnswerSheets);
+router.post('/answer-sheets/confirm-batch', answerSheets.confirmAnswerSheetBatch);
+router.post('/answer-sheets', (req, res, next) => {
+  scanUpload.single('sheet')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: 'Choose a PDF or image up to 15 MB.' });
+    next();
+  });
+}, answerSheets.registerAnswerSheet);
+router.post('/answer-sheets/:id/confirm', answerSheets.confirmAnswerSheet);
+router.post('/answer-sheets/:id/reject', answerSheets.rejectAnswerSheet);
+router.get('/answer-sheets/:id/file', answerSheets.openAnswerSheetFile);
 router.get('/marks/history', teacherController.getClassMarksHistory);
 router.get('/classlist', teacherController.getClassList);
 router.get('/classes', teacherController.getTeacherClasses);

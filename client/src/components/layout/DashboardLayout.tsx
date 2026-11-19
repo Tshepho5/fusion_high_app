@@ -5,6 +5,7 @@ import { CommandPalette } from '../common/CommandPalette';
 import { BottomNavigationDock } from './BottomNavigationDock';
 import { TabPreviewSkeleton } from '../common/TabPreviewSkeleton';
 import { ErrorBoundary } from '../common/ErrorBoundary';
+import { TesterReportButton } from '../tester/TesterReportButton';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -143,6 +144,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </main>
 
         {/* Menu dock only on Home / Modules — hidden inside modules (back button is enough) */}
+        <TesterReportButton activeTab={activeTab} />
         {showBottomDock && (
           customBottomDock !== undefined ? (
             customBottomDock

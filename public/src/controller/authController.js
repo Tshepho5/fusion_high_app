@@ -40,6 +40,19 @@ exports.loadSessionUser = async (userId) => {
 
 exports.issueLoginSession = async (user, res, rawIdentifier) => {
     const isSuperAdmin = Boolean(user.is_superadmin);
+    let isTester = false;
+    try {
+        const state = await db.query(
+            'SELECT deactivated_at, COALESCE(is_tester, FALSE) AS is_tester FROM users WHERE id = $1',
+            [user.id]
+        );
+        if (state.rows[0] && state.rows[0].deactivated_at) {
+            return res.status(401).json({ error: 'This account is deactivated.', code: 'deactivated' });
+        }
+        isTester = Boolean(state.rows[0] && state.rows[0].is_tester === true);
+    } catch (_) {
+        isTester = false;
+    }
 
     await ensureActiveSessionColumn();
 
@@ -100,6 +113,7 @@ exports.issueLoginSession = async (user, res, rawIdentifier) => {
             school_name: user.school_name,
             school_slug: user.school_slug,
             is_superadmin: isSuperAdmin,
+            is_tester: isTester,
             learner_number: user.learner_number || (user.role_name === 'learner' ? rawIdentifier : undefined),
             grade: user.grade,
             stream: user.stream

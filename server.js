@@ -234,6 +234,7 @@ const activationLimiter = rateLimit({
   validate: { xForwardedForHeader: false, default: false }
 });
 
+app.use('/api/system/tester-invites', activationLimiter);
 app.use('/api/activate', activationLimiter);
 app.use('/api/activation/resend', activationLimiter);
 app.use('/api/auth/activate', activationLimiter);

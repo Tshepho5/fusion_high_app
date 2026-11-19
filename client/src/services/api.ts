@@ -329,6 +329,7 @@ export const aiTutorService = {
 export const reportService = {
   getCapsReportCard: (params?: { child_id?: string | number; term?: string }) =>
     api.get(`/api/report-cards/view-card?childId=${params?.child_id || ''}&term=${encodeURIComponent(params?.term || 'Term 3 2026')}`).then(res => res.data),
+  myReleases: () => api.get('/api/report-cards/my-releases').then(res => res.data),
 };
 
 // Teacher Workspace APIs (employees, classes, attendance, marks, ai lesson planner)
@@ -349,7 +350,58 @@ export const teacherService = {
     api.get('/api/teacher/attendance-history', { params }).then(res => res.data),
   submitAttendance: (payload: any) => api.post('/api/teacher/attendance', payload).then(res => res.data),
   saveAttendance: (payload: any) => api.post('/api/teacher/attendance', payload).then(res => res.data),
+  registerAnswerSheet: (payload: {
+    assessment_id: number;
+    learner_number: string;
+    surname?: string;
+    stated_mark?: string | number;
+    document_hash?: string;
+    filename?: string;
+    sheet?: File;
+  }) => {
+    const body = new FormData();
+    body.append('assessment_id', String(payload.assessment_id));
+    body.append('learner_number', payload.learner_number);
+    if (payload.surname) body.append('surname', payload.surname);
+    if (payload.stated_mark !== undefined && payload.stated_mark !== '') body.append('stated_mark', String(payload.stated_mark));
+    if (payload.document_hash) body.append('document_hash', payload.document_hash);
+    if (payload.filename) body.append('filename', payload.filename);
+    if (payload.sheet) body.append('sheet', payload.sheet);
+    return api.post('/api/teacher/answer-sheets', body).then(res => res.data);
+  },
+  confirmAnswerSheet: (id: number, payload?: { corrected_mark?: string | number }) =>
+    api.post(`/api/teacher/answer-sheets/${id}/confirm`, payload || {}).then(res => res.data),
+  confirmAnswerSheetBatch: (assessmentId: number) =>
+    api.post('/api/teacher/answer-sheets/confirm-batch', { assessment_id: assessmentId }).then(res => res.data),
+  rejectAnswerSheet: (id: number) =>
+    api.post(`/api/teacher/answer-sheets/${id}/reject`).then(res => res.data),
+  openAnswerSheetFile: (id: number) =>
+    api.get(`/api/teacher/answer-sheets/${id}/file`, { responseType: 'blob' }),
+  listAnswerSheets: (assessmentId: number) =>
+    api.get('/api/teacher/answer-sheets', { params: { assessment_id: assessmentId } }).then(res => res.data),
+  openAssessment: (payload: {
+    subject: string;
+    grade: number;
+    class?: string;
+    name: string;
+    total_marks: number;
+    term?: string;
+    category?: string;
+    weight?: number;
+    assessment_date?: string;
+    academic_year?: number;
+    instructions?: string;
+  }) => api.post('/api/teacher/assessments/open', payload).then(res => res.data),
   saveClassMarks: (payload: any) => api.post('/api/teacher/marks/save', payload).then(res => res.data),
+  submitMarksheet: (payload: { assessment_name: string; subject: string; class?: string; grade?: number; term?: string }) =>
+    api.post('/api/teacher/marksheets/submit', payload).then(res => res.data),
+  previewCalculation: (payload: { subject: string; grade: number; class?: string; term?: string; policy?: string }) =>
+    api.post('/api/teacher/calculations/preview', payload).then(res => res.data),
+  authorizeCalculation: (payload: { subject: string; grade: number; class?: string; term?: string; policy?: string }) =>
+    api.post('/api/teacher/calculations/authorize', payload).then(res => res.data),
+  myReportClasses: () => api.get('/api/teacher/report-cards/classes').then(res => res.data),
+  decideReportBatch: (payload: { grade: number; class_name: string; term: string; decision: 'approved' | 'returned'; reason?: string; learner_number?: string; subject?: string }) =>
+    api.post('/api/teacher/report-cards/decision', payload).then(res => res.data),
   getClassMarksHistory: (params?: { class?: string; subject?: string; term?: string }) =>
     api.get('/api/teacher/marks/history', { params }).then(res => res.data),
   recordMark: (payload: any) => api.post('/api/teacher/record-mark', payload).then(res => res.data),
@@ -490,6 +542,8 @@ export const adminService = {
   reviewApplicationDecision: (id: string | number, payload: { status: string; admin_notes?: string; assigned_class_id?: number }) =>
     api.post(`/api/applications/${id}/decision`, payload).then(res => res.data),
   getAcademicOverview: (params?: any) => api.get('/api/admin/academics/overview', { params }).then(res => res.data),
+  getReportReadiness: (params: { grade: string | number; term: string; academicYear?: string | number; className?: string }) =>
+    api.get('/api/admin/academics/readiness', { params: { grade: params.grade, term: params.term, academic_year: params.academicYear, class: params.className } }).then(res => res.data),
   moderateBatch: (payload: any) => api.post('/api/admin/academics/moderate', payload).then(res => res.data),
   getSubjectsSummary: (params?: { grade?: string | number; stream?: string; term?: string }) => 
     api.get('/api/admin/academics/subjects-summary', { params }).then(res => res.data),
@@ -918,8 +972,6 @@ export const systemControlService = {
     full_name: string;
     surname?: string;
     role: string;
-    school_id?: number;
-    password?: string;
     phone?: string;
     send_email?: boolean;
   }) => api.post('/api/system/test-users', data).then(res => res.data),
@@ -929,5 +981,18 @@ export const systemControlService = {
     api.post(`/api/system/test-users/${id}/resend`).then(res => res.data),
   deleteTestingUser: (id: number | string) =>
     api.delete(`/api/system/test-users/${id}`).then(res => res.data),
+  deleteLegacyTester: (id: number | string) =>
+    api.delete(`/api/system/test-users/legacy/${id}`).then(res => res.data),
+  getTesterReports: (params: Record<string, string>) =>
+    api.get('/api/system/tester-reports', { params }).then(res => res.data),
+  updateTesterReport: (id: number | string, payload: { status: string; admin_note?: string }) =>
+    api.put(`/api/system/tester-reports/${id}`, payload).then(res => res.data),
+  getMyTesterReports: () => api.get('/api/system/tester-reports/mine').then(res => res.data),
+  createTesterReport: (payload: Record<string, unknown>) =>
+    api.post('/api/system/tester-reports', payload).then(res => res.data),
+  verifyTesterInvite: (token: string) =>
+    api.get('/api/system/tester-invites/verify', { params: { token } }).then(res => res.data),
+  acceptTesterInvite: (payload: { token: string; password: string; confirm_password: string }) =>
+    api.post('/api/system/tester-invites/accept', payload).then(res => res.data),
 };
 

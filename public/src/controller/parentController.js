@@ -9,10 +9,29 @@ const { withTransaction } = require('../../../db/transaction');
 const curriculumService = require('../services/curriculumService');
 const paymentHold = require('../services/paymentHold');
 const { rejectNameDigits } = require('../services/lettersOnly');
+const { childVisibleToParent } = require('../../../lib/testerProgramme');
 const academicMlService = require('../services/academicMlService');
+
+async function parentTesterGate(userId) {
+    try {
+        const gate = await db.query(
+            `SELECT school_id, COALESCE(is_tester, FALSE) AS is_tester
+             FROM users WHERE id = $1`,
+            [userId]
+        );
+        const row = gate.rows[0];
+        return {
+            isTester: Boolean(row && row.is_tester === true),
+            schoolId: row ? row.school_id : null
+        };
+    } catch (_) {
+        return { isTester: false, schoolId: null };
+    }
+}
 
 exports.getChildren = async (req, res) => {
     try {
+        const gate = await parentTesterGate(req.user.id);
         // Optimized query using a window function for better performance than LATERAL join
         const query = `
             WITH RankedProgress AS (
@@ -25,6 +44,8 @@ exports.getChildren = async (req, res) => {
                 c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects, 
                 COALESCE(c.learner_number, CONCAT('2026-FHS-', LPAD(c.id::text, 3, '0'))) as learner_number,
                 c.home_language,
+                c.school_id,
+                COALESCE(c.is_test_record, FALSE) AS is_test_record,
                 u.email AS learner_email, 
                 COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
                 COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture_path,
@@ -35,11 +56,16 @@ exports.getChildren = async (req, res) => {
             LEFT JOIN users u ON c.learner_user_id = u.id
             LEFT JOIN RankedProgress rp ON c.id = rp.child_id AND rp.rn <= 3
             WHERE c.parent_id::text = $1::text OR c.secondary_parent_id::text = $1::text OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id::text = c.id::text AND pc.parent_id::text = $1::text)
-            GROUP BY c.id, u.id, u.email, u.profile_picture_path, u.profile_picture, u.gender, u.dob
+            GROUP BY c.id, c.school_id, c.is_test_record, u.id, u.email, u.profile_picture_path, u.profile_picture, u.gender, u.dob
             ORDER BY c.full_name;
         `;
         const result = await db.query(query, [req.user.id]);
-        const rawChildren = result.rows || [];
+        const rawChildren = (result.rows || []).filter((child) => childVisibleToParent({
+            parentIsTester: gate.isTester,
+            parentSchoolId: gate.schoolId,
+            childSchoolId: child.school_id,
+            childIsTestRecord: child.is_test_record === true
+        }));
 
         // Deduplicate learners by unique learner tracking number (#GSA-MKG-001) or name + grade
         const seenLearners = new Set();
@@ -134,6 +160,11 @@ exports.activateChild = async (req, res) => {
     if (rejectNameDigits(res, targetFirstName, targetSurname)) return;
 
     try {
+        const gate = await parentTesterGate(parentId);
+        const parentSchoolId = parseInt(gate.schoolId, 10);
+        if (!Number.isInteger(parentSchoolId) || parentSchoolId <= 0) {
+            return res.status(403).json({ error: 'Your account is not linked to a school.' });
+        }
         const learnerQuery = `SELECT 
                 c.id as child_id, 
                 c.full_name, 
@@ -143,6 +174,8 @@ exports.activateChild = async (req, res) => {
                 c.stream,
                 c.subjects,
                 c.learner_number,
+                c.school_id,
+                COALESCE(c.is_test_record, FALSE) AS is_test_record,
                 u.id as user_id,
                 u.email,
                 TO_CHAR(u.dob, 'YYYY-MM-DD') as dob_string,
@@ -152,18 +185,26 @@ exports.activateChild = async (req, res) => {
             WHERE (c.learner_number = $1 OR u.id_number = $1 OR u.id_number ILIKE '%' || $1 || '%')
               AND (LOWER(c.full_name) LIKE '%' || LOWER($2) || '%' OR LOWER(u.full_name) LIKE '%' || LOWER($2) || '%')
               AND (LOWER(c.surname) LIKE '%' || LOWER($3) || '%' OR LOWER(u.surname) LIKE '%' || LOWER($3) || '%')
+              AND c.school_id = $4
+              AND COALESCE(c.is_test_record, FALSE) = $5
             LIMIT 1;`;
 
         await withTransaction(async (client) => {
-            const { rows } = await client.query(learnerQuery, [targetID, targetFirstName, targetSurname]);
+            const { rows } = await client.query(learnerQuery, [targetID, targetFirstName, targetSurname, parentSchoolId, gate.isTester]);
 
             if (rows.length === 0) {
                 const checkById = await client.query(
-                    `SELECT c.full_name, c.surname FROM children c JOIN users u ON c.learner_user_id = u.id WHERE c.learner_number = $1 OR u.id_number = $1 LIMIT 1;`,
-                    [targetID]
+                    `SELECT 1
+                     FROM children c
+                     JOIN users u ON c.learner_user_id = u.id
+                     WHERE (c.learner_number = $1 OR u.id_number = $1)
+                       AND c.school_id = $2
+                       AND COALESCE(c.is_test_record, FALSE) = $3
+                     LIMIT 1`,
+                    [targetID, parentSchoolId, gate.isTester]
                 );
                 if (checkById.rows.length > 0) {
-                    const err = new Error(`Learner record found, but First Name or Surname does not match school records for '${checkById.rows[0].full_name} ${checkById.rows[0].surname}'. Please check spelling.`);
+                    const err = new Error('A learner with that identifier is in your school, but the first name or surname does not match.');
                     err.statusCode = 400;
                     throw err;
                 }
@@ -183,9 +224,9 @@ exports.activateChild = async (req, res) => {
 
             let isPrimary = true;
             if (!existingParentId) {
-                await client.query('UPDATE children SET parent_id = $1 WHERE id = $2', [parentId, child_id]);
+                await client.query('UPDATE children SET parent_id = $1 WHERE id = $2 AND school_id = $3', [parentId, child_id, parentSchoolId]);
             } else {
-                await client.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2', [parentId, child_id]);
+                await client.query('UPDATE children SET secondary_parent_id = $1 WHERE id = $2 AND school_id = $3', [parentId, child_id, parentSchoolId]);
                 isPrimary = false;
             }
 
@@ -260,7 +301,8 @@ exports.linkChild = async (req, res) => {
 
     try {
         const parentAccount = await db.query(
-            'SELECT id, school_id, email, full_name, surname FROM users WHERE id = $1',
+            `SELECT id, school_id, email, full_name, surname, COALESCE(is_tester, FALSE) AS is_tester
+             FROM users WHERE id = $1`,
             [parentId]
         );
         const parentSchoolId = parseInt(parentAccount.rows[0] && parentAccount.rows[0].school_id, 10);
@@ -280,6 +322,7 @@ exports.linkChild = async (req, res) => {
                 c.subjects,
                 c.learner_number,
                 c.school_id,
+                COALESCE(c.is_test_record, FALSE) AS is_test_record,
                 u.id as user_id,
                 u.email as learner_email
             FROM children c
@@ -302,6 +345,14 @@ exports.linkChild = async (req, res) => {
         }
 
         const child = rows[0];
+        if (!childVisibleToParent({
+            parentIsTester: parentAccount.rows[0].is_tester === true,
+            parentSchoolId,
+            childSchoolId: child.school_id,
+            childIsTestRecord: child.is_test_record === true
+        })) {
+            return res.status(404).json({ error: 'The child does not exist in the system.' });
+        }
         const childFullName = `${child.full_name || ''} ${child.surname || ''}`.trim() || 'Learner';
 
         // Check if already linked to this parent

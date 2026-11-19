@@ -7,6 +7,7 @@
 
 const db = require('./db');
 const { ensureLessonPlanningSchema } = require('./migrate_lesson_planning');
+const { ensureTesterSchema } = require('../lib/testerProgramme');
 
 let isEnsured = false;
 
@@ -190,6 +191,7 @@ async function ensureDatabaseSchema() {
     // Schema startup must not create a school, classes, or an approved status.
 
     await ensureLessonPlanningSchema();
+    await ensureTesterSchema((text, params) => db.query(text, params));
 
     isEnsured = true;
     console.log('[SCHEMA ENSURER] All database tables, columns, and registered schools verified and synced.');

@@ -7,6 +7,7 @@ router.use(auth);
 
 // Get compiled report cards for learner or parent
 router.get('/learner', reportCardController.getLearnerReportCards);
+router.get('/my-releases', reportCardController.listMyReportReleases);
 
 // Get single official report card view (Admin, Teacher, Parent, Learner)
 router.get('/view-card', reportCardController.getOfficialReportCardView);

@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controller/adminController');
+const subjectAllocationAuditController = require('../controller/subjectAllocationAuditController');
 const learnerImportController = require('../controller/learnerImportController');
 const timetableController = require('../controller/timetableController');
 const { auth, isAdmin } = require('../../../authMiddleware.js');
 
 // Admin Dashboard Stats & Multi-School Command Center
 router.get('/stats', auth, isAdmin, adminController.getDashboardStats);
+router.get('/subject-allocation-audit', auth, isAdmin, subjectAllocationAuditController.auditSubjectAllocation);
+router.post('/subject-allocation-audit/:childId/apply', auth, isAdmin, subjectAllocationAuditController.applySubjectCorrection);
+router.post('/marksheets/:id/reopen', auth, isAdmin, require('../controller/teacher/marksheetController').reopenMarksheet);
 router.get('/command-center-stats', auth, isAdmin, adminController.getMultiSchoolCommandCenterStats);
 
 // User & Account Management
@@ -85,6 +89,7 @@ router.get('/reports/recent', auth, isAdmin, adminController.getRecentReports);
 router.post('/reports/generate', auth, isAdmin, adminController.generateReport);
 // Academics Overview & Assessment Audits
 router.get('/academics/overview', auth, isAdmin, adminController.getAcademicOverview);
+router.get('/academics/readiness', auth, isAdmin, require('../controller/academicReadinessController').getReportReadiness);
 router.post('/academics/moderate', auth, isAdmin, adminController.moderateAssessmentBatch);
 router.get('/academics/subjects-summary', auth, isAdmin, adminController.getSchoolSubjectsSummary);
 router.get('/academics/subject-learners', auth, isAdmin, adminController.getSubjectLearnersWithFlags);

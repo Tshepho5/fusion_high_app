@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AdmissionWindowPanel } from './AdmissionWindowPanel';
+import { TesterProgrammePanel } from './TesterProgrammePanel';
 import { systemControlService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { useSchool } from '../../context/SchoolContext';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -11,18 +11,12 @@ import {
   UserPlus,
   Users,
   Mail,
-  Lock,
-  Eye,
-  EyeOff,
   RefreshCw,
   Trash2,
   CheckCircle2,
   AlertCircle,
-  Copy,
-  Check,
   Send,
   Sparkles,
-  Building2,
   X,
   UserCheck,
   Radio
@@ -30,15 +24,17 @@ import {
 
 interface TestingUser {
   id: number;
+  reference_code?: string;
   email: string;
   full_name: string;
   surname: string;
   phone?: string;
   role_name: string;
-  role_id: number;
-  school_id: number;
+  school_id?: number;
   school_name?: string;
-  temp_password_note?: string;
+  status?: string;
+  delivery_status?: string;
+  account_state?: string;
   created_at: string;
 }
 
@@ -48,7 +44,6 @@ interface MasterAdminExecutiveHubProps {
 
 export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
-  const { schoolsList } = useSchool();
 
   // Strict exclusivity verification
   const isMasterAdmin = Boolean(user?.is_superadmin);
@@ -63,6 +58,8 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
 
   // Testing Users State
   const [testers, setTesters] = useState<TestingUser[]>([]);
+  const [programme, setProgramme] = useState<Record<string, number> | null>(null);
+  const [testSchoolName, setTestSchoolName] = useState('Geleza SA Tester School');
   const [loadingTesters, setLoadingTesters] = useState(false);
   const [isAddTesterModalOpen, setIsAddTesterModalOpen] = useState(false);
   const [isEditRoleModalOpen, setIsEditRoleModalOpen] = useState(false);
@@ -74,17 +71,13 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
     full_name: '',
     surname: '',
     role: 'teacher',
-    school_id: 1,
-    password: '',
     phone: '',
-    send_email: true
+    send_email: false
   });
-  const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [formFieldErrors, setFormFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   // Load Portal Controls & Testers
   const fetchData = async () => {
@@ -101,9 +94,9 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
       setLoadingTesters(true);
       try {
         const testersRes = await systemControlService.getTestingUsers();
-        if (testersRes?.testers) {
-          setTesters(testersRes.testers);
-        }
+        setTesters(testersRes?.testers || []);
+        setProgramme(testersRes?.programme || null);
+        if (testersRes?.test_school?.name) setTestSchoolName(testersRes.test_school.name);
       } catch (err) {
         console.warn('Could not load testing users:', err);
       } finally {
@@ -152,9 +145,6 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
     if (!testerForm.full_name.trim()) {
       errs.full_name = 'Full name is required.';
     }
-    if (testerForm.password && testerForm.password.length < 6) {
-      errs.password = 'Password must be at least 6 characters.';
-    }
 
     if (Object.keys(errs).length > 0) {
       setFormFieldErrors(errs);
@@ -172,10 +162,8 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
         full_name: '',
         surname: '',
         role: 'teacher',
-        school_id: 1,
-        password: '',
         phone: '',
-        send_email: true
+        send_email: false
       });
       fetchData();
     } catch (err: any) {
@@ -187,6 +175,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
 
   // Resend Tester Credentials Email
   const handleResend = async (tester: TestingUser) => {
+    if (!window.confirm(`Send the invitation email to ${tester.email}? It will be marked sent only after the mail service accepts it.`)) return;
     try {
       const res = await systemControlService.resendTesterCredentials(tester.id);
       setActionSuccess(res.message || `Credentials re-dispatched to ${tester.email}.`);
@@ -213,19 +202,15 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
   const handleDeleteTester = async (id: number, name: string) => {
     if (!window.confirm(`Revoke testing privileges for "${name}"?`)) return;
     try {
-      const res = await systemControlService.deleteTestingUser(id);
+      const legacy = testers.find((tester) => tester.id === id && tester.reference_code === 'LEGACY');
+      const res = legacy
+        ? await systemControlService.deleteLegacyTester(id)
+        : await systemControlService.deleteTestingUser(id);
       setActionSuccess(res.message || `Testing access revoked.`);
       fetchData();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to revoke testing access.');
     }
-  };
-
-  // Copy temp password to clipboard
-  const handleCopyPassword = (text: string, id: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
@@ -295,6 +280,8 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
         <AdmissionWindowPanel controls={controls} busyId={togglingLock} onSave={handleSaveGate} />
       </div>
 
+      <TesterProgrammePanel programme={programme} testSchoolName={testSchoolName} />
+
       {/* ========================================================================= */}
       {/* SECTION 2: APP TESTERS MANAGEMENT HUB (CREATE & ASSIGN TESTERS)           */}
       {/* ========================================================================= */}
@@ -348,8 +335,8 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                 <tr className="border-b border-white/10 text-slate-400 font-mono text-[10px] uppercase">
                   <th className="pb-3 font-bold">Tester Identity</th>
                   <th className="pb-3 font-bold">Assigned Role</th>
-                  <th className="pb-3 font-bold">Assigned School</th>
-                  <th className="pb-3 font-bold">Temporary Password</th>
+                  <th className="pb-3 font-bold">Test school</th>
+                  <th className="pb-3 font-bold">Invitation</th>
                   <th className="pb-3 font-bold">Added On</th>
                   <th className="pb-3 font-bold text-right">Actions</th>
                 </tr>
@@ -365,7 +352,8 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                           </div>
                           <div>
                             <p className="font-bold text-white line-clamp-1">{t.full_name} {t.surname}</p>
-                            <p className="text-[11px] text-slate-400 font-mono">{t.email}</p>
+                            <p className="text-[11px] text-slate-400 font-mono">{t.reference_code || t.email}</p>
+                            <p className="text-[11px] text-slate-500 font-mono">{t.email}</p>
                           </div>
                         </div>
                       </td>
@@ -390,20 +378,8 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                       </td>
 
                       <td className="py-3.5">
-                        {t.temp_password_note ? (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-white/10 font-mono text-[11px]">
-                            <span className="text-amber-500 dark:text-amber-300 font-bold">{t.temp_password_note}</span>
-                            <button
-                              onClick={() => handleCopyPassword(t.temp_password_note || '', t.id)}
-                              className="text-slate-400 hover:text-white cursor-pointer ml-1"
-                              title="Copy password"
-                            >
-                              {copiedId === t.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 text-[11px] italic">Encrypted</span>
-                        )}
+                        <span className="text-slate-300 font-medium block">{t.delivery_status || 'not_sent'}</span>
+                        <span className="text-[11px] text-slate-500">{t.status || 'draft'} · {t.account_state || 'none'}</span>
                       </td>
 
                       <td className="py-3.5 text-slate-400 font-mono text-[11px]">
@@ -414,8 +390,9 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleResend(t)}
-                            className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
-                            title="Resend invitation & credentials email"
+                            disabled={t.status === 'legacy' || t.reference_code === 'LEGACY'}
+                            className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer disabled:opacity-30"
+                            title="Send invitation email"
                           >
                             <Send className="w-3.5 h-3.5" />
                           </button>
@@ -545,54 +522,13 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                     <option value="teacher">Educator / Teacher (Portal Access)</option>
                     <option value="learner">Student / Learner (Portal Access)</option>
                     <option value="parent">Parent / Guardian (Portal Access)</option>
-                    <option value="admin">Institutional Admin (Management Access)</option>
                   </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-300">Assigned School *</label>
-                  <select
-                    value={testerForm.school_id}
-                    onChange={(e) => setTesterForm(prev => ({ ...prev, school_id: Number(e.target.value) }))}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white focus:border-cyan-400 outline-hidden"
-                  >
-                    {schoolsList.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
+                  <label className="font-bold text-slate-300">Test school</label>
+                  <p className="px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-200">{testSchoolName}</p>
                 </div>
-              </div>
-
-              {/* Password Input with fixed View Password toggle */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300">
-                  Temporary Password (Optional - Defaults to auto-generated Test@...)
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Create temporary password (min 6 chars)"
-                    value={testerForm.password}
-                    onChange={(e) => {
-                      setTesterForm(prev => ({ ...prev, password: e.target.value }));
-                      if (formFieldErrors.password) setFormFieldErrors(prev => ({ ...prev, password: '' }));
-                    }}
-                    className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:border-cyan-400 outline-hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {formFieldErrors.password && (
-                  <p className="text-[11px] text-rose-400 font-semibold">{formFieldErrors.password}</p>
-                )}
               </div>
 
               <div className="pt-1">
@@ -603,7 +539,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                     onChange={(e) => setTesterForm(prev => ({ ...prev, send_email: e.target.checked }))}
                     className="rounded border-slate-700 text-cyan-600 focus:ring-cyan-500"
                   />
-                  <span>Dispatch invitation email with login credentials immediately</span>
+                  <span>Send the invitation email now. Leave this off to save a draft.</span>
                 </label>
               </div>
 
@@ -621,7 +557,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold shadow-glow-cyan transition-all disabled:opacity-50 cursor-pointer flex items-center gap-2"
                 >
                   {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  <span>{submitting ? 'Registering Tester...' : 'Dispatch Credentials'}</span>
+                  <span>{submitting ? 'Saving invitation...' : testerForm.send_email ? 'Save and send invitation' : 'Save draft'}</span>
                 </button>
               </div>
             </form>
@@ -656,8 +592,7 @@ export const MasterAdminExecutiveHub: React.FC<MasterAdminExecutiveHubProps> = (
               {[
                 { role: 'teacher', label: 'Educator / Teacher', desc: 'Marks entry, classes, attendance, lesson plans' },
                 { role: 'learner', label: 'Student / Learner', desc: 'Subjects, reports, homework, timetable' },
-                { role: 'parent', label: 'Parent / Legal Guardian', desc: 'Children monitoring, fee balance, consultations' },
-                { role: 'admin', label: 'Institutional Admin', desc: 'School administration & management' }
+                { role: 'parent', label: 'Parent / Legal Guardian', desc: 'Children monitoring, fee balance, consultations' }
               ].map(item => (
                 <button
                   key={item.role}

@@ -1,9 +1,5 @@
 const db = require('../../../db/db');
-const bcrypt = require('bcryptjs');
-const emailService = require('../services/emailService');
-const { rejectNameDigits } = require('../services/lettersOnly');
-const { resolveSchoolId } = require('../services/schoolScope');
-const { testerRoleChangeAllowed } = require('../../../lib/authoritativeAccess');
+const testerProvisioning = require('../services/testerProvisioning');
 
 let portalSchemaReady = false;
 
@@ -164,303 +160,135 @@ exports.updatePortalLock = async (req, res) => {
   }
 };
 
+function sendTesterResult(res, status, payload) {
+  res.status(status).json({ success: true, ...payload });
+}
+
+function sendTesterError(res, err, fallback) {
+  const status = err.status && err.status < 500 ? err.status : 500;
+  if (status >= 500) console.error(fallback, err.message);
+  res.status(status).json({ error: status >= 500 ? fallback : err.message });
+}
+
 /**
- * Lists all active system testers (Exclusive to Master Admin).
+ * Lists tester invitations and live programme counts (Exclusive to Master Admin).
  */
 exports.getTestingUsers = async (req, res) => {
   try {
-    const query = `
-      SELECT 
-        u.id, 
-        u.email, 
-        u.full_name, 
-        u.surname, 
-        u.phone, 
-        u.is_tester,
-        u.temp_password_note, 
-        u.created_at,
-        r.name AS role_name,
-        r.id AS role_id,
-        s.id AS school_id,
-        s.name AS school_name
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN schools s ON u.school_id = s.id
-      WHERE u.is_tester = TRUE
-      ORDER BY u.created_at DESC;
-    `;
-    const result = await db.query(query);
-    res.json({
-      success: true,
-      testers: result.rows
-    });
+    const programme = await testerProvisioning.listProgramme();
+    sendTesterResult(res, 200, programme);
   } catch (err) {
-    console.error('Error retrieving testing users:', err.message);
-    res.status(500).json({ error: 'Failed to retrieve testing users.' });
+    sendTesterError(res, err, 'Failed to retrieve testing users.');
   }
 };
 
+exports.getTesterProgramme = exports.getTestingUsers;
+
 /**
- * Creates or assigns a user as an official system tester and dispatches credentials email.
+ * Saves a parent, teacher, or learner invitation in the test school.
+ * Email is sent only when send_email is true, and only marked sent after the provider accepts it.
  */
 exports.createTestingUser = async (req, res) => {
   try {
-    const {
-      email,
-      full_name,
-      surname,
-      role = 'teacher',
-      password,
-      phone,
-      send_email = true
-    } = req.body;
-
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ error: 'A valid email address is required for the tester.' });
-    }
-    if (!full_name || !full_name.trim()) {
-      return res.status(400).json({ error: 'Tester full name is required.' });
-    }
-    if (rejectNameDigits(res, full_name, surname)) return;
-    const school_id = resolveSchoolId(req);
-
-    const roleDecision = testerRoleChangeAllowed({ requestedRole: role, targetIsSuperadmin: false });
-    if (!roleDecision.ok) {
-      return res.status(roleDecision.status).json({ error: roleDecision.error });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanFirstName = full_name.trim();
-    const cleanSurname = (surname || '').trim() || 'Tester';
-    const tempPassword = (password && password.trim().length >= 6)
-      ? password.trim()
-      : `Test@${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const passHash = await bcrypt.hash(tempPassword, 10);
-
-    // Resolve role ID
-    const roleQuery = await db.query('SELECT id, name FROM roles WHERE LOWER(name) = LOWER($1)', [role]);
-    const roleId = roleQuery.rows.length > 0 ? roleQuery.rows[0].id : 2;
-    const resolvedRoleName = roleQuery.rows.length > 0 ? roleQuery.rows[0].name : role;
-
-    // Check if user already exists
-    const existing = await db.query(
-      'SELECT id, email, COALESCE(is_superadmin, FALSE) AS is_superadmin FROM users WHERE LOWER(email) = LOWER($1)',
-      [cleanEmail]
-    );
-    let testerId;
-
-    if (existing.rows.length > 0) {
-      const preserved = testerRoleChangeAllowed({
-        requestedRole: role,
-        targetIsSuperadmin: existing.rows[0].is_superadmin === true
-      });
-      if (!preserved.ok) {
-        return res.status(preserved.status).json({ error: preserved.error });
-      }
-      testerId = existing.rows[0].id;
-      await db.query(`
-        UPDATE users
-        SET role_id = $1,
-            school_id = $2,
-            password_hash = $3,
-            is_tester = TRUE,
-            temp_password_note = $4,
-            full_name = $5,
-            surname = $6,
-            phone = COALESCE($7, phone)
-        WHERE id = $8;
-      `, [roleId, school_id, passHash, tempPassword, cleanFirstName, cleanSurname, phone || null, testerId]);
-    } else {
-      const insertRes = await db.query(`
-        INSERT INTO users (
-          email, password_hash, role_id, school_id, is_superadmin,
-          full_name, surname, phone, is_tester, temp_password_note, country
-        )
-        VALUES ($1, $2, $3, $4, FALSE, $5, $6, $7, TRUE, $8, 'South Africa')
-        RETURNING id;
-      `, [cleanEmail, passHash, roleId, school_id, cleanFirstName, cleanSurname, phone || null, tempPassword]);
-      testerId = insertRes.rows[0].id;
-    }
-
-    // Role-specific complementary setup
-    if (resolvedRoleName === 'teacher') {
-      await db.query(`
-        INSERT INTO employees (user_id, full_name, surname, department_id, school_id, phone, email)
-        VALUES ($1, $2, $3, 1, $4, $5, $6)
-        ON CONFLICT (user_id) DO UPDATE SET
-          full_name = EXCLUDED.full_name,
-          surname = EXCLUDED.surname,
-          school_id = EXCLUDED.school_id;
-      `, [testerId, cleanFirstName, cleanSurname, school_id, phone || '071 000 0000', cleanEmail]);
-    }
-
-    // Fetch school name for email
-    const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [school_id]);
-    const targetSchoolName = schoolRes.rows.length > 0 ? schoolRes.rows[0].name : 'Geleza SA Partner School';
-
-    // Dispatch credentials invitation email if requested
-    if (send_email) {
-      emailService.sendTesterInvitationEmail({
-        testerEmail: cleanEmail,
-        testerName: `${cleanFirstName} ${cleanSurname}`,
-        roleName: resolvedRoleName,
-        temporaryPassword: tempPassword,
-        schoolName: targetSchoolName,
-        loginUrl: `${req.protocol}://${req.get('host')}/login`,
-        invitedByName: 'Dr. T. Makola (Geleza SA Executive)'
-      }).catch(err => {
-        console.warn('[EMAIL NOTICE] Could not send tester email:', err.message);
-      });
-    }
-
-    res.status(201).json({
-      success: true,
-      message: `Testing user "${cleanFirstName} ${cleanSurname}" created and assigned role "${resolvedRoleName}". An invitation email with login credentials has been dispatched.`,
-      tester: {
-        id: testerId,
-        email: cleanEmail,
-        full_name: cleanFirstName,
-        surname: cleanSurname,
-        role_name: resolvedRoleName,
-        school_id,
-        school_name: targetSchoolName,
-        temp_password: tempPassword,
-        created_at: new Date()
-      }
-    });
+    const result = await testerProvisioning.createInvitation(req.body || {}, req);
+    sendTesterResult(res, 201, result);
   } catch (err) {
-    console.error('Error creating testing user:', err.message);
-    res.status(500).json({ error: 'Failed to create testing user. Please verify input and try again.' });
+    sendTesterError(res, err, 'Failed to create the tester invitation.');
   }
 };
 
-/**
- * Updates role assignment of an existing tester.
- */
 exports.updateTesterRole = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { role } = req.body;
-
-    if (!role) {
-      return res.status(400).json({ error: 'New role parameter is required.' });
-    }
-
-    const roleQuery = await db.query('SELECT id, name FROM roles WHERE LOWER(name) = LOWER($1)', [role]);
-    if (roleQuery.rows.length === 0) {
-      return res.status(400).json({ error: `Invalid role "${role}".` });
-    }
-    const current = await db.query(
-      'SELECT id, COALESCE(is_superadmin, FALSE) AS is_superadmin FROM users WHERE id = $1',
-      [id]
-    );
-    const roleDecision = testerRoleChangeAllowed({
-      requestedRole: role,
-      targetIsSuperadmin: current.rows[0] ? current.rows[0].is_superadmin === true : false
-    });
-    if (!roleDecision.ok) {
-      return res.status(roleDecision.status).json({ error: roleDecision.error });
-    }
-    if (current.rows.length === 0) {
-      return res.status(404).json({ error: 'Tester account not found.' });
-    }
-
-    const roleId = roleQuery.rows[0].id;
-    const roleName = roleQuery.rows[0].name;
-
-    const updateRes = await db.query(`
-      UPDATE users
-      SET role_id = $1
-      WHERE id = $2 AND is_tester = TRUE AND COALESCE(is_superadmin, FALSE) = FALSE
-      RETURNING id, email, full_name, surname, role_id;
-    `, [roleId, id]);
-
-    if (updateRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Tester account not found.' });
-    }
-
-    res.json({
-      success: true,
-      message: `Tester role successfully updated to "${roleName}".`,
-      user: { ...updateRes.rows[0], role_name: roleName }
-    });
+    const result = await testerProvisioning.updateInvitationRole(req.params.id, req.body && req.body.role);
+    sendTesterResult(res, 200, result);
   } catch (err) {
-    console.error('Error updating tester role:', err.message);
-    res.status(500).json({ error: 'Failed to update tester role.' });
+    sendTesterError(res, err, 'Failed to update tester role.');
   }
 };
 
-/**
- * Resends temporary credentials to a tester.
- */
 exports.resendTesterCredentials = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const userRes = await db.query(`
-      SELECT u.id, u.email, u.full_name, u.surname, u.temp_password_note, r.name as role_name, s.name as school_name
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN schools s ON u.school_id = s.id
-      WHERE u.id = $1 AND u.is_tester = TRUE;
-    `, [id]);
-
-    if (userRes.rows.length === 0) {
-      return res.status(404).json({ error: 'Tester account not found.' });
-    }
-
-    const tester = userRes.rows[0];
-    const tempPassword = tester.temp_password_note || `Test@${Math.floor(1000 + Math.random() * 9000)}`;
-    const passHash = await bcrypt.hash(tempPassword, 10);
-
-    await db.query('UPDATE users SET password_hash = $1, temp_password_note = $2 WHERE id = $3', [passHash, tempPassword, id]);
-
-    await emailService.sendTesterInvitationEmail({
-      testerEmail: tester.email,
-      testerName: `${tester.full_name} ${tester.surname}`,
-      roleName: tester.role_name,
-      temporaryPassword: tempPassword,
-      schoolName: tester.school_name || 'Geleza SA',
-      loginUrl: `${req.protocol}://${req.get('host')}/login`,
-      invitedByName: 'Dr. T. Makola (Geleza SA Executive)'
-    });
-
-    res.json({
-      success: true,
-      message: `Credentials re-dispatched to ${tester.email}. Temporary password: ${tempPassword}`
-    });
+    const result = await testerProvisioning.resendInvitation(req.params.id, req);
+    sendTesterResult(res, 200, result);
   } catch (err) {
-    console.error('Error resending tester credentials:', err.message);
-    res.status(500).json({ error: 'Failed to resend credentials.' });
+    sendTesterError(res, err, 'Failed to resend the tester invitation.');
   }
 };
 
-/**
- * Revokes testing access or deletes tester account.
- */
 exports.deleteTestingUser = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const result = await db.query(`
-      UPDATE users
-      SET is_tester = FALSE
-      WHERE id = $1
-      RETURNING id, email, full_name, surname;
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Tester account not found.' });
-    }
-
-    res.json({
-      success: true,
-      message: `Testing privileges revoked for ${result.rows[0].email}.`
-    });
+    const result = await testerProvisioning.revokeInvitation(req.params.id);
+    sendTesterResult(res, 200, result);
   } catch (err) {
-    console.error('Error deleting testing user:', err.message);
-    res.status(500).json({ error: 'Failed to revoke testing user access.' });
+    sendTesterError(res, err, 'Failed to revoke testing user access.');
+  }
+};
+
+exports.deleteLegacyTester = async (req, res) => {
+  try {
+    const result = await testerProvisioning.revokeLegacyTester(req.params.id);
+    sendTesterResult(res, 200, result);
+  } catch (err) {
+    sendTesterError(res, err, 'Failed to revoke testing user access.');
+  }
+};
+
+exports.verifyTesterInvite = async (req, res) => {
+  try {
+    const result = await testerProvisioning.verifyInvitation(req.query.token);
+    res.json(result);
+  } catch (err) {
+    sendTesterError(res, err, 'The invitation could not be checked.');
+  }
+};
+
+exports.acceptTesterInvite = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = await testerProvisioning.acceptInvitation({
+      token: body.token,
+      password: body.password,
+      confirm: body.confirm_password || body.confirm
+    });
+    res.json(result);
+  } catch (err) {
+    sendTesterError(res, err, 'The tester account could not be activated.');
+  }
+};
+
+exports.createTesterReport = async (req, res) => {
+  try {
+    const result = await testerProvisioning.createReport(req.user && req.user.id, req.body || {});
+    sendTesterResult(res, 201, result);
+  } catch (err) {
+    sendTesterError(res, err, 'The testing report could not be saved.');
+  }
+};
+
+exports.listMyTesterReports = async (req, res) => {
+  try {
+    const reports = await testerProvisioning.listOwnReports(req.user && req.user.id);
+    sendTesterResult(res, 200, { reports });
+  } catch (err) {
+    sendTesterError(res, err, 'Testing reports could not be loaded.');
+  }
+};
+
+exports.listTesterReports = async (req, res) => {
+  try {
+    const reports = await testerProvisioning.listReports(req.query || {});
+    sendTesterResult(res, 200, { reports });
+  } catch (err) {
+    sendTesterError(res, err, 'Testing reports could not be loaded.');
+  }
+};
+
+exports.updateTesterReport = async (req, res) => {
+  try {
+    const report = await testerProvisioning.updateReport(req.params.id, req.body || {}, req.user && req.user.id);
+    sendTesterResult(res, 200, { report, message: `Report ${report.reference_code} is now ${report.status}.` });
+  } catch (err) {
+    sendTesterError(res, err, 'The testing report could not be updated.');
   }
 };
 

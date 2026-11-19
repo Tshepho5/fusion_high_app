@@ -2,16 +2,15 @@ const db = require('../../../db/db'); // Points to the database pool in the db f
 const aiTutor = require('../services/aiTutorService');
 const curriculumService = require('../services/curriculumService');
 const careerAdvisorService = require('../services/careerAdvisorService');
-
-async function fetchSubjectsFromDatabase(grade, stream) {
-    return curriculumService.getSubjectsForGradeAndStream(grade, stream);
-}
+const { canBindLearnerChild } = require('../../../lib/testerProgramme');
+const { subjectsForDisplay } = require('../../../lib/learnerSubjectAllocation');
 
 async function getLearnerEnrolledSubjects(learnerGrade, learnerStream, customSubjectsList) {
-    if (customSubjectsList && Array.isArray(customSubjectsList) && customSubjectsList.length > 0) {
-        return Array.from(new Set(customSubjectsList));
-    }
-    return curriculumService.getSubjectsForGradeAndStream(learnerGrade, learnerStream);
+    const stored = subjectsForDisplay(customSubjectsList);
+    if (stored.length > 0) return stored;
+    const grade = Number(learnerGrade);
+    if (!Number.isInteger(grade) || grade < 8 || grade >= 10) return [];
+    return curriculumService.getSubjectsForGradeAndStream(grade, learnerStream || 'General');
 }
 
 async function getOrLinkLearnerChild(user) {
@@ -22,121 +21,106 @@ async function getOrLinkLearnerChild(user) {
     const userFullName = (user.full_name || '').trim();
     const userSurname = (user.surname || '').trim();
 
-    // If user.id is a UUID or non-numeric string, look up the user by email in PostgreSQL to see if an integer user.id exists
     if (numericUserId === null && userEmail) {
         try {
-            const u = await db.query('SELECT id, full_name, surname FROM users WHERE email ILIKE $1 LIMIT 1', [userEmail]);
-            if (u.rows.length > 0) {
-                numericUserId = u.rows[0].id;
+            const u = await db.query('SELECT id, full_name, surname FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1', [userEmail]);
+            if (u.rows.length > 0) numericUserId = u.rows[0].id;
+        } catch (_) {}
+    }
+
+    let schoolId = parseInt(user.school_id, 10);
+    let isTester = user.is_tester === true;
+    if (numericUserId) {
+        try {
+            const account = await db.query(
+                'SELECT school_id, COALESCE(is_tester, FALSE) AS is_tester FROM users WHERE id = $1',
+                [numericUserId]
+            );
+            if (account.rows[0]) {
+                schoolId = parseInt(account.rows[0].school_id, 10);
+                isTester = account.rows[0].is_tester === true;
             }
         } catch (_) {}
     }
 
-    // Ensure home_language column exists
     try {
-        await db.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50)`);
+        await db.query('ALTER TABLE children ADD COLUMN IF NOT EXISTS home_language VARCHAR(50)');
+        await db.query('ALTER TABLE children ADD COLUMN IF NOT EXISTS is_test_record BOOLEAN NOT NULL DEFAULT FALSE');
     } catch (_) {}
 
-    // 1. Check if learner already linked to a child record
-    // Use ::text comparison so PostgreSQL NEVER throws 'invalid input syntax for type integer' on UUIDs or non-numeric strings
-    let childRes = null;
+    const childColumns = `id, full_name, surname, grade, stream, subjects, class_id, home_language, learner_number, school_id, COALESCE(is_test_record, FALSE) AS is_test_record`;
+    let child = null;
     try {
         if (numericUserId) {
-            childRes = await db.query(
-                `SELECT id, full_name, surname, grade, stream, subjects, class_id, home_language, learner_number
-                 FROM children 
-                 WHERE learner_user_id = $1 OR id = $1
-                 LIMIT 1`,
+            const linked = await db.query(
+                `SELECT ${childColumns} FROM children WHERE learner_user_id = $1 LIMIT 1`,
                 [numericUserId]
             );
+            child = linked.rows[0] || null;
         } else if (rawId) {
-            childRes = await db.query(
-                `SELECT id, full_name, surname, grade, stream, subjects, class_id, home_language, learner_number
-                 FROM children 
-                 WHERE learner_user_id::text = $1 OR id::text = $1
-                 LIMIT 1`,
+            const linked = await db.query(
+                `SELECT ${childColumns} FROM children WHERE learner_user_id::text = $1 LIMIT 1`,
                 [rawId]
             );
+            child = linked.rows[0] || null;
         }
     } catch (_) {}
 
-    if (childRes && childRes.rows.length > 0) {
-        let child = childRes.rows[0];
-        if (!child.subjects || child.subjects.length === 0) {
-            const defaultSubs = curriculumService.getSubjectsForGradeAndStream(child.grade || 10, child.stream || 'Science', child.home_language || null);
-            try {
-                await db.query(`UPDATE children SET subjects = $1 WHERE id = $2`, [defaultSubs, child.id]);
-                child.subjects = defaultSubs;
-            } catch (_) {}
+    if (child) {
+        if (!canBindLearnerChild({
+            userSchoolId: schoolId,
+            childSchoolId: child.school_id,
+            userIsTester: isTester,
+            childIsTestRecord: child.is_test_record === true
+        })) {
+            return null;
         }
         return child;
     }
 
-    // 2. Try auto-linking by learner_number or email prefix or full name
-    const lrnNum = userEmail ? userEmail.split('@')[0] : '';
-    try {
-        childRes = await db.query(
-            `SELECT id, full_name, surname, grade, stream, subjects, class_id, home_language, learner_number 
-             FROM children 
-             WHERE learner_number = $1 
-                OR (length($2) >= 3 AND full_name ILIKE $3)
-             ORDER BY id ASC
-             LIMIT 1`,
-            [lrnNum, userFullName, `%${userFullName}%`]
-        );
-    } catch (_) {}
-
-    if (childRes && childRes.rows.length > 0) {
-        const found = childRes.rows[0];
-        if (numericUserId) {
-            try {
-                await db.query(`UPDATE children SET learner_user_id = $1 WHERE id = $2`, [numericUserId, found.id]);
-                found.learner_user_id = numericUserId;
-            } catch (_) {}
-        }
-        if (!found.subjects || found.subjects.length === 0) {
-            const defaultSubs = curriculumService.getSubjectsForGradeAndStream(found.grade || 10, found.stream || 'Science', found.home_language || null);
-            try {
-                await db.query(`UPDATE children SET subjects = $1 WHERE id = $2`, [defaultSubs, found.id]);
-                found.subjects = defaultSubs;
-            } catch (_) {}
-        }
-        return found;
+    const learnerNumber = userEmail ? userEmail.split('@')[0] : '';
+    if (Number.isInteger(schoolId) && schoolId > 0 && learnerNumber && !isTester) {
+        try {
+            const matched = await db.query(
+                `SELECT ${childColumns}
+                 FROM children
+                 WHERE learner_number = $1
+                   AND school_id = $2
+                   AND learner_user_id IS NULL
+                   AND COALESCE(is_test_record, FALSE) = FALSE
+                 LIMIT 1`,
+                [learnerNumber, schoolId]
+            );
+            const found = matched.rows[0];
+            if (found && numericUserId && canBindLearnerChild({
+                userSchoolId: schoolId,
+                childSchoolId: found.school_id,
+                userIsTester: false,
+                childIsTestRecord: false
+            })) {
+                const claimed = await db.query(
+                    `UPDATE children SET learner_user_id = $1
+                     WHERE id = $2 AND school_id = $3 AND learner_user_id IS NULL AND COALESCE(is_test_record, FALSE) = FALSE
+                     RETURNING id`,
+                    [numericUserId, found.id, schoolId]
+                );
+                if (claimed.rows[0]) {
+                    found.learner_user_id = numericUserId;
+                    return found;
+                }
+            }
+        } catch (_) {}
     }
 
-    // 3. Auto-create linked child record if missing (using numericUserId or null for integer column)
-    const defaultGrade = 10;
-    const defaultStream = 'Science';
-    const standardSubs = curriculumService.getSubjectsForGradeAndStream(defaultGrade, defaultStream, null);
-    const generatedLrnNum = lrnNum && /^\d+$/.test(lrnNum) ? lrnNum : `2026${String(Math.floor(1000 + Math.random() * 9000))}`;
-    
-    try {
-        const insertRes = await db.query(`
-            INSERT INTO children (learner_user_id, full_name, surname, grade, stream, subjects, home_language, learner_number, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, CURRENT_TIMESTAMP)
-            RETURNING id, full_name, surname, grade, stream, subjects, class_id, home_language, learner_number
-        `, [numericUserId, userFullName || 'Learner', userSurname || '', defaultGrade, defaultStream, standardSubs, generatedLrnNum]);
-        return insertRes.rows[0];
-    } catch (e) {
-        console.error('Error auto-creating learner child record:', e.message);
-        return {
-            id: null,
-            full_name: userFullName || 'Learner',
-            surname: userSurname || '',
-            grade: defaultGrade,
-            stream: defaultStream,
-            subjects: standardSubs,
-            home_language: null,
-            learner_number: generatedLrnNum
-        };
-    }
+    if (!Number.isInteger(schoolId) || schoolId <= 0 || !numericUserId) return null;
+    return null;
 }
 
 exports.getSubjects = async (req, res) => {
     try {
         const learner = await getOrLinkLearnerChild(req.user);
-        const learnerGrade = learner?.grade || 10;
-        const learnerStream = learner?.stream || 'Science';
+        const learnerGrade = learner?.grade ?? null;
+        const learnerStream = learner?.stream || null;
         const subjectsList = await getLearnerEnrolledSubjects(learnerGrade, learnerStream, learner?.subjects);
 
         // Check which of the learner's subjects have textbooks uploaded for their grade
@@ -162,17 +146,11 @@ exports.getMySubjectsOverview = async (req, res) => {
     try {
         const userId = req.user.id;
         const learner = await getOrLinkLearnerChild(req.user) || {};
-        const chosenHomeLanguage = learner.home_language || null;
-        let subjectsList = learner.subjects || [];
-
-        if (!subjectsList || subjectsList.length === 0) {
-            subjectsList = curriculumService.getSubjectsForGradeAndStream(learner.grade || 10, learner.stream || 'Science', chosenHomeLanguage);
-            try {
-                if (learner.id) {
-                    await db.query(`UPDATE children SET subjects = $1 WHERE id = $2`, [subjectsList, learner.id]);
-                }
-            } catch (_) {}
-        }
+        const subjectsList = await getLearnerEnrolledSubjects(
+            learner.grade,
+            learner.stream || 'General',
+            learner.subjects
+        );
 
         let classmatesCount = 32;
         try {
@@ -491,8 +469,8 @@ exports.updateHomeLanguage = async (req, res) => {
             return s;
         });
 
-        if (!replaced || updatedSubs.length === 0) {
-            updatedSubs = curriculumService.getSubjectsForGradeAndStream(child.grade || 10, child.stream || 'Science', matchedLang);
+        if (!replaced) {
+            updatedSubs = currentSubs.concat([newLangSubject]);
         }
 
         await db.query(
@@ -2103,8 +2081,8 @@ exports.getCareerPathway = async (req, res) => {
             success: true,
             isCandidate: grade === 12,
             grade,
-            stream: child.stream || 'Science',
-            home_language: child.home_language || 'isiZulu',
+            stream: child.stream || null,
+            home_language: child.home_language || null,
             learner_name: `${child.full_name} ${child.surname}`.trim(),
             aps: apsCalculation,
             subject_marks: subjectMarks,

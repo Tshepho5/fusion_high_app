@@ -46,6 +46,7 @@ const LoginPage = lazyWithRetry(() => import('./pages/auth/LoginPage'), 'LoginPa
 const RegisterPage = lazyWithRetry(() => import('./pages/auth/RegisterPage'), 'RegisterPage');
 const ForgotPasswordPage = lazyWithRetry(() => import('./pages/auth/ForgotPasswordPage'), 'ForgotPasswordPage');
 const ActivateAccountPage = lazyWithRetry(() => import('./pages/auth/ActivateAccountPage'), 'ActivateAccountPage');
+const TesterInvitePage = lazyWithRetry(() => import('./pages/auth/TesterInvitePage'), 'TesterInvitePage');
 const LearnerDashboard = lazyWithRetry(() => import('./pages/learner/LearnerDashboard'), 'LearnerDashboard');
 const TeacherDashboard = lazyWithRetry(() => import('./pages/teacher/TeacherDashboard'), 'TeacherDashboard');
 const AdminDashboard = lazyWithRetry(() => import('./pages/admin/AdminDashboard'), 'AdminDashboard');
@@ -128,6 +129,7 @@ export const App: React.FC = () => {
                 <Route path="/register" element={<PortalFormScene><RegisterPage /></PortalFormScene>} />
                 <Route path="/forgot-password" element={<PortalFormScene><ForgotPasswordPage /></PortalFormScene>} />
                 <Route path="/activate" element={<ActivateAccountPage />} />
+                <Route path="/tester-invite" element={<TesterInvitePage />} />
 
                 {/* Dashboard Routes */}
                 <Route

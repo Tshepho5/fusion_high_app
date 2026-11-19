@@ -204,6 +204,19 @@ export const TeacherAssessments: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openNotice, setOpenNotice] = useState<string | null>(null);
+  const [openedAssessmentId, setOpenedAssessmentId] = useState<number | null>(null);
+  const [sheetLearnerNumber, setSheetLearnerNumber] = useState('');
+  const [sheetMark, setSheetMark] = useState('');
+  const [sheetFileName, setSheetFileName] = useState('');
+  const [sheetFile, setSheetFile] = useState<File | null>(null);
+  const [answerSheets, setAnswerSheets] = useState<Array<{ id: number; learner_number: string | null; status: string; stated_mark: number | null; confidence: string; reason: string | null; has_file?: boolean }>>([]);
+  const [missingSheets, setMissingSheets] = useState<Array<{ child_id: number; learner_number: string | null; surname: string | null }>>([]);
+  const [sheetCorrections, setSheetCorrections] = useState<Record<number, string>>({});
+  const [classReports, setClassReports] = useState<Array<{ id: number; name: string; grade: number }>>([]);
+  const [returnReason, setReturnReason] = useState('');
+  const [returnLearner, setReturnLearner] = useState('');
+  const [returnSubject, setReturnSubject] = useState('');
 
   // History Marks State
   const [historyMarks, setHistoryMarks] = useState<any[]>([]);
@@ -321,6 +334,12 @@ export const TeacherAssessments: React.FC = () => {
     return () => { isMounted = false; };
   }, [searchParams]);
 
+  useEffect(() => {
+    teacherService.myReportClasses()
+      .then((res: any) => setClassReports(Array.isArray(res?.classes) ? res.classes : []))
+      .catch(() => setClassReports([]));
+  }, []);
+
   // 2. Load learners roster for selected class, subject, and term (with strict grade isolation)
   const fetchRoster = async () => {
     setLoading(true);
@@ -345,7 +364,6 @@ export const TeacherAssessments: React.FC = () => {
     try {
       let roster: any[] = [];
 
-      // Tier 1: Primary class-roster endpoint
       try {
         const res = await teacherService.getClassRoster({
           class: targetClass,
@@ -355,44 +373,8 @@ export const TeacherAssessments: React.FC = () => {
         });
         roster = Array.isArray(res) ? res : (res?.roster || res?.learners || []);
       } catch (err) {
-        console.warn('Tier 1 getClassRoster notice:', err);
-      }
-
-      // Tier 2: Attendance Roster (Exact endpoint powering "Mark Register")
-      if (roster.length === 0 && !normGradeNum) {
-        try {
-          const attRes = await teacherService.getAttendanceRoster({
-            class: targetClass === 'all' ? '' : targetClass,
-            date: new Date().toISOString().split('T')[0],
-            subject: targetSubject
-          });
-          const attList = Array.isArray(attRes) ? attRes : (attRes?.roster || []);
-          if (attList.length > 0) {
-            roster = attList;
-          }
-        } catch (err) {
-          console.warn('Tier 2 getAttendanceRoster notice:', err);
-        }
-      }
-
-      // Tier 3: Enrolled learners list (strictly isolated by target grade, never leaking other grades)
-      if (roster.length === 0) {
-        try {
-          const myRes = await teacherService.getMyLearners({ subject: targetSubject });
-          const allList = Array.isArray(myRes) ? myRes : (myRes?.learners || []);
-          if (allList.length > 0) {
-            if (normGradeNum !== null && !isNaN(normGradeNum)) {
-              roster = allList.filter((l: any) => {
-                const lGrade = parseInt(normalizeClassGrade(l.grade || l.class_name), 10);
-                return lGrade === normGradeNum;
-              });
-            } else {
-              roster = allList;
-            }
-          }
-        } catch (err) {
-          console.warn('Tier 3 getMyLearners notice:', err);
-        }
+        console.warn('Class roster notice:', err);
+        throw err;
       }
 
       clearTimeout(safetyTimer);
@@ -418,14 +400,14 @@ export const TeacherAssessments: React.FC = () => {
 
       if (deduplicated.length > 0) {
         setLearners(deduplicated.map((s: any) => {
-          const baseMark = s.final_calculated_mark !== null && s.final_calculated_mark !== undefined 
-            ? Math.round(parseFloat(s.final_calculated_mark)) 
-            : (s.current_mark !== null && s.current_mark !== undefined ? Math.round(parseFloat(s.current_mark)) : 0);
+          const hasRecordedMark = s.final_calculated_mark !== null && s.final_calculated_mark !== undefined
+            ? Math.round(parseFloat(s.final_calculated_mark))
+            : (s.current_mark !== null && s.current_mark !== undefined ? Math.round(parseFloat(s.current_mark)) : null);
 
-          const t1 = s.term1_mark !== undefined && s.term1_mark !== null ? Math.round(parseFloat(s.term1_mark)) : baseMark;
-          const t2 = s.term2_mark !== undefined && s.term2_mark !== null ? Math.round(parseFloat(s.term2_mark)) : baseMark;
-          const t3 = s.term3_mark !== undefined && s.term3_mark !== null ? Math.round(parseFloat(s.term3_mark)) : baseMark;
-          const aiScore = s.ai_score !== undefined && s.ai_score !== null ? Math.round(parseFloat(s.ai_score)) : (baseMark > 0 ? baseMark : 0);
+          const t1 = s.term1_mark !== undefined && s.term1_mark !== null ? Math.round(parseFloat(s.term1_mark)) : 0;
+          const t2 = s.term2_mark !== undefined && s.term2_mark !== null ? Math.round(parseFloat(s.term2_mark)) : 0;
+          const t3 = s.term3_mark !== undefined && s.term3_mark !== null ? Math.round(parseFloat(s.term3_mark)) : 0;
+          const aiScore = s.ai_score !== undefined && s.ai_score !== null ? Math.round(parseFloat(s.ai_score)) : 0;
 
           // Find current input mark based on selected component
           let currentCompMark: number | '' = '';
@@ -442,7 +424,7 @@ export const TeacherAssessments: React.FC = () => {
             id: s.id || s.child_id,
             full_name: s.full_name || s.learner_name || s.name || 'Learner',
             surname: s.surname || s.learner_surname || '',
-            learner_number: s.learner_number || (s.id ? `2026-FHS-${String(s.id).padStart(3, '0')}` : '2026-001'),
+            learner_number: s.learner_number || '',
             grade: learnerGrade,
             class_name: learnerClass,
             test1: s.test1 || null,
@@ -455,13 +437,13 @@ export const TeacherAssessments: React.FC = () => {
             final_calculated_mark: s.final_calculated_mark ?? null,
             calculation_method: s.calculation_method || 'Pending Teacher Submissions',
             assessments_count: s.assessments_count || 0,
-            formal_mark: baseMark,
+            formal_mark: hasRecordedMark ?? 0,
             formal_task_name: assessmentName,
             term1_mark: t1,
             term2_mark: t2,
             term3_mark: t3,
             ai_activities_mark: aiScore,
-            ai_completed_count: s.ai_completed_count || (aiScore > 0 ? 2 : 0),
+            ai_completed_count: s.ai_completed_count || 0,
             inputMark: currentCompMark,
           };
         }));
@@ -558,8 +540,64 @@ export const TeacherAssessments: React.FC = () => {
     );
   };
 
+  const handleAuthorizeAverages = async () => {
+    const gradeNumber = parseInt(normalizeClassGrade(selectedClass), 10);
+    if (!selectedSubject || !Number.isInteger(gradeNumber)) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const preview = await teacherService.previewCalculation({
+        subject: selectedSubject,
+        grade: gradeNumber,
+        class: selectedClass,
+        term,
+        policy: 'total_marks'
+      });
+      if (!preview.can_authorize) {
+        setError('The average stays unauthorized until every enrolled learner has a submitted mark.');
+        return;
+      }
+      const saved = await teacherService.authorizeCalculation({
+        subject: selectedSubject,
+        grade: gradeNumber,
+        class: selectedClass,
+        term,
+        policy: 'total_marks'
+      });
+      setOpenNotice(`Subject average authorized at ${saved.summary.average}%.`);
+    } catch (e: any) {
+      setError(e.response?.data?.error || 'The average could not be authorized.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmitMarksheet = async () => {
+    if (!assessmentName.trim() || !selectedSubject) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await teacherService.submitMarksheet({
+        assessment_name: assessmentName.trim(),
+        subject: selectedSubject,
+        class: selectedClass,
+        grade: parseInt(normalizeClassGrade(selectedClass), 10),
+        term
+      });
+      setOpenNotice(`Marksheet submitted to the school. ${result.recorded_count} marks recorded, ${result.missing_count} still missing.`);
+    } catch (e: any) {
+      setError(e.response?.data?.error || 'The marksheet could not be submitted.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveMarks = async () => {
-    if (!assessmentName.trim() || learners.length === 0) return;
+    const entered = learners.filter((l) => l.inputMark !== '' && l.inputMark !== null && l.inputMark !== undefined);
+    if (!assessmentName.trim() || entered.length === 0) {
+      setError('Enter at least one mark. A blank box is left missing and is not saved as zero.');
+      return;
+    }
     setSaving(true);
     setSavedSuccess(false);
     setError(null);
@@ -575,10 +613,10 @@ export const TeacherAssessments: React.FC = () => {
         class: selectedClass,
         term,
         total_mark: totalMarks,
-        marks: learners.map(l => ({
+        marks: entered.map(l => ({
           child_id: l.id,
-          grade: l.inputMark === '' ? 0 : Math.round(((l.inputMark as number) / totalMarks) * 100),
-          mark_obtained: l.inputMark === '' ? 0 : l.inputMark,
+          grade: Math.round((Number(l.inputMark) / totalMarks) * 100),
+          mark_obtained: l.inputMark,
         }))
       });
 
@@ -703,6 +741,51 @@ export const TeacherAssessments: React.FC = () => {
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2.5 animate-fade-in shadow-lg">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>Marks successfully committed to official DBE CAPS assessment records and updated in Formal Assessments!</span>
+        </div>
+      )}
+
+      {classReports.length > 0 && (
+        <div className="p-4 rounded-2xl border border-white/10 bg-surface-dark space-y-2">
+          <p className="text-xs font-bold text-white">Class report verification</p>
+          {classReports.map((row) => (
+            <div key={row.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+              <span>{row.name}</span>
+              <button type="button" className="px-2 py-1 rounded-lg bg-[#168BFF] text-white font-bold" onClick={async () => {
+                try {
+                  await teacherService.decideReportBatch({ grade: row.grade, class_name: row.name, term, decision: 'approved' });
+                  setOpenNotice(`${row.name} reports verified.`);
+                } catch (err: any) {
+                  setError(err?.response?.data?.error || 'The reports could not be verified.');
+                }
+              }}>Verify and approve</button>
+              <input value={returnLearner} onChange={(event) => setReturnLearner(event.target.value)} placeholder="Learner number" className="rounded-lg bg-surface-darker border border-white/10 px-2 py-1 text-white" />
+              <input value={returnSubject} onChange={(event) => setReturnSubject(event.target.value)} placeholder="Subject" className="rounded-lg bg-surface-darker border border-white/10 px-2 py-1 text-white" />
+              <input value={returnReason} onChange={(event) => setReturnReason(event.target.value)} placeholder="Reason for correction" className="rounded-lg bg-surface-darker border border-white/10 px-2 py-1 text-white" />
+              <button type="button" className="px-2 py-1 rounded-lg border border-white/20 text-white" onClick={async () => {
+                try {
+                  await teacherService.decideReportBatch({
+                    grade: row.grade,
+                    class_name: row.name,
+                    term,
+                    decision: 'returned',
+                    reason: returnReason,
+                    learner_number: returnLearner.trim(),
+                    subject: returnSubject.trim()
+                  });
+                  setOpenNotice(`${row.name} reports returned for correction.`);
+                } catch (err: any) {
+                  setError(err?.response?.data?.error || 'The correction request could not be saved.');
+                }
+              }}>Return for correction</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {openNotice && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2.5">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span>{openNotice}</span>
         </div>
       )}
 
@@ -932,11 +1015,196 @@ export const TeacherAssessments: React.FC = () => {
                 ))}
               </div>
 
+              <button
+                type="button"
+                onClick={async () => {
+                  const gradeNumber = parseInt(normalizeClassGrade(selectedClass), 10);
+                  if (!selectedSubject || !Number.isInteger(gradeNumber)) return;
+                  setError(null);
+                  setOpenNotice(null);
+                  try {
+                    const opened = await teacherService.openAssessment({
+                      subject: selectedSubject,
+                      grade: gradeNumber,
+                      class: selectedClass,
+                      name: assessmentName,
+                      total_marks: totalMarks,
+                      term,
+                      category: assessmentType,
+                      weight
+                    });
+                    const assessmentId = opened?.assessment?.id || null;
+                    setOpenedAssessmentId(assessmentId);
+                    if (assessmentId) {
+                      const listed = await teacherService.listAnswerSheets(assessmentId);
+                      setAnswerSheets(Array.isArray(listed?.scans) ? listed.scans : []);
+                      setMissingSheets(Array.isArray(listed?.missing) ? listed.missing : []);
+                    }
+                    setOpenNotice(`Assessment opened for ${opened?.roster_count || 0} enrolled learners.`);
+                    fetchRoster();
+                  } catch (err: any) {
+                    setError(err?.response?.data?.error || 'The assessment could not be opened.');
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl bg-[#168BFF] text-white text-xs font-bold"
+              >
+                Open assessment
+              </button>
               <span className="px-3 py-1.5 rounded-xl bg-surface-darker border border-white/10 text-white font-mono text-xs font-bold">
                 Class Average: {formalAvg > 0 ? `${formalAvg}%` : '0%'}
               </span>
             </div>
           </div>
+
+          {openedAssessmentId && (
+            <div className="rounded-2xl border border-white/10 bg-surface-darker p-4 space-y-3">
+              <div>
+                <p className="text-xs font-bold text-white">Answer sheet</p>
+                <p className="text-[11px] text-slate-400">Choose the marked sheet and type the learner number and the mark you read. Nothing on the page is read automatically, and the mark stays unofficial until you confirm it.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(event) => {
+                    const file = event.target.files && event.target.files[0];
+                    setSheetFile(file || null);
+                    setSheetFileName(file ? file.name : '');
+                  }}
+                  className="text-[11px] text-slate-300"
+                />
+                <input
+                  value={sheetLearnerNumber}
+                  onChange={(event) => setSheetLearnerNumber(event.target.value)}
+                  placeholder="Learner number"
+                  className="px-3 py-1.5 rounded-lg bg-surface-dark border border-white/10 text-xs text-white"
+                />
+                <input
+                  value={sheetMark}
+                  onChange={(event) => setSheetMark(event.target.value)}
+                  placeholder="Mark read"
+                  className="w-24 px-3 py-1.5 rounded-lg bg-surface-dark border border-white/10 text-xs text-white"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!openedAssessmentId || !sheetFile || !sheetLearnerNumber.trim()) return;
+                    setError(null);
+                    try {
+                      await teacherService.registerAnswerSheet({
+                        assessment_id: openedAssessmentId,
+                        learner_number: sheetLearnerNumber.trim(),
+                        stated_mark: sheetMark,
+                        sheet: sheetFile
+                      });
+                      const listed = await teacherService.listAnswerSheets(openedAssessmentId);
+                      setAnswerSheets(Array.isArray(listed?.scans) ? listed.scans : []);
+                      setMissingSheets(Array.isArray(listed?.missing) ? listed.missing : []);
+                      setSheetMark('');
+                      setSheetLearnerNumber('');
+                      setSheetFile(null);
+                      setSheetFileName('');
+                    } catch (err: any) {
+                      setError(err?.response?.data?.error || 'The answer sheet could not be registered.');
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#168BFF] text-white text-xs font-bold"
+                >
+                  Register sheet
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!openedAssessmentId) return;
+                    setError(null);
+                    try {
+                      await teacherService.confirmAnswerSheetBatch(openedAssessmentId);
+                      const listed = await teacherService.listAnswerSheets(openedAssessmentId);
+                      setAnswerSheets(Array.isArray(listed?.scans) ? listed.scans : []);
+                      setMissingSheets(Array.isArray(listed?.missing) ? listed.missing : []);
+                      fetchRoster();
+                    } catch (err: any) {
+                      setError(err?.response?.data?.error || 'The verified sheets could not be confirmed.');
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs font-bold"
+                >
+                  Confirm verified sheets
+                </button>
+              </div>
+              {missingSheets.length > 0 && (
+                <p className="text-[11px] text-amber-200">
+                  Still missing: {missingSheets.map((row) => row.learner_number || row.surname || 'learner').join(', ')}
+                </p>
+              )}
+              {answerSheets.map((sheet) => (
+                <div key={sheet.id} className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
+                  <span>{sheet.learner_number || 'No learner number'} · {sheet.status.split('_').join(' ')} · {sheet.stated_mark ?? 'no mark'} · {sheet.confidence.split('_').join(' ')}</span>
+                  <div className="flex gap-2">
+                    {sheet.has_file && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await teacherService.openAnswerSheetFile(sheet.id);
+                          const url = window.URL.createObjectURL(new Blob([res.data]));
+                          window.open(url, '_blank', 'noopener');
+                        }}
+                        className="px-2 py-1 rounded-lg bg-white/10 text-white font-bold"
+                      >
+                        View page
+                      </button>
+                    )}
+                    {sheet.status !== 'confirmed' && sheet.status !== 'rejected' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await teacherService.rejectAnswerSheet(sheet.id);
+                            const listed = await teacherService.listAnswerSheets(openedAssessmentId as number);
+                            setAnswerSheets(Array.isArray(listed?.scans) ? listed.scans : []);
+                            setMissingSheets(Array.isArray(listed?.missing) ? listed.missing : []);
+                          } catch (err: any) {
+                            setError(err?.response?.data?.error || 'The answer sheet could not be rejected.');
+                          }
+                        }}
+                        className="px-2 py-1 rounded-lg bg-white/10 text-white font-bold"
+                      >
+                        Reject
+                      </button>
+                    )}
+                    {sheet.status === 'awaiting_verification' && (
+                      <>
+                        <input
+                          value={sheetCorrections[sheet.id] || ''}
+                          onChange={(event) => setSheetCorrections((current) => ({ ...current, [sheet.id]: event.target.value }))}
+                          placeholder="Corrected mark"
+                          className="w-28 px-2 py-1 rounded-lg bg-surface-dark border border-white/10 text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const corrected = sheetCorrections[sheet.id];
+                              await teacherService.confirmAnswerSheet(sheet.id, corrected ? { corrected_mark: corrected } : {});
+                              const listed = await teacherService.listAnswerSheets(openedAssessmentId as number);
+                              setAnswerSheets(Array.isArray(listed?.scans) ? listed.scans : []);
+                              setMissingSheets(Array.isArray(listed?.missing) ? listed.missing : []);
+                              fetchRoster();
+                            } catch (err: any) {
+                              setError(err?.response?.data?.error || 'The answer sheet could not be confirmed.');
+                            }
+                          }}
+                          className="px-2 py-1 rounded-lg bg-white/10 text-white font-bold"
+                        >
+                          Confirm mark
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* REQUIREMENT 1: Number of formal assessments available & list of formal assessments available */}
           <div className="p-4 rounded-2xl bg-gradient-to-r from-[#071922] via-[#0B2533] to-[#071922] border border-[#168BFF]/25 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
@@ -1714,7 +1982,7 @@ export const TeacherAssessments: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <button
                   onClick={handleSaveMarks}
                   disabled={saving || learners.length === 0}
@@ -1728,6 +1996,22 @@ export const TeacherAssessments: React.FC = () => {
                       <span>Save {isFormal ? 'Formal' : 'Practice'} Marks</span>
                     </>
                   )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitMarksheet}
+                  disabled={saving || learners.length === 0}
+                  className="w-full py-2.5 rounded-xl border border-white/20 text-white font-extrabold text-xs disabled:opacity-50"
+                >
+                  Submit to school
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAuthorizeAverages}
+                  disabled={saving || learners.length === 0}
+                  className="w-full py-2.5 rounded-xl border border-white/20 text-white font-extrabold text-xs disabled:opacity-50"
+                >
+                  Authorize averages
                 </button>
               </div>
             </div>

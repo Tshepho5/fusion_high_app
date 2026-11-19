@@ -4,6 +4,14 @@ const emailService = require('../services/emailService');
 const { assertChildAccess } = require('../services/familyAccess');
 const aiAdvisorService = require('../services/aiAdvisorService');
 const reportCardPdfService = require('../services/reportCardPdfService');
+const { submissionStatus } = require('../../../lib/marksheetSubmission');
+const marksheetSubmissions = require('../services/marksheetSubmissionService');
+const { loadReportReadiness } = require('./academicReadinessController');
+const reportVerifications = require('../services/reportVerificationService');
+const { teacherMayViewClassReport } = require('../../../lib/reportVerification');
+const { loadActor } = require('../services/familyAccess');
+const { parentCardView, paymentEntitlement } = require('../../../lib/reportRelease');
+const reportReleases = require('../services/reportReleaseService');
 
 /**
  * Maps percentage mark to South African CAPS official 7-Point Achievement Rating Level
@@ -161,15 +169,8 @@ exports.getGradeTemplateMarks = async (req, res) => {
       }
     } catch (_) {}
 
-    // Subjects come from this school's saved offerings, not the national subject catalogue.
-    const offered = await db.query(
-      `SELECT DISTINCT subject_name AS name
-       FROM school_subject_offerings
-       WHERE school_id = $1 AND grade = $2 AND is_active = TRUE
-       ORDER BY subject_name ASC`,
-      [schoolId, grade]
-    ).catch(() => ({ rows: [] }));
-    let schoolSubjects = offered.rows.map((row) => row.name);
+    // Subjects on a class report are the subjects stored for learners in that class.
+    let schoolSubjects = [];
 
     // 3. Fetch all enrolled learners strictly for this School, Grade, Class, and Stream
     const params = [schoolId, grade];
@@ -203,17 +204,15 @@ exports.getGradeTemplateMarks = async (req, res) => {
     `;
 
     let { rows: learners } = await db.query(learnersQuery, params);
-    if (schoolSubjects.length === 0) {
-      const enrolledNames = new Set();
-      learners.forEach((learner) => {
-        if (Array.isArray(learner.subjects)) {
-          learner.subjects.forEach((name) => {
-            if (name) enrolledNames.add(String(name));
-          });
-        }
-      });
-      schoolSubjects = Array.from(enrolledNames).sort((a, b) => a.localeCompare(b));
-    }
+    const enrolledNames = new Set();
+    learners.forEach((learner) => {
+      if (Array.isArray(learner.subjects)) {
+        learner.subjects.forEach((name) => {
+          if (name) enrolledNames.add(String(name));
+        });
+      }
+    });
+    schoolSubjects = Array.from(enrolledNames).sort((a, b) => a.localeCompare(b));
 
     // 4. Fetch already saved report_cards records strictly for this school
     let existingCardsMap = new Map();
@@ -235,9 +234,7 @@ exports.getGradeTemplateMarks = async (req, res) => {
       const existingCard = existingCardsMap.get(l.id);
 
       // Determine subjects for this learner
-      let studentSubjects = Array.isArray(l.subjects) && l.subjects.length > 0
-        ? [...l.subjects]
-        : [...schoolSubjects];
+      let studentSubjects = Array.isArray(l.subjects) ? [...l.subjects] : [];
 
       // Fetch attendance register records for this student
       const attRes = await db.query(
@@ -676,10 +673,27 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
  */
 exports.publishGradeReportCards = async (req, res) => {
   try {
-    const { grade = 10, term = 3, academic_year = 2026, school_id } = req.body;
+    const { grade = 10, term = 3, academic_year = 2026 } = req.body;
     const targetSchoolId = resolveSchoolId(req);
     const tNum = parseInt(term, 10);
     const yr = parseInt(academic_year, 10);
+    const className = String(req.body.class_name || req.body.class || '').trim();
+    const readiness = await loadReportReadiness({
+      schoolId: targetSchoolId,
+      grade: parseInt(grade, 10),
+      term: tNum,
+      academicYear: yr,
+      className
+    });
+    if (!readiness.ready) {
+      return res.status(409).json({ error: 'Reports stay unpublished until every enrolled subject has a submitted marksheet and an authorized average.' });
+    }
+    const decisions = await reportVerifications.latestForClasses(targetSchoolId, parseInt(grade, 10), tNum, yr);
+    const approved = new Set(decisions.filter((row) => row.decision === 'approved').map((row) => String(row.class_name).toLowerCase()));
+    const waiting = readiness.classes.filter((row) => !approved.has(String(row.class_name).toLowerCase()));
+    if (waiting.length) {
+      return res.status(409).json({ error: 'The class teacher still has to verify these reports.', classes: waiting.map((row) => row.class_name) });
+    }
 
     // 1. Mark report_cards as published
     const updateRes = await db.query(
@@ -828,6 +842,32 @@ exports.publishGradeReportCards = async (req, res) => {
  * Calculates real Grade Averages per subject across the school.
  * Enforces strict school isolation.
  */
+async function denyUnassignedTeacher(req, res, childId) {
+  const role = String((req.user && req.user.role) || '').toLowerCase();
+  if (!req.user || req.user.is_superadmin || role === 'admin' || role === 'principal' || role === 'parent' || role === 'learner') {
+    return false;
+  }
+  if (role !== 'teacher') return false;
+  const found = await db.query(
+    `SELECT cl.homeroom_teacher_id, cl.assigned_teacher_id
+     FROM children c
+     LEFT JOIN classes cl ON c.class_id = cl.id
+     WHERE c.id = $1`,
+    [childId]
+  );
+  const row = found.rows[0] || {};
+  const allowed = teacherMayViewClassReport({
+    teacherId: req.user.id,
+    homeroomTeacherId: row.homeroom_teacher_id,
+    assignedTeacherId: row.assigned_teacher_id
+  });
+  if (!allowed) {
+    res.status(403).json({ error: 'Report cards are available to the class teacher assigned to this class.' });
+    return true;
+  }
+  return false;
+}
+
 async function buildFullReportCardData(schoolId, childId, academicYear = 2026, targetTerm = 3) {
   const tNum = parseInt(String(targetTerm || '3').replace(/[^0-9]/g, ''), 10) || 3;
   const yr = parseInt(String(academicYear || '2026'), 10) || 2026;
@@ -890,20 +930,7 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
   };
 
   // 3. Determine enrolled subjects
-  let studentSubjects = Array.isArray(child.subjects) && child.subjects.length > 0
-    ? [...child.subjects]
-    : [];
-
-  if (studentSubjects.length === 0 && child.school_id) {
-    const offered = await db.query(
-      `SELECT DISTINCT subject_name AS name
-       FROM school_subject_offerings
-       WHERE school_id = $1 AND grade = $2 AND is_active = TRUE
-       ORDER BY subject_name ASC`,
-      [child.school_id, child.grade]
-    ).catch(() => ({ rows: [] }));
-    studentSubjects = offered.rows.map((row) => row.name);
-  }
+  let studentSubjects = Array.isArray(child.subjects) ? [...child.subjects] : [];
 
   // 4. Fetch grade-wide averages for each subject and term across this school
   const gradeAvesRes = await db.query(
@@ -972,6 +999,23 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
     [targetChildId, yr, tNum]
   );
   const existingRc = rcRes.rows[0] || null;
+  const authorizedBySubject = new Map();
+  try {
+    const authRows = await db.query(
+      `SELECT subject, result
+       FROM calculation_authorizations
+       WHERE school_id = $1 AND grade = $2 AND term_number = $3 AND academic_year = $4
+         AND status = 'authorized' AND LOWER(class_name) = LOWER($5)`,
+      [resolvedSchoolId, child.grade, tNum, yr, child.class_name]
+    );
+    authRows.rows.forEach((row) => {
+      const learners = row.result && row.result.learners;
+      const match = Array.isArray(learners) && learners.find((item) => Number(item.learner_id) === Number(child.id) && item.status === 'complete');
+      if (match && match.percentage !== null && match.percentage !== undefined) {
+        authorizedBySubject.set(String(row.subject).toLowerCase(), Number(match.percentage));
+      }
+    });
+  } catch (_) {}
 
   // Build subject-by-subject multi-term data
   const multiTermSubjects = [];
@@ -994,6 +1038,23 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
     const evaluatedTerms = [];
 
     for (let t = 1; t <= 4; t++) {
+      if (t === tNum) {
+        if (authorizedBySubject.has(subKey)) {
+          const finalPct = authorizedBySubject.get(subKey);
+          const caps = getCapsLevel(finalPct);
+          subjectRow[`term${t}`] = {
+            mark: finalPct,
+            level: caps.level,
+            grade_ave: gradeAveMap[`${subKey}_term${t}`] ?? null,
+            rating: caps.rating,
+            authorized: true
+          };
+          termTotals[`term${t}`] += finalPct;
+          termSubjectCounts[`term${t}`]++;
+          evaluatedTerms.push(finalPct);
+        }
+        continue;
+      }
       const termMarks = subjectMarks[t] || [];
       if (termMarks.length > 0) {
         let totalW = 0;
@@ -1191,6 +1252,7 @@ exports.getOfficialReportCardView = async (req, res) => {
     }
 
     if (!(await assertChildAccess(req, res, childId))) return;
+    if (await denyUnassignedTeacher(req, res, childId)) return;
 
     const reportData = await buildFullReportCardData(userSchoolId, childId, academicYear, termNum);
 
@@ -1287,6 +1349,7 @@ exports.downloadLearnerReportPdf = async (req, res) => {
     }
 
     if (!(await assertChildAccess(req, res, childId))) return;
+    if (await denyUnassignedTeacher(req, res, childId)) return;
 
     const reportData = await buildFullReportCardData(userSchoolId, childId, academicYear, termNum);
 
@@ -1418,6 +1481,26 @@ exports.approveGradeReportCards = async (req, res) => {
 };
 
 /**
+ * Lists report release status for the signed-in parent or learner.
+ * Unpublished rows omit marks. Report-access fees stay off.
+ */
+exports.listMyReportReleases = async (req, res) => {
+  try {
+    const actor = await loadActor(req.user);
+    if (!actor || (actor.role !== 'parent' && actor.role !== 'learner')) {
+      return res.status(403).json({ error: 'Report release is available to the linked parent or learner.' });
+    }
+    const children = actor.role === 'parent'
+      ? await reportReleases.listForParent(actor.id)
+      : await reportReleases.listForLearner(actor.id);
+    res.json({ success: true, payment: paymentEntitlement(), children });
+  } catch (err) {
+    console.error('Error listing report releases:', err);
+    res.status(500).json({ error: 'Failed to list report releases: ' + err.message });
+  }
+};
+
+/**
  * Returns all compiled report cards for a learner or parent.
  */
 exports.getLearnerReportCards = async (req, res) => {
@@ -1447,6 +1530,7 @@ exports.getLearnerReportCards = async (req, res) => {
     }
 
     if (!(await assertChildAccess(req, res, targetChildId))) return;
+    if (await denyUnassignedTeacher(req, res, targetChildId)) return;
 
     const query = `
       SELECT 
@@ -1472,6 +1556,20 @@ exports.getLearnerReportCards = async (req, res) => {
     `;
 
     const { rows } = await db.query(query, [parseInt(targetChildId, 10)]);
+    const actor = await loadActor(req.user);
+    const role = actor?.role || String(userRole || '').toLowerCase();
+    if (role === 'parent' || role === 'learner') {
+      return res.json({
+        success: true,
+        payment: paymentEntitlement(),
+        report_cards: rows.map((row) => parentCardView({
+          ...row,
+          child_name: [row.learner_first_name, row.learner_surname].filter(Boolean).join(' '),
+          grade: row.grade,
+          class_name: row.class_name
+        }))
+      });
+    }
     res.json({ success: true, report_cards: rows });
   } catch (err) {
     console.error('Error fetching learner report cards:', err);
@@ -1524,26 +1622,25 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
         });
       }
     });
-    const offered = await db.query(
-      `SELECT DISTINCT subject_name
-       FROM school_subject_offerings
-       WHERE school_id = $1 AND grade = $2 AND is_active = TRUE`,
-      [schoolId, grade]
-    ).catch(() => ({ rows: [] }));
-    offered.rows.forEach((row) => {
-      if (row.subject_name) subjectNames.add(row.subject_name);
-    });
     const subjects = Array.from(subjectNames).sort((a, b) => a.localeCompare(b));
 
     // 3. For each subject, query marks table for submissions
-    const learnerIds = learners.map(l => l.id);
     const submissions = [];
+    let submittedRows = [];
+    try {
+      submittedRows = await marksheetSubmissions.listForOverview(schoolId, grade, termNum, className);
+    } catch (lookupError) {
+      console.warn('Marksheet submission lookup skipped:', lookupError.message);
+    }
 
     for (const sub of subjects) {
+      const enrolledIds = learners
+        .filter((learner) => Array.isArray(learner.subjects) && learner.subjects.some((name) => String(name).toLowerCase() === sub.toLowerCase()))
+        .map((learner) => learner.id);
       let markCount = 0;
       let lastUploadedAt = null;
       let teacherInfo = '';
-      if (learnerIds.length > 0) {
+      if (enrolledIds.length > 0) {
         const mRes = await db.query(
           `SELECT m.recorded_at, u.full_name, u.surname
            FROM marks m
@@ -1555,7 +1652,7 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
              )
              AND LOWER(COALESCE(m.subject, m.subject_name, '')) = LOWER($3)
            ORDER BY m.recorded_at DESC`,
-          [learnerIds, termNum, sub]
+          [enrolledIds, termNum, sub]
         );
 
         markCount = mRes.rows.length;
@@ -1567,20 +1664,25 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
         }
       }
 
-      let status = 'PENDING';
-      if (markCount >= totalLearners && totalLearners > 0) {
-        status = 'SUBMITTED';
-      } else if (markCount > 0) {
-        status = 'PARTIAL';
-      }
+      const locked = submittedRows.find((row) => String(row.subject).toLowerCase() === sub.toLowerCase());
+      const status = submissionStatus({
+        enrolledCount: enrolledIds.length,
+        markCount,
+        locked: Boolean(locked)
+      });
 
       submissions.push({
         subject: sub,
-        status: status,
+        assessment_name: locked ? locked.assessment_name : null,
+        status,
         marks_recorded: markCount,
-        total_learners: totalLearners,
+        total_learners: enrolledIds.length,
+        missing_count: locked ? locked.missing_count : Math.max(enrolledIds.length - markCount, 0),
+        submission_id: locked ? locked.id : null,
+        version: locked ? locked.version : null,
+        correction_requested: Boolean(locked && locked.reopen_requested_at),
         teacher: teacherInfo ? { name: teacherInfo } : null,
-        last_uploaded_at: lastUploadedAt
+        last_uploaded_at: locked ? locked.submitted_at : lastUploadedAt
       });
     }
 

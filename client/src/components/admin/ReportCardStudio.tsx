@@ -65,9 +65,11 @@ interface TemplateLearner {
 
 interface TeacherSubmission {
   subject: string;
+  assessment_name?: string | null;
   status: 'SUBMITTED' | 'PARTIAL' | 'PENDING';
   marks_recorded: number;
   total_learners: number;
+  correction_requested?: boolean;
   teacher?: { id: number; name: string };
   last_uploaded_at?: string;
 }
@@ -105,6 +107,7 @@ export const ReportCardStudio: React.FC = () => {
   const [learners, setLearners] = useState<TemplateLearner[]>([]);
   const [subjectColumns, setSubjectColumns] = useState<string[]>([]);
   const [submissionsOverview, setSubmissionsOverview] = useState<SubmissionsOverview | null>(null);
+  const [readiness, setReadiness] = useState<{ ready: boolean; classes: Array<{ class_name: string; status: string; subjects: Array<{ subject: string; teacher: string | null; enrolled: number; missing_marks?: number; submitted_assessments: number; calculation_status: string; ready: boolean }> }> } | null>(null);
   const [searchFilter, setSearchFilter] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -184,6 +187,21 @@ export const ReportCardStudio: React.FC = () => {
   };
 
   // Fetch Teacher Submissions Status
+  const fetchReportReadiness = async () => {
+    try {
+      const res = await adminService.getReportReadiness({
+        grade: selectedGrade,
+        className: selectedClass !== 'All' ? selectedClass : undefined,
+        term: selectedTerm,
+        academicYear
+      });
+      setReadiness(res);
+    } catch (err) {
+      console.warn('Failed to load report readiness:', err);
+      setReadiness(null);
+    }
+  };
+
   const fetchSubmissionsOverview = async () => {
     try {
       const res = await adminService.getTeacherSubmissions({
@@ -220,7 +238,7 @@ export const ReportCardStudio: React.FC = () => {
       setTimeout(() => setToastMessage(null), 6000);
 
       // Refresh both template grid and teacher submissions overview
-      await Promise.all([handleLoadTemplateMarks(), fetchSubmissionsOverview()]);
+      await Promise.all([handleLoadTemplateMarks(), fetchSubmissionsOverview(), fetchReportReadiness()]);
     } catch (err: any) {
       console.error('Failed to transfer teacher marks:', err);
       setToastMessage(`Transfer failed: ${err.response?.data?.error || err.message}`);
@@ -233,6 +251,7 @@ export const ReportCardStudio: React.FC = () => {
   useEffect(() => {
     handleLoadTemplateMarks();
     fetchSubmissionsOverview();
+    fetchReportReadiness();
   }, [selectedGrade, selectedStream, selectedTerm, selectedClass]);
 
   // Recalculate Average and Promotion Decision when admin changes marks inline
@@ -466,7 +485,7 @@ export const ReportCardStudio: React.FC = () => {
               <span>{transferring ? 'Transferring Marks...' : 'Transfer Teacher Marks'}</span>
             </button>
             <button
-              onClick={() => { handleLoadTemplateMarks(); fetchSubmissionsOverview(); }}
+              onClick={() => { handleLoadTemplateMarks(); fetchSubmissionsOverview(); fetchReportReadiness(); }}
               disabled={loading}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold transition-colors"
             >
@@ -501,8 +520,9 @@ export const ReportCardStudio: React.FC = () => {
             </button>
             <button
               onClick={() => setConfirmPublishModalOpen(true)}
-              disabled={publishing || learners.length === 0}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold text-xs shadow-lg shadow-brand-500/20 transition-all active:scale-95"
+              disabled={publishing || learners.length === 0 || readiness?.ready === false}
+              title={readiness?.ready === false ? 'This class still has a subject without a submitted marksheet and an authorized average.' : 'Publish the prepared reports'}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-extrabold text-xs shadow-lg shadow-brand-500/20 transition-all active:scale-95 disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Publish to Parents & Teachers</span>
@@ -510,6 +530,30 @@ export const ReportCardStudio: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {readiness && (
+        <div className="p-5 rounded-3xl bg-[var(--card-background)] border border-[var(--border-color)] space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-black text-[var(--text-primary)]">Class readiness for {selectedTerm}</h3>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${readiness.ready ? 'border-emerald-600 text-emerald-800 dark:text-emerald-200' : 'border-amber-600 text-amber-800 dark:text-amber-200'}`}>
+              {readiness.ready ? 'Ready for reports' : 'Incomplete'}
+            </span>
+          </div>
+          {readiness.classes.map((row) => (
+            <div key={row.class_name} className="space-y-1">
+              <p className="text-xs font-bold text-[var(--text-primary)]">{row.class_name} · {row.status === 'ready' ? 'Complete' : 'Waiting on subjects'}</p>
+              {row.subjects.map((subject) => (
+                <p key={`${row.class_name}-${subject.subject}`} className="text-[11px] text-[var(--text-secondary)]">
+                  {subject.subject}: {subject.enrolled} enrolled, {subject.missing_marks ?? 0} missing marks, {subject.submitted_assessments} submitted, average {subject.calculation_status}
+                  {subject.teacher ? ` · ${subject.teacher}` : ''}
+                </p>
+              ))}
+              {row.subjects.length === 0 && <p className="text-[11px] text-[var(--text-secondary)]">No subject enrolments are stored for this class.</p>}
+            </div>
+          ))}
+          {readiness.classes.length === 0 && <p className="text-xs text-[var(--text-secondary)]">No learners are enrolled in this grade.</p>}
+        </div>
+      )}
 
       {loadError && (
         <div className="p-4 rounded-2xl border border-rose-500 bg-rose-50 text-rose-950 dark:bg-rose-950/40 dark:text-rose-50 flex items-center justify-between gap-3">
@@ -580,7 +624,7 @@ export const ReportCardStudio: React.FC = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="text-xs font-bold truncate text-[var(--text-primary)]" title={sub.subject}>
+                    <span className="text-xs font-bold truncate text-[var(--text-primary)]" title={sub.assessment_name ? `${sub.subject} ${sub.assessment_name}` : sub.subject}>
                       {sub.subject}
                     </span>
                     <span className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-black uppercase ${
@@ -594,7 +638,7 @@ export const ReportCardStudio: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span>{sub.marks_recorded}/{sub.total_learners} recorded</span>
+                    <span>{sub.marks_recorded}/{sub.total_learners} recorded{sub.correction_requested ? ' · correction requested' : ''}</span>
                     {sub.teacher && <span className="truncate max-w-[80px]">{sub.teacher.name}</span>}
                   </div>
                 </div>

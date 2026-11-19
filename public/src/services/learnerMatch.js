@@ -1,6 +1,7 @@
 const db = require('../../../db/db');
 const bcrypt = require('bcryptjs');
 const curriculumService = require('./curriculumService');
+const { resolveEnrolmentSubjects } = require('../../../lib/learnerSubjectAllocation');
 
 function compactRef(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -47,7 +48,7 @@ const CHILD_MATCH_SQL = `
 const APPLICATION_MATCH_SQL = `
   SELECT a.id, a.application_number, a.provisional_learner_number, a.first_name, a.surname,
          a.id_number, a.email, a.grade_applied, a.stream, a.home_language, a.school_id,
-         a.assigned_class_id, a.status
+         a.assigned_class_id, a.selected_subjects, a.status
   FROM applications a
   WHERE LOWER(a.status) IN ('approved', 'accepted', 'enrolled')
     AND (
@@ -105,7 +106,8 @@ function mapApplication(row) {
     class_name: null,
     learner_email: row.email,
     id_number: digitsOnly(row.id_number),
-    status: row.status
+    status: row.status,
+    selected_subjects: row.selected_subjects
   };
 }
 
@@ -161,7 +163,14 @@ async function materializeAcceptedLearner(match, { parentUserId = null, schoolId
   const roleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'learner' LIMIT 1");
   const learnerRoleId = roleRes.rows[0]?.id || 3;
   const homeLanguage = match.home_language || 'Sepedi';
-  const subjects = curriculumService.getSubjectsForGradeAndStream(match.grade, match.stream, homeLanguage);
+  const subjects = resolveEnrolmentSubjects({
+    grade: match.grade_applied || match.grade,
+    subjectPackage: match.subject_package,
+    selectedSubjects: match.selected_subjects,
+    grade89Catalogue: Number(match.grade_applied || match.grade) < 10
+      ? curriculumService.getSubjectsForGradeAndStream(match.grade_applied || match.grade, 'General', homeLanguage)
+      : []
+  }).subjects;
 
   const { withTransaction } = require('../../../db/transaction');
   const created = await withTransaction(async (client) => {

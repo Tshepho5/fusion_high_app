@@ -24,6 +24,17 @@ exports.getProfile = async (req, res) => {
         }
 
         const user = userRes.rows[0];
+        user.is_tester = false;
+        try {
+            const testerFlag = await db.query(
+                'SELECT COALESCE(is_tester, FALSE) AS is_tester, school_id FROM users WHERE id::text = $1::text',
+                [req.user.id]
+            );
+            if (testerFlag.rows[0]) {
+                user.is_tester = testerFlag.rows[0].is_tester === true;
+                if (testerFlag.rows[0].school_id) user.school_id = testerFlag.rows[0].school_id;
+            }
+        } catch (_) {}
         const pfp = user.profile_picture || user.profile_picture_path || null;
         user.profile_picture = pfp;
         user.profile_picture_path = pfp;
@@ -37,9 +48,26 @@ exports.getProfile = async (req, res) => {
                  LEFT JOIN classes cl ON c.class_id = cl.id
                  LEFT JOIN users u_ht ON cl.homeroom_teacher_id = u_ht.id
                  LEFT JOIN users u_at ON cl.assigned_teacher_id = u_at.id
-                 WHERE c.learner_user_id::text = $1::text OR c.learner_number::text = $2::text
-                 LIMIT 1`, 
-                [req.user.id, lrnNum]
+                 WHERE (
+                   $4::boolean = TRUE
+                   AND c.learner_user_id::text = $1::text
+                   AND c.school_id::text = $3::text
+                   AND COALESCE(c.is_test_record, FALSE) = TRUE
+                 ) OR (
+                   $4::boolean = FALSE
+                   AND COALESCE(c.is_test_record, FALSE) = FALSE
+                   AND (
+                     c.learner_user_id::text = $1::text
+                     OR (
+                       $2::text <> ''
+                       AND c.learner_number::text = $2::text
+                       AND c.learner_user_id IS NULL
+                       AND ($3::text = '' OR c.school_id::text = $3::text)
+                     )
+                   )
+                 )
+                 LIMIT 1`,
+                [req.user.id, lrnNum, String(user.school_id || ''), user.is_tester === true]
             ).catch(() => ({ rows: [] }));
             user.academic = childRes.rows[0] || null;
             if (user.academic) {
@@ -62,8 +90,10 @@ exports.getProfile = async (req, res) => {
                  WHERE c.parent_id = $1 OR c.secondary_parent_id = $1 OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $1)`,
                 [req.user.id]
             );
-            user.children = childrenRes.rows;
-            const distinctSchoolIds = [...new Set(childrenRes.rows.map(ch => ch.school_id).filter(Boolean))];
+            user.children = user.is_tester
+                ? childrenRes.rows.filter((child) => Number(child.school_id) === Number(user.school_id))
+                : childrenRes.rows;
+            const distinctSchoolIds = [...new Set(user.children.map(ch => ch.school_id).filter(Boolean))];
             user.enrolled_schools = distinctSchoolIds;
         }
 

@@ -12,6 +12,7 @@ const applicationService = require('../services/applicationService');
 const { canDecideApplication } = require('../services/schoolScope');
 const curriculumService = require('../services/curriculumService');
 const academicStreams = require('../services/academicStreamService');
+const { resolveEnrolmentSubjects } = require('../../../lib/learnerSubjectAllocation');
 const paymentHold = require('../services/paymentHold');
 const paymentAccess = require('../services/paymentAccess');
 const { generateLearnerPasswordFromID } = require('./authController');
@@ -1180,9 +1181,14 @@ exports.reviewApplication = async (req, res) => {
       const gradeApplied = parseInt(app.grade_applied, 10) || 10;
       const stream = app.stream || 'General';
       const homeLanguage = (app.home_language || 'Sepedi').trim();
-      const subjects = Array.isArray(app.selected_subjects) && app.selected_subjects.length === 7
-        ? app.selected_subjects
-        : curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+      const subjects = resolveEnrolmentSubjects({
+        grade: gradeApplied,
+        subjectPackage: app.subject_package,
+        selectedSubjects: app.selected_subjects,
+        grade89Catalogue: gradeApplied < 10
+          ? curriculumService.getSubjectsForGradeAndStream(gradeApplied, 'General', homeLanguage)
+          : []
+      }).subjects;
       
       const learnerInitialPw = (app.id_number && app.id_number.trim().length >= 6) ? generateLearnerPasswordFromID(app.id_number.trim()) : '123456';
       const defaultPassword = learnerInitialPw;
@@ -1614,9 +1620,14 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
     }
 
     // 3. Curriculum allocation
-    const allocatedSubjects = Array.isArray(app.selected_subjects) && app.selected_subjects.length === 7
-      ? app.selected_subjects
-      : curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
+    const allocatedSubjects = resolveEnrolmentSubjects({
+      grade: gradeApplied,
+      subjectPackage: app.subject_package,
+      selectedSubjects: app.selected_subjects,
+      grade89Catalogue: gradeApplied < 10
+        ? curriculumService.getSubjectsForGradeAndStream(gradeApplied, 'General', homeLanguage)
+        : []
+    }).subjects;
 
     // 4. Create Parent User if doesn't exist
     let parentUserId = null;

@@ -28,7 +28,7 @@ function paymentInstructions({ schoolName, applicationNumber }) {
 
 function redactSensitiveMail(value) {
   return String(value || '')
-    .replace(/https?:\/\/[^\s"'<>]*activate\?token=[^\s"'<>]*/gi, '[invitation removed]')
+    .replace(/https?:\/\/[^\s"'<>]*(?:activate|tester-invite)\?token=[^\s"'<>]*/gi, '[invitation removed]')
     .replace(/([?&](?:resume|token|correction_token|idNumber|id_number)=)[^&\s"'<>]+/gi, '$1[removed]')
     .replace(/\b\d{13}\b/g, '[id removed]')
     .replace(/(verification code is\s*)\d{4,10}/gi, '$1[removed]')
@@ -548,7 +548,7 @@ const emailService = {
     }
 
     const rawMessage = `${subject || ''}\n${body || ''}\n${text || ''}`;
-    const keepOutOfQueue = /activate\?token=|verification code is|password reset code/i.test(rawMessage);
+    const keepOutOfQueue = /(?:activate|tester-invite)\?token=|verification code is|password reset code/i.test(rawMessage);
     if (!keepOutOfQueue) {
       setImmediate(() => {
         try {
@@ -3313,34 +3313,39 @@ const emailService = {
     return await emailService.send(colleagueEmail, subject, html);
   },
 
-  sendTesterInvitationEmail: async ({ testerEmail, testerName, roleName, temporaryPassword, schoolName = 'Geleza SA', loginUrl, invitedByName = 'Executive Master Admin' }) => {
-    const subject = `[Geleza SA] Official App Testing Invitation & Login Credentials`;
-    const formattedRole = roleName ? roleName.toUpperCase() : 'BETA TESTER';
+  sendTesterInvitationEmail: async ({ testerEmail, testerName, roleName, schoolName = 'Geleza SA Tester School', referenceCode, acceptUrl }) => {
+    const escapeHtml = (value) => String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+    const subject = '[Geleza SA] Tester invitation';
+    const formattedRole = escapeHtml(roleName ? String(roleName).toUpperCase() : 'TESTER');
     const contentHtml = `
-      <p style="margin: 0 0 16px 0; font-size: 15px;">Greetings <strong>${testerName || 'App Tester'}</strong>,</p>
+      <p style="margin: 0 0 16px 0; font-size: 15px;">Greetings <strong>${escapeHtml(testerName || 'App Tester')}</strong>,</p>
       <p style="margin: 0 0 16px 0; font-size: 14px; color: #cbd5e1; line-height: 1.6;">
-        You have been appointed by <strong>${invitedByName}</strong> (Geleza SA Executive Administration) as an authorized system tester on the <strong>Geleza SA High School Management Platform</strong>.
+        Geleza SA has invited you to test one role inside the isolated tester school. This invitation does not include a password. The link lets you create your own password once.
       </p>
       <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 18px; margin: 20px 0;">
-        <h4 style="margin: 0 0 12px 0; color: #38bdf8; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Your Testing Account Credentials</h4>
+        <h4 style="margin: 0 0 12px 0; color: #38bdf8; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Invitation</h4>
         <ul style="margin: 0; padding-left: 20px; color: #94a3b8; font-size: 13px; line-height: 1.8;">
-          <li><strong style="color: #f1f5f9;">Portal Login Email:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${testerEmail}</code></li>
-          <li><strong style="color: #f1f5f9;">Temporary Password:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #f59e0b; font-weight: bold;">${temporaryPassword}</code></li>
-          <li><strong style="color: #f1f5f9;">Assigned Testing Role:</strong> <span style="display: inline-block; background: #6366f1; color: white; padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 700;">${formattedRole}</span></li>
-          <li><strong style="color: #f1f5f9;">Assigned School:</strong> ${schoolName}</li>
+          <li><strong style="color: #f1f5f9;">Reference:</strong> ${escapeHtml(referenceCode || '')}</li>
+          <li><strong style="color: #f1f5f9;">Email:</strong> ${escapeHtml(testerEmail)}</li>
+          <li><strong style="color: #f1f5f9;">Role:</strong> ${formattedRole}</li>
+          <li><strong style="color: #f1f5f9;">School:</strong> ${escapeHtml(schoolName)}</li>
         </ul>
       </div>
       <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
-        <strong>Testing Instructions:</strong> Log into the portal using your credentials above. Navigate through the assigned modules for your role, test data entry, review forms, and verify that all features work properly. You can update your password at any time in your profile.
+        The link expires in 72 hours and works once. After you create a password, sign in and test only the modules for this role. The account cannot open another school's records.
       </p>
     `;
     const html = createBaseEmailTemplate({
-      preheader: `Your Geleza SA App Testing credentials and role assignment`,
-      title: 'App Testing Invitation',
-      subtitle: `Official QA & Beta Testing Access`,
+      preheader: 'Your Geleza SA tester invitation is ready to accept',
+      title: 'Tester invitation',
+      subtitle: 'Create your password to activate this role',
       contentHtml,
-      ctaText: 'Log In to Test App',
-      ctaLink: loginUrl || 'http://localhost:3000/login'
+      ctaText: 'Accept invitation',
+      ctaLink: acceptUrl
     });
     return await emailService.send(testerEmail, subject, html);
   },

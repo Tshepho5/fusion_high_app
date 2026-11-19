@@ -6,6 +6,7 @@ import { ParentChildren } from './ParentChildren';
 import { ParentTimetable } from './ParentTimetable';
 import { ParentAttendance } from './ParentAttendance';
 import { CapsReportCard } from '../../components/common/CapsReportCard';
+import { ParentReportReleases } from '../../components/parent/ParentReportReleases';
 import { AnnouncementsFeed } from '../../components/common/AnnouncementsFeed';
 import { SchoolCalendar } from '../../components/common/SchoolCalendar';
 import { LearnerMessages } from '../learner/LearnerMessages';
@@ -27,6 +28,7 @@ export const ParentDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [tabHistory, setTabHistory] = useState<Array<{ tab: string; child: string }>>([]);
   const selectedChildId = searchParams.get('child') || searchParams.get('child_id') || '';
+  const [reportTerm, setReportTerm] = useState<string>('Term 3 2026');
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -155,7 +157,25 @@ export const ParentDashboard: React.FC = () => {
       {(activeTab === 'children' || activeTab === 'marks') && <ParentChildren childId={selectedChildId} />}
       {activeTab === 'finance' && <SchoolFeesManager userRole="parent" childId={selectedChildId || undefined} />}
       {activeTab === 'bursaries' && <BursaryScholarshipHub isParentView={true} />}
-      {activeTab === 'reports' && <CapsReportCard childId={selectedChildId || undefined} onNavigateTab={handleSelectTab} />}
+      {activeTab === 'reports' && (
+        <>
+          <ParentReportReleases
+            selectedChildId={selectedChildId}
+            onOpen={(childId, termLabel) => {
+              setReportTerm(termLabel);
+              handleSelectTab('reports', childId);
+            }}
+          />
+          {selectedChildId && (
+            <CapsReportCard
+              key={`${selectedChildId}-${reportTerm}`}
+              childId={selectedChildId}
+              initialTerm={reportTerm}
+              onNavigateTab={handleSelectTab}
+            />
+          )}
+        </>
+      )}
       {(activeTab === 'ptc' || activeTab === 'consultations') && <ParentTeacherConsultations />}
       {activeTab === 'inter-school' && <InterSchoolCompetitions />}
       {activeTab === 'sports' && <SportsExtracurriculars />}
