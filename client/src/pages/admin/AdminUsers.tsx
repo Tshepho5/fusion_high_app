@@ -130,6 +130,33 @@ interface SchoolMetadata {
   subjects: { id: number; name: string; code: string; grade: number; stream: string }[];
 }
 
+const STAFF_SUBJECTS = [
+  'Mathematics', 'Mathematical Literacy', 'Physical Sciences', 'Life Sciences',
+  'Accounting', 'Business Studies', 'Economics', 'Tourism',
+  'English FAL', 'English Home Language', 'Sepedi Home Language',
+  'isiZulu Home Language', 'isiXhosa Home Language', 'Afrikaans Home Language',
+  'Life Orientation', 'Natural Sciences', 'Social Sciences',
+  'History', 'Geography', 'Technology', 'Economic & Management Sciences', 'Creative Arts'
+];
+
+function staffSubjectOptions(metadataSubjects: { name?: string }[] = []) {
+  const seen = new Set<string>();
+  return [...STAFF_SUBJECTS, ...metadataSubjects.map((subject) => subject.name || '')].filter((name) => {
+    const key = name.trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function classChipLabel(name: string) {
+  const label = String(name || '')
+    .replace(/\s*[·•|–-]\s*school\s*\d+\s*$/i, '')
+    .replace(/\s+school\s*\d+\s*$/i, '')
+    .trim();
+  return label || name;
+}
+
 interface RecycleBinItem {
   id: number;
   record_type: string;
@@ -1286,7 +1313,7 @@ export const AdminUsers: React.FC = () => {
                               <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400 pt-0.5">
                                 <span><strong>Grades:</strong> {grds.join(', ') || 'FET Phase'}</span>
                                 <span>&bull;</span>
-                                <span><strong>Classes:</strong> {clss.join(', ') || '10A'}</span>
+                                <span><strong>Classes:</strong> {clss.map(classChipLabel).join(', ') || '10A'}</span>
                               </div>
                             </div>
                           </div>
@@ -1408,7 +1435,7 @@ export const AdminUsers: React.FC = () => {
                               <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-600 dark:text-slate-400 pt-0.5">
                                 <span><strong>Grades:</strong> {grds.join(', ') || 'FET Phase'}</span>
                                 <span>&bull;</span>
-                                <span><strong>Classes:</strong> {clss.join(', ') || '10A'}</span>
+                                <span><strong>Classes:</strong> {clss.map(classChipLabel).join(', ') || '10A'}</span>
                               </div>
                             </div>
                           </div>
@@ -1486,7 +1513,7 @@ export const AdminUsers: React.FC = () => {
                     <td className="py-3.5 px-3">
                       <div className="space-y-0.5">
                         <p className="text-slate-800 dark:text-white font-mono text-[11px]">Grades: {(e.grades_taught || []).join(', ') || '10, 11'}</p>
-                        <p className="text-slate-500 dark:text-slate-400 text-[10px]">Classes: {(e.classes_taught || []).join(', ') || '10A'}</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-[10px]">Classes: {(e.classes_taught || []).map(classChipLabel).join(', ') || '10A'}</p>
                       </div>
                     </td>
                     <td className="py-3.5 px-3">
@@ -2324,13 +2351,7 @@ export const AdminUsers: React.FC = () => {
                   <span className="text-[10px] text-cyan-300 font-bold">{teacherInviteForm.subjects.length} Selected</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 p-3 rounded-2xl bg-surface-darker border border-white/10 max-h-36 overflow-y-auto">
-                  {[
-                    'Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting',
-                    'Business Studies', 'Economics', 'Tourism', 'Mathematical Literacy',
-                    'English FAL', 'Sepedi Home Language', 'isiZulu Home Language', 'isiXhosa Home Language',
-                    'Afrikaans Home Language', 'Life Orientation', 'Natural Sciences', 'Social Sciences',
-                    'History', 'Geography', 'Technology'
-                  ].map(sub => {
+                  {staffSubjectOptions(metadata.subjects).map(sub => {
                     const isSelected = teacherInviteForm.subjects.includes(sub);
                     return (
                       <button
@@ -2401,7 +2422,7 @@ export const AdminUsers: React.FC = () => {
                             : 'bg-white/5 text-slate-400 hover:text-white'
                         }`}
                       >
-                        {cls}
+                        {classChipLabel(cls)}
                       </button>
                     );
                   })}
@@ -2549,11 +2570,7 @@ export const AdminUsers: React.FC = () => {
           <div className="space-y-1.5">
             <label className="block text-slate-300 font-bold">Assigned Subjects (Click to Toggle)</label>
             <div className="flex flex-wrap gap-1.5 p-3 rounded-2xl bg-surface-darker border border-white/10 max-h-32 overflow-y-auto">
-              {[
-                'Mathematics', 'Physical Sciences', 'Life Sciences', 'Accounting', 
-                'Business Studies', 'Economics', 'Tourism', 'Mathematical Literacy', 
-                'English FAL', 'Sepedi Home Language', 'isiZulu Home Language', 'isiXhosa Home Language', 'Afrikaans Home Language', 'Life Orientation', 'Natural Sciences'
-              ].map(sub => {
+              {staffSubjectOptions(metadata.subjects).map(sub => {
                 const isSelected = employeeForm.subjects.includes(sub);
                 return (
                   <button
@@ -2624,7 +2641,7 @@ export const AdminUsers: React.FC = () => {
                         : 'bg-white/5 text-slate-400 hover:text-white'
                     }`}
                   >
-                    {cls}
+                    {classChipLabel(cls)}
                   </button>
                 );
               })}
