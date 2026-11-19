@@ -166,8 +166,12 @@ function generateLearnerReportCardPdf(reportData) {
 
       let lY = infoBoxY + 4;
       doc.fontSize(7.5).font('Helvetica-Bold').fillColor('#000000');
-      const learnerIdStr = learner.id_number || learner.learner_number || '';
-      const learnerDisplayName = `${(learner.surname || '').toUpperCase()}, ${(learner.first_name || learner.full_name || '').toUpperCase()}${learnerIdStr ? ' - ' + learnerIdStr : ''}`;
+      const surname = String(learner.surname || '').trim();
+      const givenSource = String(learner.first_name || learner.full_name || '').trim();
+      const given = surname && givenSource.toLowerCase().endsWith(surname.toLowerCase())
+        ? givenSource.slice(0, givenSource.length - surname.length).replace(/[,\s]+$/g, '').trim()
+        : givenSource.replace(new RegExp(`^${surname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},\\s*`, 'i'), '').trim();
+      const learnerDisplayName = `${given || givenSource} ${surname}`.replace(/\s+/g, ' ').trim();
       doc.text(`Learner: ${learnerDisplayName}`, col1X, lY, { width: col1Width - 10, lineBreak: false });
 
       doc.font('Helvetica').fontSize(7).fillColor('#1e293b');
@@ -182,7 +186,11 @@ function generateLearnerReportCardPdf(reportData) {
       doc.font('Helvetica-Bold').fillColor('#000000');
       doc.text(`Grade: Grade ${String(learner.grade).padStart(2, '0')}`, col3X, lY);
       doc.font('Helvetica').fillColor('#1e293b');
-      doc.text(`Class: ${learner.class_name || (learner.grade + 'A')}`, col3X, lY + 11);
+      const classLabel = String(learner.class_name || learner.grade || '')
+        .replace(/\s*[·•|–-]\s*school\s*\d+\s*$/i, '')
+        .replace(/\s+school\s*\d+\s*$/i, '')
+        .trim();
+      doc.text(`Class: ${classLabel || learner.grade || ''}`, col3X, lY + 11);
       doc.text(`Date: ${meta.issue_date || new Date().toISOString().substring(0, 10).replace(/-/g, '/')}`, col3X, lY + 21);
 
       currentY = infoBoxY + infoBoxHeight + 6;

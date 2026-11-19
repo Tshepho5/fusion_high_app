@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { reportService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useSchool } from '../../context/SchoolContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
   Printer,
@@ -12,6 +13,51 @@ import {
   Clock,
   FileCheck
 } from 'lucide-react';
+
+function readableValue(value?: string | null) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const key = text.toLowerCase();
+  if (
+    key === 'registered school name' ||
+    key === 'geleza sa registered school' ||
+    key === 'your school' ||
+    key === 'registered school' ||
+    key === 'school physical address' ||
+    key === 'p.o. box 100, city, postal code' ||
+    key === '012-3456789' ||
+    key === 'admin@school.co.za' ||
+    key === '700000000' ||
+    key === 'principal'
+  ) return '';
+  return text;
+}
+
+function reportClassLabel(name?: string | null) {
+  const label = String(name || '')
+    .replace(/\s*[·•|–-]\s*school\s*\d+\s*$/i, '')
+    .replace(/\s+school\s*\d+\s*$/i, '')
+    .trim();
+  return label;
+}
+
+function learnerDisplayName(raw: { full_name?: string; first_name?: string; surname?: string }) {
+  const surname = String(raw.surname || '').trim();
+  const full = String(raw.full_name || '').trim();
+  const first = String(raw.first_name || '').trim();
+  const surnameKey = surname.toLowerCase();
+  let given = first;
+  if (!given && full) {
+    const fullKey = full.toLowerCase();
+    if (surname && fullKey.startsWith(`${surnameKey},`)) given = full.slice(surname.length + 1).trim();
+    else if (surname && fullKey.endsWith(surnameKey) && full.length > surname.length) {
+      given = full.slice(0, full.length - surname.length).replace(/[,\s]+$/g, '').trim();
+    } else given = full;
+  }
+  if (given && surname && given.toLowerCase().endsWith(surnameKey)) return given.replace(/\s+/g, ' ');
+  if (given && surname) return `${given} ${surname}`.replace(/\s+/g, ' ').trim();
+  return (given || surname || full).replace(/\s+/g, ' ').trim();
+}
 
 interface CapsReportCardProps {
   childId?: string | number;
@@ -29,8 +75,10 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   previewLearner
 }) => {
   const { role } = useAuth();
+  const { currentSchool } = useSchool();
   const [term, setTerm] = useState<string>(initialTerm);
   const [data, setData] = useState<any>(null);
+  const [officialSchool, setOfficialSchool] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(!previewLearner);
   const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +92,20 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
     }
     fetchReportData();
   }, [childId, term, previewLearner]);
+
+  useEffect(() => {
+    if (!previewLearner || !childId) return;
+    let cancelled = false;
+    reportService.getCapsReportCard({ child_id: childId, term })
+      .then((res) => {
+        const school = res?.report_card?.school || res?.school;
+        if (!cancelled && school) setOfficialSchool(school);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [previewLearner, childId, term]);
 
   const fetchReportData = async () => {
     setLoading(true);
@@ -89,6 +151,14 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
             target.style.borderLeft = `${style.borderLeftWidth} ${style.borderLeftStyle} ${style.borderLeftColor}`;
             target.style.backgroundColor = style.backgroundColor;
             target.style.color = style.color;
+          });
+          clonedSheet.querySelectorAll<HTMLElement>('*').forEach((element) => {
+            element.style.fontFamily = 'Arial, Helvetica, sans-serif';
+            element.style.letterSpacing = '0';
+            element.style.textShadow = 'none';
+            if (element.classList.contains('font-black') || element.classList.contains('font-extrabold')) {
+              element.style.fontWeight = '700';
+            }
           });
         }
       });
@@ -179,33 +249,31 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
 
   // Active Report Data (Multi-term structured)
   const reportObj = data?.report_card || {};
-  const school = reportObj.school || data?.school || {
-    name: 'REGISTERED SCHOOL NAME',
-    physical_address: 'School Physical Address',
-    postal_address: 'P.O. Box 100, City, Postal Code',
-    contact_phone: '012-3456789',
-    contact_email: 'admin@school.co.za',
-    emis_number: '700000000',
-    principal_name: 'Principal'
+  const reportSchool = officialSchool || reportObj.school || data?.school || {};
+  const school = {
+    name: readableValue(reportSchool.name) || readableValue(currentSchool?.name) || 'School',
+    physical_address: readableValue(reportSchool.physical_address) || readableValue(currentSchool?.physical_address) || '',
+    postal_address: readableValue(reportSchool.postal_address) || '',
+    contact_phone: readableValue(reportSchool.contact_phone) || readableValue(currentSchool?.contact_phone) || '',
+    contact_email: readableValue(reportSchool.contact_email) || readableValue(currentSchool?.contact_email) || '',
+    emis_number: readableValue(reportSchool.emis_number) || readableValue(currentSchool?.emis_number) || '',
+    principal_name: readableValue(reportSchool.principal_name) || readableValue(currentSchool?.principal_name) || 'Principal',
+    logo_url: reportSchool.logo_url || currentSchool?.logo_url || currentSchool?.badge_url || null
   };
 
   const rawLearner = previewLearner || reportObj.learner || data?.learner || {};
-  const rawFullName = (rawLearner.full_name || '').trim();
-  const rawSurname = (rawLearner.surname || '').trim();
-  const cleanDisplayName = rawFullName.toLowerCase().endsWith(rawSurname.toLowerCase())
-    ? rawFullName
-    : (rawSurname ? `${rawSurname}, ${rawFullName}` : rawFullName);
+  const displayName = learnerDisplayName(rawLearner);
 
   const learner = {
-    full_name: cleanDisplayName || 'LEARNER NAME',
-    surname: rawSurname,
-    first_name: rawFullName,
+    full_name: displayName || 'Learner',
+    surname: String(rawLearner.surname || '').trim(),
+    first_name: String(rawLearner.first_name || rawLearner.full_name || '').trim(),
     id_number: rawLearner.id_number || '',
     admission_number: rawLearner.admission_number || rawLearner.learner_number || 'N/A',
     learner_number: rawLearner.learner_number || '',
     dob: rawLearner.dob ? String(rawLearner.dob).substring(0, 10).replace(/-/g, '') : 'N/A',
     grade: rawLearner.grade || 10,
-    class_name: rawLearner.class_name || `${rawLearner.grade || 10}A`,
+    class_name: reportClassLabel(rawLearner.class_name) || `${rawLearner.grade || 10}`,
     stream: rawLearner.stream || 'General'
   };
 
@@ -403,8 +471,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
         {/* 1. Official School Header */}
         <div className="border-b-2 border-slate-900 pb-3 flex items-start justify-between gap-4">
           <div className="space-y-0.5 max-w-xl">
-            <h1 className="text-base sm:text-lg font-black tracking-tight text-black uppercase leading-tight font-serif">
-              {school.name || 'REGISTERED SCHOOL NAME'}
+            <h1 className="text-base sm:text-lg font-bold tracking-tight text-black uppercase leading-tight" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+              {school.name}
             </h1>
             {school.physical_address && (
               <p className="text-[11px] text-slate-800 leading-tight">{school.physical_address}</p>
@@ -445,8 +513,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
         <div className="border border-slate-700 p-2.5 rounded bg-slate-50/60 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
           {/* Column 1 */}
           <div className="space-y-0.5">
-            <p className="font-bold text-black truncate">
-              Learner: <span className="font-black">{learner.full_name}</span>
+            <p className="text-[13px] font-semibold leading-snug text-black" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+              Learner: <span className="font-bold">{learner.full_name}</span>
             </p>
             <p className="text-slate-800">
               Admission No: <span className="font-semibold">{learner.admission_number}</span>
@@ -668,8 +736,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
 
           {/* Official School Stamp Box */}
           <div className="w-56 shrink-0 border-2 border-slate-900 rounded p-2 text-center text-[10px] space-y-0.5 bg-slate-50/50">
-            <p className="font-extrabold uppercase tracking-tight text-black">
-              {school.name || 'OFFICIAL SCHOOL STAMP'}
+            <p className="font-bold uppercase tracking-tight text-black" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+              {school.name}
             </p>
             <p className="font-mono text-slate-800">{meta.issue_date}</p>
             {school.postal_address && (
