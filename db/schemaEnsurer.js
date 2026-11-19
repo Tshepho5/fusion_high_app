@@ -5,6 +5,8 @@
  * and all required columns/relations exist across all database environments.
  */
 
+const fs = require('fs');
+const path = require('path');
 const db = require('./db');
 const { ensureLessonPlanningSchema } = require('./migrate_lesson_planning');
 const { ensureTesterSchema } = require('../lib/testerProgramme');
@@ -189,6 +191,9 @@ async function ensureDatabaseSchema() {
 
     // Pending applications stay pending until a superadmin decision.
     // Schema startup must not create a school, classes, or an approved status.
+
+    const progressionSql = fs.readFileSync(path.join(__dirname, 'migrations', '20261119_academic_year_progression.sql'), 'utf8');
+    await db.query(progressionSql);
 
     await ensureLessonPlanningSchema();
     await ensureTesterSchema((text, params) => db.query(text, params));

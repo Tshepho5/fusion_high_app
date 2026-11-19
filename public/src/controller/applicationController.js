@@ -619,10 +619,11 @@ exports.submitApplication = async (req, res) => {
                 const storageRes = await FirebaseStorageService.uploadLocalFile({
                   localPath: doc.file_path,
                   destination: destPath,
-                  contentType: doc.mime_type
+                  contentType: doc.mime_type,
+                  isPublic: false
                 });
                 if (storageRes.storageType === 'cloud') {
-                  await db.query('UPDATE application_documents SET file_path = $1 WHERE application_id = $2 AND document_type = $3', [storageRes.url, applicationId, doc.document_type]);
+                  console.log(`[FIREBASE DOC UPLOAD] Private copy stored for application ${applicationNumber} (${doc.document_type}). The download path stays on the protected application file route.`);
                 }
               } catch (docErr) {
                 console.warn('[FIREBASE DOC UPLOAD WARNING]:', docErr.message);

@@ -880,6 +880,16 @@ function validateStep(step) {
       if (!firstInvalidElement) firstInvalidElement = prevSchool;
       isValid = false;
     }
+    if (gradeVal >= 10) {
+      const streamSelect = document.getElementById('stream');
+      const streamIdInput = document.getElementById('academic_stream_id');
+      if (streamSelect && streamIdInput) streamIdInput.value = streamSelect.value;
+      if (!streamSelect || !streamSelect.value) {
+        showError('stream', 'Select an academic stream offered by this school for this grade.');
+        if (!firstInvalidElement) firstInvalidElement = streamSelect;
+        isValid = false;
+      }
+    }
   }
 
   if (step === 4) {
@@ -1179,25 +1189,43 @@ function initGradeAndStream() {
     const schoolId = schoolSelect && schoolSelect.value;
     const year = yearSelect && yearSelect.value;
     publishedStreams = [];
-    fillSelect(streamSelect, [], 'Select a published stream');
+    fillSelect(streamSelect, [], 'Select an academic stream');
     if (!schoolId || !year) return;
     try {
       const response = await fetch(`${API_BASE}/api/schools/${encodeURIComponent(schoolId)}/published-streams?year=${encodeURIComponent(year)}&grade=${grade}`);
       const data = await response.json();
+      if (data.academic_year && yearSelect && String(yearSelect.value) !== String(data.academic_year)) {
+        const offeredYear = String(data.academic_year);
+        if (![...yearSelect.options].some((option) => option.value === offeredYear)) {
+          const option = document.createElement('option');
+          option.value = offeredYear;
+          option.textContent = offeredYear;
+          yearSelect.appendChild(option);
+        }
+        yearSelect.value = offeredYear;
+      }
       const homes = (data.languages || []).filter((row) => row.level === 'Home Language');
       const additionals = (data.languages || []).filter((row) => row.level === 'First Additional Language');
       fillSelect(homeLangSelect, homes.map((row) => ({ value: row.language, label: row.language })), 'Select Official Home Language');
       fillSelect(additionalSelect, additionals.map((row) => ({ value: row.language, label: row.language })), 'Select a First Additional Language');
       const required = additionals.find((row) => row.required);
       if (policyHint) {
-        policyHint.textContent = required ? `This school requires ${required.language} First Additional Language.` : '';
+        const yearNote = data.academic_year && String(data.academic_year) !== String(year)
+          ? `These streams are the ones this school has set up for ${data.academic_year}.`
+          : '';
+        const languageNote = required ? `This school requires ${required.language} First Additional Language.` : '';
+        policyHint.textContent = [languageNote, yearNote].filter(Boolean).join(' ');
       }
       publishedStreams = data.streams || [];
       fillSelect(streamSelect, publishedStreams.map((stream) => ({
         value: String(stream.id),
         label: `${stream.name}: ${stream.mathematics}; ${stream.electives.join(', ')}`
-      })), 'Select a published stream');
-      if (emptyState) emptyState.style.display = data.empty ? 'block' : 'none';
+      })), 'Select an academic stream');
+      if (publishedStreams.length === 1 && streamSelect) streamSelect.value = String(publishedStreams[0].id);
+      if (emptyState) {
+        emptyState.style.display = data.empty ? 'block' : 'none';
+        emptyState.textContent = 'This school has not added an academic stream for this grade yet. Please contact the school.';
+      }
     } catch (_) {
       if (emptyState) {
         emptyState.style.display = 'block';
@@ -1395,6 +1423,10 @@ function initFormSubmission() {
         goToStep(4);
         return;
       }
+
+      const chosenStream = document.getElementById('stream');
+      const chosenStreamId = document.getElementById('academic_stream_id');
+      if (chosenStream && chosenStreamId) chosenStreamId.value = chosenStream.value;
 
       const formData = new FormData(form);
 

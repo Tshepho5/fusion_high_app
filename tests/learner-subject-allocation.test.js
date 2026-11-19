@@ -8,7 +8,8 @@ const {
   resolveEnrolmentSubjects,
   subjectsForDisplay,
   planSubjectCorrection,
-  subjectsAfterCorrection
+  subjectsAfterCorrection,
+  subjectsToAdd
 } = require('../lib/learnerSubjectAllocation');
 
 const sciencePackage = [
@@ -104,6 +105,24 @@ test('a reviewed correction removes only subjects that have no marks', () => {
     approved: [],
     subjectsWithMarks: []
   })).ok, false);
+});
+
+test('a school admin can add a subject the school offers without removing the rest', () => {
+  const added = subjectsToAdd({
+    enrolled: ['Mathematics', 'English First Additional Language'],
+    requested: ['Life Sciences'],
+    offered: ['Mathematics', 'English First Additional Language', 'Life Sciences']
+  });
+  assert.equal(added.ok, true);
+  assert.deepEqual(added.added, ['Life Sciences']);
+  assert.equal(added.subjects.includes('Mathematics'), true);
+  const rejected = subjectsToAdd({
+    enrolled: ['Mathematics'],
+    requested: ['Accounting'],
+    offered: ['Mathematics', 'Life Sciences']
+  });
+  assert.equal(rejected.ok, false);
+  assert.equal(subjectsToAdd({ enrolled: [], requested: ['Tourism'], offered: [] }).ok, false);
 });
 
 test('a learner with no approved package is not rewritten', () => {

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const db = require('../../../db/db');
+const { privateUploadFolder } = require('../../../lib/privateUploads');
 
 const MESSAGE_FOLDERS = new Set(['images', 'voice', 'documents']);
 const CONTENT_TYPES = {
@@ -172,20 +173,79 @@ async function sendMessageFile(req, res) {
   }
 }
 
-function rejectSensitiveStatic(req, res, next) {
-  let rel = req.path || '';
+async function sendSchoolFile(req, res, folder, lookup) {
+  const filename = safeBasename(req.params.filename);
+  if (!filename) return res.status(400).json({ error: 'That file name is not valid.' });
   try {
-    rel = decodeURIComponent(rel);
-  } catch (_) {
-    return res.status(400).json({ error: 'That file name is not valid.' });
+    const actor = await loadActor(req.user.id);
+    if (!actor) return res.status(401).json({ error: 'Sign in to open this file.' });
+    const allowed = await lookup(actor, filename);
+    if (!allowed) return res.status(allowed === false ? 403 : 404).json({ error: allowed === false ? 'You cannot open this file.' : 'File not found.' });
+    const full = containedFile(path.join(process.cwd(), 'uploads', folder), filename)
+      || containedFile(path.join(process.cwd(), 'public', 'uploads', folder), filename);
+    return sendIfExists(res, full);
+  } catch (err) {
+    console.error('[FILE] school download failed');
+    return res.status(500).json({ error: 'The file could not be opened.' });
   }
-  if (rel.includes('\0') || rel.includes('..') || rel.includes('\\')) {
-    return res.status(400).json({ error: 'That file name is not valid.' });
-  }
-  const top = rel.split('/').filter(Boolean)[0];
-  if (top === 'applications' || top === 'pfp' || top === 'messages') {
-    return res.status(401).json({ error: 'Sign in to open this file.' });
-  }
+}
+
+async function sendAssignmentFile(req, res) {
+  return sendSchoolFile(req, res, 'assignments', async (actor, filename) => {
+    const rows = await db.query(
+      `SELECT school_id, teacher_id FROM homework_assignments WHERE file_url ILIKE $1 LIMIT 1`,
+      [`%/${filename}`]
+    );
+    const row = rows.rows[0];
+    if (!row) return null;
+    if (actor.is_superadmin) return true;
+    if (row.school_id && !sameSchool(actor, row.school_id) && String(row.teacher_id) !== String(actor.id)) return false;
+    return true;
+  });
+}
+
+async function sendSubmissionFile(req, res) {
+  return sendSchoolFile(req, res, 'submissions', async (actor, filename) => {
+    const rows = await db.query(
+      `SELECT c.school_id, c.id AS child_id, c.parent_id, c.learner_user_id
+       FROM homework_submissions s
+       JOIN children c ON c.id = s.child_id
+       WHERE s.file_url ILIKE $1
+       LIMIT 1`,
+      [`%/${filename}`]
+    );
+    const row = rows.rows[0];
+    if (!row) return null;
+    if (actor.is_superadmin) return true;
+    if (!sameSchool(actor, row.school_id)) return false;
+    const role = String(actor.role || '');
+    if (role === 'learner') return String(actor.id) === String(row.learner_user_id) || String(actor.id) === String(row.child_id);
+    if (role === 'parent') return String(actor.id) === String(row.parent_id);
+    return role === 'admin' || role === 'principal' || role === 'vice_principal' || role === 'teacher';
+  });
+}
+
+async function sendTextbookFile(req, res) {
+  return sendSchoolFile(req, res, 'textbooks', async (actor, filename) => {
+    const rows = await db.query(
+      `SELECT u.school_id
+       FROM textbooks t
+       LEFT JOIN users u ON u.id::text = t.teacher_id::text
+       WHERE t.file_name = $1 OR t.file_path ILIKE $2
+       LIMIT 1`,
+      [filename, `%/${filename}`]
+    );
+    const row = rows.rows[0];
+    if (!row) return true;
+    if (actor.is_superadmin || row.school_id == null) return true;
+    return sameSchool(actor, row.school_id) ? true : false;
+  });
+}
+
+function rejectSensitiveStatic(req, res, next) {
+  const folder = privateUploadFolder(req.path);
+  if (folder === 'invalid') return res.status(400).json({ error: 'That file name is not valid.' });
+  if (folder) return res.status(401).json({ error: 'Sign in to open this file.' });
   return next();
 }
 
@@ -194,5 +254,8 @@ module.exports = {
   sendApplicationFile,
   sendProfileFile,
   sendMessageFile,
+  sendAssignmentFile,
+  sendSubmissionFile,
+  sendTextbookFile,
   rejectSensitiveStatic,
 };

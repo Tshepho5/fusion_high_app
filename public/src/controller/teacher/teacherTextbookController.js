@@ -189,6 +189,22 @@ exports.uploadResource = async (req, res) => {
             uploadedResource = insertRes.rows[0];
         }
 
+        if (req.file) {
+            const { registerDocument, checksumOf } = require('../../services/documentRegistry');
+            const { resolveSchoolId } = require('../../services/schoolScope');
+            await registerDocument({
+                schoolId: resolveSchoolId(req),
+                category: resourceType === 'textbook' ? 'textbook' : 'academic',
+                originalName: fileName,
+                storagePath: filePath,
+                mimeType: req.file.mimetype,
+                sizeBytes: req.file.size,
+                checksum: checksumOf(req.file.path),
+                uploadedBy: req.user.id,
+                academicYear: Number(year) || null
+            });
+        }
+
         // If this uploaded resource is a textbook, sync it into textbook_inventory catalog
         if (resourceType === 'textbook') {
             try {

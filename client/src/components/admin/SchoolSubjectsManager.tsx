@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api';
+import { IncompleteLearnerSubjects } from './IncompleteLearnerSubjects';
 import { Badge } from '../common/Badge';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Modal } from '../common/Modal';
@@ -199,6 +200,8 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           <span>{toastMessage}</span>
         </div>
       )}
+
+      <IncompleteLearnerSubjects />
 
       {/* Top Banner Header */}
       <div className="relative overflow-hidden rounded-3xl bg-[var(--card-background)] border border-blue-500/20 p-6 shadow-xl">

@@ -516,6 +516,13 @@ export const adminService = {
   getParents: () => api.get('/api/admin/parents').then(res => res.data),
   createParent: (payload: any) => api.post('/api/admin/parents', payload).then(res => res.data),
   getLearners: () => api.get('/api/admin/learners').then(res => res.data),
+  getProgression: (year: number) => api.get('/api/admin/progression', { params: { year } }).then(res => res.data),
+  recordProgression: (childId: number, payload: { year: number; decision: string; reason?: string }) =>
+    api.post(`/api/admin/progression/${childId}/decision`, payload).then(res => res.data),
+  allocateProgressionClass: (enrolmentId: number, classId: number) =>
+    api.put(`/api/admin/progression/enrolments/${enrolmentId}/class`, { class_id: classId }).then(res => res.data),
+  applyProgression: (year: number) =>
+    api.post('/api/admin/progression/apply', { year, confirm: 'apply-enrolments' }).then(res => res.data),
   createLearner: (payload: any) => api.post('/api/admin/learners', payload).then(res => res.data),
   deleteLearner: (id: number | string) => api.delete(`/api/admin/learners/${id}`).then(res => res.data),
   deleteAdmission: (id: number | string) => api.delete(`/api/admin/admissions/${id}`).then(res => res.data),
@@ -561,6 +568,10 @@ export const adminService = {
   getReportReadiness: (params: { grade: string | number; term: string; academicYear?: string | number; className?: string }) =>
     api.get('/api/admin/academics/readiness', { params: { grade: params.grade, term: params.term, academic_year: params.academicYear, class: params.className } }).then(res => res.data),
   moderateBatch: (payload: any) => api.post('/api/admin/academics/moderate', payload).then(res => res.data),
+  getSubjectAllocationAudit: (grade?: string | number) =>
+    api.get('/api/admin/subject-allocation-audit', { params: grade ? { grade } : {} }).then(res => res.data),
+  addLearnerSubjects: (childId: number, subjects: string[]) =>
+    api.post(`/api/admin/subject-allocation-audit/${childId}/add`, { confirm: true, subjects }).then(res => res.data),
   getSubjectsSummary: (params?: { grade?: string | number; stream?: string; term?: string }) => 
     api.get('/api/admin/academics/subjects-summary', { params }).then(res => res.data),
   getSubjectLearners: (params: { subject: string; grade?: string | number; stream?: string; term?: string }) => 

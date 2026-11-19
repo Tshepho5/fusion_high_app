@@ -491,12 +491,14 @@ exports.saveClassMarks = async (req, res) => {
     }
 
     const maxMark = parseFloat(total_mark) || 100;
-    const termNum = parseInt(String(term).replace(/[^0-9]/g, ''), 10) || 1;
+    const { termIndex, yearFromTerm } = require('../../../../lib/reportTerm');
+    const termNum = termIndex(term) || 1;
+    const academicYear = parseInt(req.body.academic_year, 10) || yearFromTerm(term) || new Date().getFullYear();
 
     try {
         const locked = await marksheetSubmissions.findLocked({
             schoolId,
-            academicYear: parseInt(req.body.academic_year, 10) || new Date().getFullYear(),
+            academicYear,
             grade,
             className: classParam,
             subject,
@@ -600,8 +602,13 @@ exports.saveClassMarks = async (req, res) => {
                              LOWER(assessment_name) = LOWER($4)
                              OR (COALESCE($4, '') = '' AND LOWER(assessment_type) = LOWER($5))
                            )
+                           AND (
+                             academic_year = $6
+                             OR (academic_year IS NULL AND COALESCE(term::text, '') !~ '20[0-9]{2}' AND term = $3)
+                             OR (academic_year IS NULL AND COALESCE(term::text, '') LIKE '%' || $6::text || '%')
+                           )
                          LIMIT 1`,
-                        [childId, subject, termNum, assessmentTitle, assessmentType]
+                        [childId, subject, termNum, assessmentTitle, assessmentType, academicYear]
                     );
 
                     if (existingMarksRes.rows.length > 0) {
@@ -609,15 +616,16 @@ exports.saveClassMarks = async (req, res) => {
                             `UPDATE marks
                              SET score = $1, max_score = $2, percentage = $3, grade = $4, is_published = $5,
                                  published_to_admin = $5, status = $6, assessment_name = $7, weight = $8,
-                                 is_formal = $9, assessment_type = $10, school_id = COALESCE($11, school_id), updated_at = NOW()
-                             WHERE id = $12`,
-                            [rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, childSchoolId, existingMarksRes.rows[0].id]
+                                 is_formal = $9, assessment_type = $10, school_id = COALESCE($11, school_id),
+                                 academic_year = COALESCE(academic_year, $12), term = $13, updated_at = NOW()
+                             WHERE id = $14`,
+                            [rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, childSchoolId, academicYear, termNum, existingMarksRes.rows[0].id]
                         );
                     } else {
                         await db.query(
-                            `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, published_to_admin, status, assessment_name, weight, is_formal, assessment_type, recorded_by, school_id, recorded_at, updated_at)
-                             VALUES ($1, $1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())`,
-                            [childId, subject, termNum, assessmentType, rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, teacherId, childSchoolId]
+                            `INSERT INTO marks (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage, grade, is_published, published_to_admin, status, assessment_name, weight, is_formal, assessment_type, recorded_by, school_id, academic_year, recorded_at, updated_at)
+                             VALUES ($1, $1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())`,
+                            [childId, subject, termNum, assessmentType, rawScore, maxMark, pctScore, childGrade, isPublished, isPublished ? 'published' : 'draft', assessmentTitle, customWeight, isFormal, assessmentType, teacherId, childSchoolId, academicYear]
                         );
                     }
 

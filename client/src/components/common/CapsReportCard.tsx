@@ -14,6 +14,11 @@ import {
   FileCheck
 } from 'lucide-react';
 
+function termIndexFromLabel(value?: string | null) {
+  const labeled = String(value || '').match(/term\s*([1-4])/i);
+  return labeled ? Number(labeled[1]) : null;
+}
+
 function readableValue(value?: string | null) {
   const text = String(value || '').trim();
   if (!text) return '';
@@ -292,16 +297,18 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   } else if (previewLearner && previewLearner.subjects) {
     // Adapter if previewLearner is passed from admin studio
     const subsDict = previewLearner.subjects;
+    const previewTerm = termIndexFromLabel(term);
     subjects = Object.entries(subsDict).map(([sName, markVal]) => {
       const num = markVal !== null && markVal !== undefined && markVal !== '' ? Number(markVal) : null;
       const caps = getCapsLevelDescriptor(num);
+      const cell = num !== null ? { mark: num, level: caps.level, grade_ave: null } : null;
       return {
         subject: sName,
-        term1: null,
-        term2: null,
-        term3: { mark: num, level: caps.level, grade_ave: null },
-        term4: null,
-        final: { mark: num, level: caps.level, grade_ave: null }
+        term1: previewTerm === 1 ? cell : null,
+        term2: previewTerm === 2 ? cell : null,
+        term3: previewTerm === 3 ? cell : null,
+        term4: previewTerm === 4 ? cell : null,
+        final: null
       };
     });
   } else if (Array.isArray(data?.subjects) && data.subjects.length > 0) {
@@ -309,9 +316,9 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
       subject: s.subject || s.name,
       term1: s.multi_term?.term1 || null,
       term2: s.multi_term?.term2 || null,
-      term3: s.multi_term?.term3 || { mark: s.mark, level: s.level, grade_ave: s.average },
+      term3: s.multi_term?.term3 || null,
       term4: s.multi_term?.term4 || null,
-      final: s.multi_term?.final || { mark: s.mark, level: s.level, grade_ave: s.average }
+      final: s.multi_term?.final || null
     }));
   }
 
@@ -567,7 +574,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
                   Term 3
                 </th>
                 <th colSpan={3} className="p-1 text-center">
-                  Final for Year
+                  Term 4
                 </th>
               </tr>
               {/* Row 2: Sub Headers */}
@@ -629,15 +636,15 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
                   <td className="p-1 text-center border-r border-slate-900 font-mono text-slate-700">
                     {sub.term3?.grade_ave !== null && sub.term3?.grade_ave !== undefined ? sub.term3.grade_ave : '-'}
                   </td>
-                  {/* Final for Year */}
+                  {/* Term 4 */}
                   <td className="p-1 text-center border-r border-slate-300 font-mono font-bold">
-                    {sub.final?.mark !== null && sub.final?.mark !== undefined ? sub.final.mark : '-'}
+                    {sub.term4?.mark !== null && sub.term4?.mark !== undefined ? sub.term4.mark : '-'}
                   </td>
                   <td className="p-1 text-center border-r border-slate-300 font-black text-black">
-                    {sub.final?.level !== null && sub.final?.level !== undefined ? sub.final.level : '-'}
+                    {sub.term4?.level !== null && sub.term4?.level !== undefined ? sub.term4.level : '-'}
                   </td>
                   <td className="p-1 text-center font-mono text-slate-700">
-                    {sub.final?.grade_ave !== null && sub.final?.grade_ave !== undefined ? sub.final.grade_ave : '-'}
+                    {sub.term4?.grade_ave !== null && sub.term4?.grade_ave !== undefined ? sub.term4.grade_ave : '-'}
                   </td>
                 </tr>
               ))}
@@ -671,13 +678,13 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
                 <td className="p-1 text-center border-r border-slate-900 font-mono">
                   {summary.averages?.term3 ?? '-'}
                 </td>
-                {/* Final for Year */}
+                {/* Term 4 */}
                 <td className="p-1 text-center border-r border-slate-300 font-mono">
-                  {summary.totals?.final ?? '-'}
+                  {summary.totals?.term4 ?? '-'}
                 </td>
                 <td className="p-1 text-center border-r border-slate-300"></td>
                 <td className="p-1 text-center font-mono font-black">
-                  {summary.averages?.final ?? '-'}
+                  {summary.averages?.term4 ?? '-'}
                 </td>
               </tr>
 
@@ -696,7 +703,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
                   {summary.outcome?.term3 ?? '-'}
                 </td>
                 <td colSpan={3} className="p-1 text-center font-black">
-                  {summary.outcome?.final ?? '-'}
+                  {summary.outcome?.term4 ?? '-'}
                 </td>
               </tr>
 
@@ -715,11 +722,14 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
                   {summary.attendance?.term3_absent ?? '-'}
                 </td>
                 <td colSpan={3} className="p-1 text-center font-mono font-bold text-black">
-                  {summary.attendance?.total_absent ?? summary.attendance?.term4_absent ?? '-'}
+                  {summary.attendance?.term4_absent ?? '-'}
                 </td>
               </tr>
             </tbody>
           </table>
+          <p className="px-2 py-1.5 text-[11px] text-slate-800">
+            Year result: {summary.averages?.final !== null && summary.averages?.final !== undefined ? `${summary.averages.final}%` : 'Not calculated until the recorded terms are complete.'}
+          </p>
         </div>
 
         {/* 4. General Remarks & Official School Stamp Box */}

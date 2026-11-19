@@ -20,6 +20,7 @@ import { AcademicAssessmentAudits } from '../../components/admin/AcademicAssessm
 import { SchoolSubjectsManager } from '../../components/admin/SchoolSubjectsManager';
 import { AcademicStreamsManager } from '../../components/admin/AcademicStreamsManager';
 import { ReportCardStudio } from '../../components/admin/ReportCardStudio';
+import { YearEndReview } from '../../components/admin/YearEndReview';
 import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { MultiSchoolCommandCenter } from '../../components/admin/MultiSchoolCommandCenter';
@@ -260,7 +261,7 @@ export const AdminDashboard: React.FC = () => {
         <SchoolSubjectsManager onOpenReportCardStudio={(g, s) => handleSelectTab('reports')} />
       )}
       {activeTab === 'academic-streams' && <AcademicStreamsManager />}
-      {activeTab === 'reports' && <ReportCardStudio />}
+      {activeTab === 'reports' && <><YearEndReview /><ReportCardStudio /></>}
       {activeTab === 'marks' && <AcademicAssessmentAudits />}
       {activeTab === 'finance' && <SchoolFeesManager userRole="admin" />}
       {activeTab === 'bursaries' && <BursaryScholarshipHub />}

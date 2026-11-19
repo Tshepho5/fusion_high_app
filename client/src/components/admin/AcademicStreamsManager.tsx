@@ -17,7 +17,10 @@ const emptyOfferings = { languages: [] as LanguageRow[], mathematics: [] as stri
 export const AcademicStreamsManager: React.FC = () => {
   const { user } = useAuth();
   const schoolId = Number(user?.school_id);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useState(() => {
+    const now = new Date();
+    return now.getMonth() >= 9 ? now.getFullYear() + 1 : now.getFullYear();
+  });
   const [grade, setGrade] = useState(10);
   const [catalogue, setCatalogue] = useState<{ languages: string[]; electives: string[]; mathematics: string[] }>({
     languages: [], electives: [], mathematics: ['Mathematics', 'Mathematical Literacy']
@@ -108,7 +111,7 @@ export const AcademicStreamsManager: React.FC = () => {
       setName('');
       setPicked([]);
       setEditingId(null);
-      setMessage(editingId ? 'Stream updated. Publish it again after checking the combination.' : 'Stream saved as a draft.');
+      setMessage(editingId ? 'Stream updated. Applicants can choose it now.' : 'Stream saved. New applicants can choose it now.');
       await load();
     } catch (err: any) {
       setError(err.response?.data?.error || 'The stream could not be saved.');

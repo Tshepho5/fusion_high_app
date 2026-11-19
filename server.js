@@ -299,11 +299,14 @@ if (fs.existsSync(clientDistPath)) {
 }
 
 // Admission files, profile pictures, and message attachments require a signed-in user.
-// Textbooks and other learning files stay on the public static path.
+// Homework, submissions, and textbooks require a signed-in user. The static handler cannot serve them.
 app.get('/uploads/applications/:filename', authenticateToken, protectedFiles.sendApplicationFile);
 app.get('/uploads/pfp/:filename', authenticateToken, protectedFiles.sendProfileFile);
 app.get('/uploads/messages/:subfolder/:filename', authenticateToken, protectedFiles.sendMessageFile);
 app.get('/uploads/messages/:filename', authenticateToken, protectedFiles.sendMessageFile);
+app.get('/uploads/assignments/:filename', authenticateToken, protectedFiles.sendAssignmentFile);
+app.get('/uploads/submissions/:filename', authenticateToken, protectedFiles.sendSubmissionFile);
+app.get('/uploads/textbooks/:filename', authenticateToken, protectedFiles.sendTextbookFile);
 
 // Static Assets & Uploads: learning resources stay public. Sensitive folders are refused here.
 const setStaticMediaHeaders = (res, filePath) => {
@@ -405,9 +408,8 @@ const handleCapsResourceDownload = async (req, res) => {
 };
 
 app.get('/assets/caps_archive/:filename', handleCapsResourceDownload);
-app.get('/uploads/textbooks/:filename', handleCapsResourceDownload);
-app.get('/api/resources/download', handleCapsResourceDownload);
-app.get('/api/resources/:id/download', async (req, res) => {
+app.get('/api/resources/download', authenticateToken, handleCapsResourceDownload);
+app.get('/api/resources/:id/download', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const dbRes = await db.query('SELECT * FROM textbooks WHERE id = $1 LIMIT 1', [id]);

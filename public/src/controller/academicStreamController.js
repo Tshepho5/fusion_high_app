@@ -38,17 +38,16 @@ exports.published = async (req, res) => {
     if (!schoolId || !year || ![10, 11, 12].includes(grade)) {
       return res.status(400).json({ error: 'Choose the school, academic year and Grade 10, 11 or 12.' });
     }
-    const [offerings, published] = await Promise.all([
-      streams.readOfferings(schoolId, year, grade),
-      streams.listStreams(schoolId, year, grade, { publishedOnly: true })
-    ]);
+    const available = await streams.streamsForApplicants(schoolId, year, grade);
+    const offerings = await streams.readOfferings(schoolId, available.year, grade);
     res.json({
-      academic_year: year,
+      academic_year: available.year,
+      requested_year: year,
       grade,
       languages: offerings.languages,
       mathematics: offerings.mathematics,
-      streams: published,
-      empty: published.length === 0
+      streams: available.streams,
+      empty: available.streams.length === 0
     });
   } catch (error) {
     sendError(res, error);

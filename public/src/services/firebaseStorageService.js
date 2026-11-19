@@ -14,10 +14,10 @@ class FirebaseStorageService {
    * @param {Buffer} params.buffer - The file buffer.
    * @param {string} params.destination - Storage path (e.g. 'applications/APP-2026/id.pdf').
    * @param {string} params.contentType - MIME type.
-   * @param {boolean} [params.isPublic=true]
+   * @param {boolean} [params.isPublic=false] Learner and school documents stay private unless a caller explicitly publishes them.
    * @returns {Promise<{ url: string, path: string, storageType: 'cloud' | 'local' }>}
    */
-  static async uploadBuffer({ buffer, destination, contentType, isPublic = true }) {
+  static async uploadBuffer({ buffer, destination, contentType, isPublic = false }) {
     const cleanPath = destination.replace(/^\/+/, '');
 
     if (bucket) {
@@ -72,7 +72,7 @@ class FirebaseStorageService {
   /**
    * Uploads a local file from disk.
    */
-  static async uploadLocalFile({ localPath, destination, contentType, isPublic = true }) {
+  static async uploadLocalFile({ localPath, destination, contentType, isPublic = false }) {
     if (!fs.existsSync(localPath)) {
       throw new Error(`Local file not found at: ${localPath}`);
     }

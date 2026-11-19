@@ -12,6 +12,8 @@ const { teacherMayViewClassReport } = require('../../../lib/reportVerification')
 const { loadActor } = require('../services/familyAccess');
 const { parentCardView, paymentEntitlement } = require('../../../lib/reportRelease');
 const reportReleases = require('../services/reportReleaseService');
+const { termIndex, markPercentage, markBelongsToYear } = require('../../../lib/reportTerm');
+const { keepPreviousReport } = require('../services/reportVersionService');
 
 /**
  * Maps percentage mark to South African CAPS official 7-Point Achievement Rating Level
@@ -583,6 +585,9 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
       );
 
       if (existRes.rows.length > 0) {
+        await keepPreviousReport(db, {
+          childId, term: tNum, academicYear: yr, reason: 'Report saved again', userId: req.user && req.user.id
+        });
         await db.query(
           `UPDATE report_cards
            SET marks_breakdown = $1,
@@ -869,7 +874,7 @@ async function denyUnassignedTeacher(req, res, childId) {
 }
 
 async function buildFullReportCardData(schoolId, childId, academicYear = 2026, targetTerm = 3) {
-  const tNum = parseInt(String(targetTerm || '3').replace(/[^0-9]/g, ''), 10) || 3;
+  const tNum = termIndex(targetTerm) || 3;
   const yr = parseInt(String(academicYear || '2026'), 10) || 2026;
   const targetChildId = parseInt(childId, 10);
   if (!targetChildId) return null;
@@ -945,8 +950,13 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
      FROM marks m
      JOIN children c ON (m.child_id = c.id OR m.learner_id = c.id)
      WHERE c.school_id = $1 AND c.grade = $2
+       AND (
+         m.academic_year = $3
+         OR (m.academic_year IS NULL AND COALESCE(m.term::text, '') !~ '20[0-9]{2}')
+         OR (m.academic_year IS NULL AND COALESCE(m.term::text, '') LIKE '%' || $3::text || '%')
+       )
      GROUP BY LOWER(m.subject), m.term`,
-    [resolvedSchoolId, child.grade]
+    [resolvedSchoolId, child.grade, yr]
   );
   const gradeAveMap = {};
   gradeAvesRes.rows.forEach(r => {
@@ -955,17 +965,24 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
 
   // 5. Fetch all marks recorded for this child across all terms
   const childMarksRes = await db.query(
-    `SELECT subject, term, score, max_score, percentage, weight, is_formal, assessment_name
+    `SELECT subject, term, score, max_score, percentage, weight, is_formal, assessment_name, academic_year
      FROM marks
      WHERE (child_id = $1 OR learner_id = $1)
+       AND (
+         academic_year = $2
+         OR (academic_year IS NULL AND COALESCE(term::text, '') !~ '20[0-9]{2}')
+         OR (academic_year IS NULL AND COALESCE(term::text, '') LIKE '%' || $2::text || '%')
+       )
      ORDER BY term ASC, recorded_at ASC`,
-    [targetChildId]
+    [targetChildId, yr]
   );
 
   const marksMap = {};
   childMarksRes.rows.forEach(m => {
     const subKey = (m.subject || '').trim().toLowerCase();
-    const t = parseInt(String(m.term).replace(/[^0-9]/g, ''), 10) || 1;
+    if (!markBelongsToYear(m, yr)) return;
+    const t = termIndex(m.term);
+    if (!t) return;
     if (!marksMap[subKey]) marksMap[subKey] = {};
     if (!marksMap[subKey][t]) marksMap[subKey][t] = [];
     marksMap[subKey][t].push(m);
@@ -985,7 +1002,8 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
   const attMap = {};
   let totalAbsent = 0;
   attRes.rows.forEach(r => {
-    const t = parseInt(String(r.term).replace(/[^0-9]/g, ''), 10) || 1;
+    const t = termIndex(r.term);
+    if (!t) return;
     const abs = parseInt(r.days_absent || 0, 10);
     attMap[`term${t}`] = abs;
     totalAbsent += abs;
@@ -1038,45 +1056,39 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
     const evaluatedTerms = [];
 
     for (let t = 1; t <= 4; t++) {
-      if (t === tNum) {
-        if (authorizedBySubject.has(subKey)) {
-          const finalPct = authorizedBySubject.get(subKey);
-          const caps = getCapsLevel(finalPct);
-          subjectRow[`term${t}`] = {
-            mark: finalPct,
-            level: caps.level,
-            grade_ave: gradeAveMap[`${subKey}_term${t}`] ?? null,
-            rating: caps.rating,
-            authorized: true
-          };
-          termTotals[`term${t}`] += finalPct;
-          termSubjectCounts[`term${t}`]++;
-          evaluatedTerms.push(finalPct);
-        }
+      if (t === tNum && authorizedBySubject.has(subKey)) {
+        const finalPct = authorizedBySubject.get(subKey);
+        const caps = getCapsLevel(finalPct);
+        subjectRow[`term${t}`] = {
+          mark: finalPct,
+          level: caps.level,
+          grade_ave: gradeAveMap[`${subKey}_term${t}`] ?? null,
+          rating: caps.rating,
+          authorized: true
+        };
+        termTotals[`term${t}`] += finalPct;
+        termSubjectCounts[`term${t}`]++;
+        evaluatedTerms.push(finalPct);
         continue;
       }
-      const termMarks = subjectMarks[t] || [];
+      const termMarks = (subjectMarks[t] || [])
+        .map((mark) => ({ mark, percentage: markPercentage(mark) }))
+        .filter((item) => item.percentage !== null);
       if (termMarks.length > 0) {
         let totalW = 0;
         let weightedSum = 0;
-        let scoreSum = 0;
-        let maxScoreSum = 0;
 
-        termMarks.forEach(m => {
-          const rawScore = Number(m.score) || 0;
-          const maxScore = Number(m.max_score) || 100;
-          const pct = m.percentage !== null && m.percentage !== undefined
-            ? Number(m.percentage)
-            : Math.round((rawScore / (maxScore || 100)) * 100);
-          const w = Number(m.weight) || maxScore || 100;
-
+        termMarks.forEach(({ mark, percentage }) => {
+          const maximum = Number(mark.max_score);
+          const weight = Number(mark.weight);
+          const w = Number.isFinite(weight) && weight > 0
+            ? weight
+            : (Number.isFinite(maximum) && maximum > 0 ? maximum : 100);
           totalW += w;
-          weightedSum += pct * w;
-          scoreSum += rawScore;
-          maxScoreSum += maxScore;
+          weightedSum += percentage * w;
         });
 
-        const finalPct = totalW > 0 ? Math.round(weightedSum / totalW) : Math.round(scoreSum / (maxScoreSum || 100) * 100);
+        const finalPct = Math.round(weightedSum / totalW);
         const caps = getCapsLevel(finalPct);
         const gradeAve = gradeAveMap[`${subKey}_term${t}`] ?? null;
 
@@ -1090,24 +1102,6 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
         termTotals[`term${t}`] += finalPct;
         termSubjectCounts[`term${t}`]++;
         evaluatedTerms.push(finalPct);
-      } else {
-        // Fallback: Check if existing compiled report_cards has marks_breakdown
-        if (existingRc && t === tNum && Array.isArray(existingRc.marks_breakdown)) {
-          const existingSub = existingRc.marks_breakdown.find(es => (es.subject || '').toLowerCase() === subKey);
-          if (existingSub && existingSub.mark !== null && existingSub.mark !== undefined) {
-            const mVal = Number(existingSub.mark);
-            const caps = getCapsLevel(mVal);
-            subjectRow[`term${t}`] = {
-              mark: mVal,
-              level: caps.level,
-              grade_ave: existingSub.grade_ave || gradeAveMap[`${subKey}_term${t}`] || null,
-              rating: caps.rating
-            };
-            termTotals[`term${t}`] += mVal;
-            termSubjectCounts[`term${t}`]++;
-            evaluatedTerms.push(mVal);
-          }
-        }
       }
     }
 
@@ -1929,6 +1923,9 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
       );
 
       if (existRes.rows.length > 0) {
+        await keepPreviousReport(db, {
+          childId: l.id, term: termNum, academicYear, reason: 'Uploaded marks transferred again', userId: req.user && req.user.id
+        });
         await db.query(
           `UPDATE report_cards
            SET marks_breakdown = $1,

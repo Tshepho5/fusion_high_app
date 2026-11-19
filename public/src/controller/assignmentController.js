@@ -227,6 +227,19 @@ exports.createAssignment = async (req, res) => {
     await db.query(`ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS school_id INTEGER`).catch(() => {});
     const schoolId = resolveSchoolId(req);
     const rawQuestions = typeof questions === 'string' ? questions : (questions ? JSON.stringify(questions) : null);
+    if (req.file) {
+      const { registerDocument, checksumOf } = require('../services/documentRegistry');
+      await registerDocument({
+        schoolId: schoolId ? Number(schoolId) : null,
+        category: 'homework',
+        originalName: fileName || req.file.filename,
+        storagePath: fileUrl,
+        mimeType: req.file.mimetype,
+        sizeBytes: req.file.size,
+        checksum: checksumOf(req.file.path),
+        uploadedBy: teacherId
+      });
+    }
     const insertRes = await db.query(
       `INSERT INTO homework_assignments 
         (teacher_id, title, description, subject, grade, stream, due_date, due_time, total_marks, file_url, file_name, assignment_type, questions, school_id, status)
@@ -545,6 +558,21 @@ exports.submitHomework = async (req, res) => {
       submissionText: submission_text,
       fileName
     });
+
+    if (req.file) {
+      const { registerDocument, checksumOf } = require('../services/documentRegistry');
+      await registerDocument({
+        schoolId: assignment.school_id || null,
+        category: 'submission',
+        originalName: fileName || req.file.filename,
+        storagePath: fileUrl,
+        mimeType: req.file.mimetype,
+        sizeBytes: req.file.size,
+        checksum: checksumOf(req.file.path),
+        uploadedBy: userId,
+        childId: child.id
+      });
+    }
 
     // Save or Update Submission
     const submissionRes = await db.query(

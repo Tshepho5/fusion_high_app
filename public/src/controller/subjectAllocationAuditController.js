@@ -2,7 +2,35 @@
 
 const db = require('../../../db/db');
 const { resolveSchoolId } = require('../services/schoolScope');
-const { planSubjectCorrection, subjectsAfterCorrection } = require('../../../lib/learnerSubjectAllocation');
+const { planSubjectCorrection, subjectsAfterCorrection, subjectsToAdd, uniqueSubjects } = require('../../../lib/learnerSubjectAllocation');
+
+async function offeredNamesForGrade(schoolId, grade) {
+  const names = [];
+  const offerings = await db.query(
+    `SELECT subject_name, language_level, category
+     FROM school_subject_offerings
+     WHERE school_id = $1 AND grade = $2 AND is_active = TRUE`,
+    [schoolId, grade]
+  ).catch(() => ({ rows: [] }));
+  offerings.rows.forEach((row) => {
+    names.push(row.category === 'language' && row.language_level
+      ? `${row.subject_name} ${row.language_level}`
+      : row.subject_name);
+  });
+  if (!names.length) {
+    const used = await db.query(
+      `SELECT DISTINCT subject FROM (
+         SELECT unnest(COALESCE(subjects, ARRAY[]::text[])) AS subject
+         FROM children
+         WHERE school_id = $1 AND grade = $2
+       ) listed
+       WHERE subject IS NOT NULL AND subject <> ''`,
+      [schoolId, grade]
+    ).catch(() => ({ rows: [] }));
+    used.rows.forEach((row) => names.push(row.subject));
+  }
+  return uniqueSubjects(names);
+}
 
 function approvedFromRow(row) {
   const pack = row.subject_package;
@@ -95,16 +123,63 @@ exports.auditSubjectAllocation = async (req, res) => {
       totals[learner.status] = (totals[learner.status] || 0) + 1;
       return totals;
     }, {});
+    const incomplete = learners.filter((learner) => learner.missing_from_package.length > 0 || learner.stored_subjects.length === 0);
+    const grades = [...new Set(incomplete.map((learner) => Number(learner.grade)))];
+    const offerings = {};
+    for (const grade of grades) {
+      offerings[grade] = await offeredNamesForGrade(schoolId, grade);
+    }
     res.json({
       school_id: schoolId,
       changed: false,
-      message: 'This review lists mismatches. It does not change learner subjects or marks.',
+      message: 'This review lists mismatches. Subjects are added only when a school admin chooses them.',
       counts,
-      learners: learners.filter((learner) => learner.status !== 'matches')
+      offerings,
+      learners: learners.filter((learner) => learner.status !== 'matches'),
+      incomplete
     });
   } catch (error) {
     console.error('Subject allocation audit failed:', error);
     res.status(500).json({ error: 'The subject allocation review could not be completed.' });
+  }
+};
+
+exports.addLearnerSubjects = async (req, res) => {
+  try {
+    if (req.body.confirm !== true) {
+      return res.status(400).json({ error: 'Confirm the subjects before adding them to this learner.' });
+    }
+    const schoolId = parseInt(resolveSchoolId(req), 10);
+    const childId = parseInt(req.params.childId, 10);
+    if (!Number.isInteger(schoolId) || !Number.isInteger(childId)) {
+      return res.status(400).json({ error: 'Choose the learner in this school.' });
+    }
+    const child = await db.query(
+      `SELECT id, grade, subjects FROM children WHERE id = $1 AND school_id = $2`,
+      [childId, schoolId]
+    );
+    if (!child.rows[0]) return res.status(404).json({ error: 'The learner was not found in this school.' });
+    const offered = await offeredNamesForGrade(schoolId, Number(child.rows[0].grade));
+    const result = subjectsToAdd({
+      enrolled: child.rows[0].subjects,
+      requested: req.body.subjects,
+      offered
+    });
+    if (!result.ok) return res.status(409).json({ error: result.error });
+    await db.query(
+      `UPDATE children SET subjects = $1::text[] WHERE id = $2 AND school_id = $3`,
+      [result.subjects, childId, schoolId]
+    );
+    res.json({
+      success: true,
+      changed: true,
+      added: result.added,
+      subjects: result.subjects,
+      message: 'The selected subjects were added. Existing subjects and marks were kept.'
+    });
+  } catch (error) {
+    console.error('Adding learner subjects failed:', error);
+    res.status(500).json({ error: 'The subjects could not be added.' });
   }
 };
 

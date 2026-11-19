@@ -221,7 +221,7 @@ function generateLearnerReportCardPdf(reportData) {
       doc.text('Subject', tableX + 6, currentY + 3);
 
       let termHeaderX = tableX + subColWidth;
-      const termTitles = ['Term 1', 'Term 2', 'Term 3', 'Final for Year'];
+      const termTitles = ['Term 1', 'Term 2', 'Term 3', 'Term 4'];
       for (let i = 0; i < 4; i++) {
         doc.rect(termHeaderX, currentY, termGroupWidth, headerH1).fillAndStroke('#f1f5f9', '#000000');
         doc.text(termTitles[i], termHeaderX, currentY + 3, { width: termGroupWidth, align: 'center' });
@@ -255,7 +255,7 @@ function generateLearnerReportCardPdf(reportData) {
         doc.text(displaySubjectName, tableX + 6, currentY + 3.5, { width: subColWidth - 10, lineBreak: false });
 
         let cellX = tableX + subColWidth;
-        const termKeys = ['term1', 'term2', 'term3', 'final'];
+        const termKeys = ['term1', 'term2', 'term3', 'term4'];
         for (const tk of termKeys) {
           const tData = s[tk] || {};
           const markVal = tData.mark !== null && tData.mark !== undefined ? String(tData.mark) : '-';
@@ -285,7 +285,7 @@ function generateLearnerReportCardPdf(reportData) {
       doc.text('Learner Total / Average:', tableX + 6, currentY + 3.5, { width: subColWidth - 12, align: 'right' });
 
       let sumX = tableX + subColWidth;
-      const termsArr = ['term1', 'term2', 'term3', 'final'];
+      const termsArr = ['term1', 'term2', 'term3', 'term4'];
       for (const tk of termsArr) {
         const tot = sumTotals[tk] !== null && sumTotals[tk] !== undefined ? String(sumTotals[tk]) : '-';
         const avg = sumAves[tk] !== null && sumAves[tk] !== undefined ? String(sumAves[tk]) : '-';
@@ -325,7 +325,7 @@ function generateLearnerReportCardPdf(reportData) {
       doc.text('Days Absent:', tableX + 6, currentY + 3.5, { width: subColWidth - 12, align: 'right' });
 
       let attX = tableX + subColWidth;
-      const attArr = [sumAtt.term1_absent, sumAtt.term2_absent, sumAtt.term3_absent, sumAtt.total_absent || sumAtt.term4_absent];
+      const attArr = [sumAtt.term1_absent, sumAtt.term2_absent, sumAtt.term3_absent, sumAtt.term4_absent];
       for (let i = 0; i < 4; i++) {
         const val = attArr[i] !== null && attArr[i] !== undefined ? String(attArr[i]) : '-';
         doc.rect(attX, currentY, termGroupWidth, rowHeight).stroke();

@@ -4,12 +4,15 @@ const adminController = require('../controller/adminController');
 const subjectAllocationAuditController = require('../controller/subjectAllocationAuditController');
 const learnerImportController = require('../controller/learnerImportController');
 const timetableController = require('../controller/timetableController');
-const { auth, isAdmin } = require('../../../authMiddleware.js');
+const { auth, isAdmin, requireRole } = require('../../../authMiddleware.js');
+const progressionController = require('../controller/progressionController');
+const schoolProgression = requireRole(['admin', 'principal', 'vice_principal']);
 
 // Admin Dashboard Stats & Multi-School Command Center
 router.get('/stats', auth, isAdmin, adminController.getDashboardStats);
 router.get('/subject-allocation-audit', auth, isAdmin, subjectAllocationAuditController.auditSubjectAllocation);
 router.post('/subject-allocation-audit/:childId/apply', auth, isAdmin, subjectAllocationAuditController.applySubjectCorrection);
+router.post('/subject-allocation-audit/:childId/add', auth, isAdmin, subjectAllocationAuditController.addLearnerSubjects);
 router.post('/marksheets/:id/reopen', auth, isAdmin, require('../controller/teacher/marksheetController').reopenMarksheet);
 router.get('/command-center-stats', auth, isAdmin, adminController.getMultiSchoolCommandCenterStats);
 
@@ -51,6 +54,11 @@ router.post('/learners/import/preview', auth, isAdmin, learnerImportController.p
 router.post('/learners/import', auth, isAdmin, learnerImportController.commitLearnerImport);
 
 // Dynamic Class & Stream Management (Add/Remove/Assign Class Teachers)
+router.get('/progression', auth, schoolProgression, progressionController.listProgression);
+router.post('/progression/:childId/decision', auth, schoolProgression, progressionController.recordDecision);
+router.put('/progression/enrolments/:id/class', auth, schoolProgression, progressionController.allocateClass);
+router.post('/progression/apply', auth, schoolProgression, progressionController.applyEnrolments);
+
 router.get('/classes', auth, isAdmin, adminController.getClasses);
 router.post('/classes', auth, isAdmin, adminController.createClass);
 router.put('/classes/:id', auth, isAdmin, adminController.updateClass);

@@ -192,11 +192,12 @@ async function commitConfirmed({ user, schoolId, scan, correctedMark }) {
       `INSERT INTO marks
         (learner_id, child_id, subject, subject_name, term, mark_type, score, max_score, percentage,
          grade, is_published, published_to_admin, status, assessment_name, is_formal, assessment_type,
-         recorded_by, school_id, recorded_at, updated_at)
-       VALUES ($1, $1, $2, $2, $3, $4, $5, $6, $7, $8, FALSE, FALSE, 'draft', $9, FALSE, $4, $10, $11, NOW(), NOW())`,
+         recorded_by, school_id, academic_year, recorded_at, updated_at)
+       VALUES ($1, $1, $2, $2, $3, $4, $5, $6, $7, $8, FALSE, FALSE, 'draft', $9, FALSE, $4, $10, $11, $12, NOW(), NOW())`,
       [
         decision.child_id, assessment.subject, termNum, assessment.subject, checked.score, scan.maximum,
-        percentage, learner.grade, assessment.name, user.id, schoolId
+        percentage, learner.grade, assessment.name, user.id, schoolId,
+        Number(assessment.academic_year) || new Date().getFullYear()
       ]
     );
     const confirmed = await client.query(

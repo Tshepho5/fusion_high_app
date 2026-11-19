@@ -192,7 +192,7 @@ async function listStreams(schoolId, year, grade, { publishedOnly } = {}) {
     params.push(Number(grade));
     sql += ` AND grade = $${params.length}`;
   }
-  if (publishedOnly) sql += ` AND status = 'published'`;
+  if (publishedOnly) sql += ` AND status IN ('published', 'draft')`;
   sql += ' ORDER BY grade, name';
   const result = await db.query(sql, params);
   return result.rows.map(mapStream);
@@ -223,7 +223,7 @@ async function writeStream(schoolId, actorId, input, streamId) {
     const result = await db.query(
       `UPDATE academic_streams
        SET name = $1, academic_year = $2, grade = $3, mathematics_option = $4, electives = $5,
-           status = CASE WHEN status = 'published' THEN 'draft' ELSE status END,
+           status = 'published',
            updated_at = NOW()
        WHERE id = $6 AND school_id = $7
        RETURNING *`,
@@ -234,7 +234,7 @@ async function writeStream(schoolId, actorId, input, streamId) {
   const result = await db.query(
     `INSERT INTO academic_streams
       (school_id, academic_year, grade, name, mathematics_option, electives, status, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, 'draft', $7)
+     VALUES ($1, $2, $3, $4, $5, $6, 'published', $7)
      RETURNING *`,
     [schoolId, year, grade, checked.value.name, checked.value.mathematics, checked.value.electives, actorId || null]
   );
@@ -301,6 +301,18 @@ async function assertSubjectContinuity(schoolId, idNumber, year, grade, elective
   }
 }
 
+async function streamsForApplicants(schoolId, year, grade) {
+  const exact = await listStreams(schoolId, year, grade, { publishedOnly: true });
+  if (exact.length) return { streams: exact, year: Number(year) };
+  const any = await listStreams(schoolId, null, grade, { publishedOnly: true });
+  if (!any.length) return { streams: [], year: Number(year) };
+  const latest = Math.max(...any.map((item) => Number(item.academic_year)));
+  return {
+    streams: any.filter((item) => Number(item.academic_year) === latest),
+    year: latest
+  };
+}
+
 async function resolveApplicantPackage(input) {
   await ensureSchema();
   const schoolId = Number(input.schoolId);
@@ -308,24 +320,28 @@ async function resolveApplicantPackage(input) {
   const year = Number(input.academicYear);
   const streamId = Number(input.streamId);
   if (![10, 11, 12].includes(grade)) {
-    const error = new Error('Grades 10, 11 and 12 use the published subject streams.');
+    const error = new Error('Grades 10, 11 and 12 use the academic streams set up by the school.');
     error.status = 400;
     throw error;
   }
-  const offerings = await readOfferings(schoolId, year, grade);
-  const streams = await listStreams(schoolId, year, grade, { publishedOnly: true });
-  if (!streams.length) {
+  const available = await streamsForApplicants(schoolId, year, grade);
+  if (!available.streams.length) {
     const error = new Error('Subject streams have not yet been made available by this school. Please contact the school for assistance.');
     error.status = 400;
     error.empty = true;
     throw error;
   }
-  const stream = streams.find((item) => item.id === streamId);
+  let stream = available.streams.find((item) => item.id === streamId);
+  if (!stream && streamId) {
+    const sameGrade = await listStreams(schoolId, null, grade, { publishedOnly: true });
+    stream = sameGrade.find((item) => item.id === streamId);
+  }
   if (!stream) {
-    const error = new Error('Select a published stream for this school, grade and academic year.');
+    const error = new Error('Select an academic stream offered by this school for this grade.');
     error.status = 400;
     throw error;
   }
+  const offerings = await readOfferings(schoolId, Number(stream.academic_year) || available.year, grade);
   const languages = rules.validateLanguageChoice(input.homeLanguage, input.additionalLanguage, offerings);
   if (!languages.ok) {
     const error = new Error(languages.errors[0]);
@@ -390,6 +406,7 @@ module.exports = {
   readOfferings,
   saveOfferings,
   listStreams,
+  streamsForApplicants,
   writeStream,
   setStreamStatus,
   resolveApplicantPackage,

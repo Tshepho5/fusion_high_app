@@ -172,7 +172,7 @@ describe('school academic streams', () => {
           ? ['Physical Sciences', 'Life Sciences', 'Geography']
           : ['Accounting', 'Business Studies', 'Economics']
       });
-      assert.equal(draft.status, 'draft');
+      assert.equal(draft.status, 'published');
       const second = await service.writeStream(schoolA, 1, {
         academic_year: year,
         grade,
@@ -180,7 +180,7 @@ describe('school academic streams', () => {
         mathematics: 'Mathematical Literacy',
         electives: ['Tourism', 'Geography', 'Business Studies']
       });
-      assert.ok(second.id);
+      assert.equal(second.status, 'published');
       const published = await service.setStreamStatus(schoolA, draft.id, 'published');
       assert.equal(published.status, 'published');
     }
@@ -191,12 +191,14 @@ describe('school academic streams', () => {
   });
 
   test('an applicant receives only the selected school published package', async () => {
+    const saved = await service.listStreams(schoolA, year, 10, { publishedOnly: true });
+    assert.equal(saved.length, 2);
+    const extra = saved.find((stream) => stream.name.includes('alternate'));
+    await service.setStreamStatus(schoolA, extra.id, 'archived');
     const visible = await service.listStreams(schoolA, year, 10, { publishedOnly: true });
     assert.equal(visible.length, 1);
-    const hidden = await service.listStreams(schoolA, year, 10);
-    const draft = hidden.find((stream) => stream.status === 'draft');
     const rejected = await service.resolveApplicantPackage({
-      schoolId: schoolA, grade: 10, academicYear: year, streamId: draft.id,
+      schoolId: schoolA, grade: 10, academicYear: year, streamId: extra.id,
       homeLanguage: 'Sepedi', additionalLanguage: 'English', idNumber: '1111111111111'
     }).then(() => null, (error) => error);
     assert.equal(rejected.status, 400);
