@@ -343,7 +343,7 @@ export const aiTutorService = {
 // Official Academic Report Card Service
 export const reportService = {
   getCapsReportCard: (params?: { child_id?: string | number; term?: string }) =>
-    api.get(`/api/report-cards/view-card?childId=${params?.child_id || ''}&term=${encodeURIComponent(params?.term || 'Term 3 2026')}`).then(res => res.data),
+    api.get('/api/report-cards/view-card', { params: { childId: params?.child_id || '', term: params?.term || undefined } }).then(res => res.data),
   myReleases: () => api.get('/api/report-cards/my-releases').then(res => res.data),
 };
 

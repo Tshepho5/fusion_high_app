@@ -2,6 +2,7 @@ const aiProvider = require('./aiProvider');
 const toolRegistry = require('./toolRegistry');
 const aiTutorService = require('../aiTutorService');
 const db = require('../../../../db/db');
+const { conversationTurns } = require('../../../../lib/aiConversation');
 
 /**
  * Builds the customized system prompt based on user role and context
@@ -93,16 +94,30 @@ class GelezaOrchestrator {
         schoolName = 'Geleza SA',
         contextData = {}
     }) {
-        const effectiveRole = (role || (user && user.role) || 'learner').toLowerCase();
-        let userId = null;
-        if (user && user.id) {
-            const parsed = parseInt(user.id, 10);
-            if (!isNaN(parsed)) userId = parsed;
+        const effectiveRole = String(user && user.role || '').toLowerCase();
+        if (!user || !user.id || !effectiveRole) {
+            throw new Error('A signed-in account is required.');
         }
-        const schoolId = user && user.school_id ? parseInt(user.school_id, 10) : 1;
+        let userId = null;
+        const parsed = parseInt(user.id, 10);
+        if (!isNaN(parsed)) userId = parsed;
+        const parsedSchool = parseInt(user.school_id, 10);
+        const schoolId = Number.isInteger(parsedSchool) && parsedSchool > 0 ? parsedSchool : null;
+        if (role && String(role).toLowerCase() !== effectiveRole) {
+            console.warn('[GELEZA AI] Ignored a role that did not match the signed-in account.');
+        }
 
         // 1. Resolve or create conversation record
         let activeConvId = conversationId;
+        if (activeConvId) {
+            const owned = await db.query(
+                `SELECT id FROM geleza_ai_conversations WHERE id = $1 AND user_id::text = $2::text LIMIT 1`,
+                [activeConvId, String(user.id)]
+            );
+            if (!owned.rows.length) {
+                throw new Error('Access denied: You do not own this conversation.');
+            }
+        }
         if (!activeConvId) {
             try {
                 const convRes = await db.query(
@@ -120,7 +135,7 @@ class GelezaOrchestrator {
                 activeConvId = convRes.rows[0].id;
             } catch (convErr) {
                 console.warn('[GELEZA AI] DB conversation insert warning:', convErr.message);
-                activeConvId = Math.floor(Math.random() * 900000) + 100000;
+                throw new Error('The conversation could not be saved.');
             }
         }
 
@@ -146,10 +161,7 @@ class GelezaOrchestrator {
                  LIMIT 10`,
                 [activeConvId]
             );
-            history = histRes.rows.slice(0, -1).map(r => ({
-                role: r.sender === 'assistant' ? 'assistant' : 'user',
-                content: r.content
-            }));
+            history = conversationTurns(histRes.rows.slice(0, -1), 10);
         } catch (_) {}
 
         // 4. Resolve role-authorized tools
@@ -202,8 +214,12 @@ class GelezaOrchestrator {
                 }
             }
         } catch (providerErr) {
-            console.warn('[GELEZA AI] AI Provider unavailable or rate-limited, activating intelligent offline engine:', providerErr.message);
+            console.warn('[GELEZA AI] AI Provider unavailable:', providerErr.message);
             response = await this._generateOfflineResponse(message, effectiveRole, user, schoolName, history);
+            if (response && response.text) {
+                response.text = `Geleza AI is temporarily unavailable. The note below is from the on-server subject notes, not a live model.\n\n${response.text}`;
+                response.providerStatus = 'unavailable';
+            }
         }
 
         if (!response || !response.text) {
@@ -267,7 +283,9 @@ class GelezaOrchestrator {
             suggestions,
             actionLinks,
             toolCalls: toolCallsMade,
-            model: response.modelUsed || 'geleza-offline-knowledge-engine'
+            model: response.modelUsed || 'geleza-offline-knowledge-engine',
+            provider_status: response.providerStatus || (response.modelUsed === 'geleza-offline-knowledge-engine' ? 'unavailable' : 'available'),
+            official_result: false
         };
     }
 
@@ -474,7 +492,7 @@ class GelezaOrchestrator {
         }
 
         const conv = convRes.rows[0];
-        if (conv.user_id && String(conv.user_id) !== String(userId)) {
+        if (!conv.user_id || String(conv.user_id) !== String(userId)) {
             throw new Error('Access denied: You do not own this conversation.');
         }
 

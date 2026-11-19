@@ -137,10 +137,10 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
     learner: any;
     subject: string;
     grade: number;
-    riskTier: 'High' | 'Moderate' | 'Low';
-    predictedScore: number;
-    capsLevel: { level: number; label: string; color: string };
-    passProbability: number;
+    riskTier: 'High' | 'Moderate' | 'Low' | 'Unknown';
+    predictedScore: number | null;
+    capsLevel: { level: number | null; label: string; color: string };
+    passProbability: number | null;
     interventions: string[];
     dispatchSuccess?: boolean;
   } | null>(null);
@@ -508,7 +508,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
       const tier: 'High' | 'Moderate' | 'Low' = (rawTier === 'High') ? 'High' : (rawTier === 'Moderate' || rawTier === 'Medium') ? 'Moderate' : 'Low';
       const caps = ml.caps_achievement_level || getCapsLevel(ml.projected_final_score || 50);
       return {
-        predictedScore: ml.projected_final_score || learner.predicted_score || 50,
+        predictedScore: ml.projected_final_score ?? learner.predicted_score ?? null,
         capsLevel: {
           level: caps.level || 4,
           label: caps.label || 'Adequate',
@@ -516,7 +516,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                  tier === 'Moderate' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' :
                  'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
         },
-        passProbability: ml.pass_probability || learner.pass_probability || 75,
+        passProbability: ml.pass_probability ?? learner.pass_probability ?? null,
         riskTier: tier,
         riskLabel: ml.risk_label || (tier === 'High' ? 'Critical (High Risk)' : tier === 'Moderate' ? 'Moderate Risk' : 'On Track'),
         interventions: ml.interventions && ml.interventions.length > 0 ? ml.interventions : [
@@ -525,9 +525,19 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
       };
     }
 
-    const mark = typeof learner.current_mark === 'number' ? learner.current_mark : (learner.term_average || 54);
-    const attendance = typeof learner.attendance_rate === 'number' ? learner.attendance_rate : 86;
-    const studyHours = typeof learner.study_hours_per_week === 'number' ? learner.study_hours_per_week : 12;
+    const mark = typeof learner.current_mark === 'number' ? learner.current_mark : (typeof learner.term_average === 'number' ? learner.term_average : null);
+    const attendance = typeof learner.attendance_rate === 'number' ? learner.attendance_rate : null;
+    const studyHours = typeof learner.study_hours_per_week === 'number' ? learner.study_hours_per_week : null;
+    if (mark === null || attendance === null || studyHours === null) {
+      return {
+        predictedScore: null,
+        capsLevel: { level: null, label: mark === null ? 'No recorded mark' : 'Recorded mark only', color: 'text-slate-300 border-white/10 bg-white/5' },
+        passProbability: null,
+        riskTier: 'Unknown' as const,
+        riskLabel: mark === null ? 'No recorded mark' : 'Recorded mark only',
+        interventions: []
+      };
+    }
 
     // Model linear coefficient approximation
     let predictedScore = Math.round(0.52 * mark + 0.22 * attendance + 0.85 * studyHours - 6.5);
@@ -811,6 +821,8 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                                       ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/25'
                                       : mlRisk.riskTier === 'Moderate'
                                       ? 'bg-amber-500/15 text-amber-400 border-amber-500/30 hover:bg-amber-500/25'
+                                      : mlRisk.riskTier === 'Unknown'
+                                      ? 'bg-slate-500/15 text-slate-300 border-white/10 hover:bg-slate-500/25'
                                       : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
                                   }`}
                                   title="Click to view Risk Diagnostic & Remedial Action Plan"
@@ -1427,11 +1439,11 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
                 <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Current vs ML Predicted</p>
                 <div className="flex items-center justify-center gap-1.5 mt-1">
                   <span className="text-sm font-bold text-slate-400">
-                    {mlDiagnosticLearner.learner.current_mark || 50}%
+                    {mlDiagnosticLearner.learner.current_mark ?? 'Not available'}{typeof mlDiagnosticLearner.learner.current_mark === 'number' ? '%' : ''}
                   </span>
                   <span className="text-slate-600">➔</span>
                   <span className="text-lg font-black text-white font-mono">
-                    {mlDiagnosticLearner.predictedScore}%
+                    {mlDiagnosticLearner.predictedScore == null ? 'Not available' : `${mlDiagnosticLearner.predictedScore}%`}
                   </span>
                 </div>
                 <p className="text-[10px] text-brand-400 mt-0.5">Projected Final Mark</p>
@@ -1440,7 +1452,7 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
               <div className="p-3.5 rounded-2xl bg-surface-dark border border-white/5 text-center">
                 <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">CAPS Achievement Level</p>
                 <p className="text-lg font-black text-indigo-300 font-mono mt-1">
-                  Level {mlDiagnosticLearner.capsLevel.level}
+                  {mlDiagnosticLearner.capsLevel.level == null ? 'Not recorded' : `Level ${mlDiagnosticLearner.capsLevel.level}`}
                 </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">{mlDiagnosticLearner.capsLevel.label}</p>
               </div>
@@ -1448,9 +1460,9 @@ export const TeacherSubjects: React.FC<TeacherSubjectsProps> = ({ onNavigateTab 
               <div className="p-3.5 rounded-2xl bg-surface-dark border border-white/5 text-center">
                 <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ML Pass Probability</p>
                 <p className={`text-lg font-black font-mono mt-1 ${
-                  mlDiagnosticLearner.passProbability >= 70 ? 'text-emerald-400' : mlDiagnosticLearner.passProbability >= 50 ? 'text-amber-400' : 'text-rose-400'
+                  mlDiagnosticLearner.passProbability == null ? 'text-slate-300' : mlDiagnosticLearner.passProbability >= 70 ? 'text-emerald-400' : mlDiagnosticLearner.passProbability >= 50 ? 'text-amber-400' : 'text-rose-400'
                 }`}>
-                  {mlDiagnosticLearner.passProbability}%
+                  {mlDiagnosticLearner.passProbability == null ? 'Not available' : `${mlDiagnosticLearner.passProbability}%`}
                 </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Exam Confidence</p>
               </div>

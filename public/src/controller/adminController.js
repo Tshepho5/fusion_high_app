@@ -2494,10 +2494,15 @@ exports.inspectAdmissionDocOCR = async (req, res) => {
             doc = docRes.rows[0];
         }
 
-        const filePath = doc ? doc.file_path : null;
-        const mimeType = doc ? doc.mime_type : 'application/pdf';
+        if (!doc || !doc.file_path) {
+            return res.status(422).json({
+                success: false,
+                status: 'extraction_failed',
+                message: 'No stored document is available to read. Ask for the file again or review the application manually.'
+            });
+        }
 
-        const ocrResult = await applicationService.inspectDocumentOCR(filePath, mimeType, {
+        const ocrResult = await applicationService.inspectDocumentOCR(doc.file_path, doc.mime_type, {
             id_number: app.id_number,
             first_name: app.first_name,
             surname: app.surname,
@@ -2509,7 +2514,7 @@ exports.inspectAdmissionDocOCR = async (req, res) => {
             success: true,
             application_id: app.id,
             application_number: app.application_number,
-            document: doc || { document_type: 'learner_id', file_name: 'verified_id_doc.pdf' },
+            document: doc,
             ocr: ocrResult
         });
     } catch (err) {

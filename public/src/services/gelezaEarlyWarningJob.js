@@ -10,6 +10,7 @@
 const db = require('../../../db/db');
 const aiAdvisorService = require('./aiAdvisorService');
 const NotificationService = require('./notificationService');
+const { decideEarlyWarningAlert, sameSchoolRecipientIds, projectionNotice, periodicAuditPlan } = require('../../../lib/earlyWarningAlert');
 
 class GelezaEarlyWarningJob {
   constructor() {
@@ -58,6 +59,25 @@ class GelezaEarlyWarningJob {
    * @returns {Promise<Object>} Execution audit report
    */
   async runRiskAudit(options = {}) {
+    const {
+      schoolId = null,
+      grade = null,
+      term = null,
+      academicYear = null,
+      forceAlert = false,
+      dryRun = false,
+      triggeredBy = 'automated_cron'
+    } = options;
+
+    const termNumber = Number(term);
+    const yearNumber = Number(academicYear);
+    if (![1, 2, 3, 4].includes(termNumber) || !Number.isInteger(yearNumber) || yearNumber < 2000) {
+      return {
+        success: false,
+        message: 'Choose a term from 1 to 4 and an academic year before running the audit.'
+      };
+    }
+
     if (this.isRunning) {
       return {
         success: false,
@@ -69,16 +89,6 @@ class GelezaEarlyWarningJob {
     this.isRunning = true;
     const startTime = Date.now();
     await this.ensureSchema();
-
-    const {
-      schoolId = null,
-      grade = null,
-      term = 1,
-      academicYear = 2026,
-      forceAlert = false,
-      dryRun = false,
-      triggeredBy = 'automated_cron'
-    } = options;
 
     console.log(`[GELEZA EARLY-WARNING JOB] Starting risk audit (schoolId: ${schoolId || 'all'}, grade: ${grade || 'all'}, dryRun: ${dryRun})...`);
 
@@ -104,15 +114,14 @@ class GelezaEarlyWarningJob {
       let query = `
         SELECT c.id as child_id, c.school_id, c.full_name, c.surname, c.grade, c.class_id,
                c.parent_id, c.learner_number,
-               COALESCE(u.gender, 'Male') as gender,
-               COALESCE(s.school_type, 'Public') as school_type,
+               s.school_type,
                cls.homeroom_teacher_id,
                cls.assigned_teacher_id,
                (SELECT COUNT(*) FROM attendance WHERE child_id = c.id) as total_attendance,
                (SELECT COUNT(*) FROM attendance WHERE child_id = c.id AND status = 'present') as present_days,
                prev.risk_tier_id as last_risk_tier,
                prev.predicted_score as last_predicted_score,
-               prev.alert_dispatched_at as last_alert_at
+               alerts.last_alert_at as last_alert_at
         FROM children c
         LEFT JOIN users u ON c.learner_user_id = u.id
         LEFT JOIN schools s ON c.school_id = s.id
@@ -123,6 +132,11 @@ class GelezaEarlyWarningJob {
           WHERE child_id = c.id
           ORDER BY created_at DESC LIMIT 1
         ) prev ON true
+        LEFT JOIN LATERAL (
+          SELECT MAX(alert_dispatched_at) as last_alert_at
+          FROM ai_performance_predictions
+          WHERE child_id = c.id AND alert_dispatched_at IS NOT NULL
+        ) alerts ON true
         WHERE 1=1
       `;
       const params = [];
@@ -155,7 +169,7 @@ class GelezaEarlyWarningJob {
       for (const learner of learners) {
         const totalAtt = parseInt(learner.total_attendance, 10) || 0;
         const presAtt = parseInt(learner.present_days, 10) || 0;
-        const attendancePct = totalAtt > 0 ? Math.round((presAtt / totalAtt) * 100) : 85;
+        const attendancePct = totalAtt > 0 ? Math.round((presAtt / totalAtt) * 100) : null;
 
         // Fetch recent marks average
         const marksRes = await db.query(
@@ -165,12 +179,16 @@ class GelezaEarlyWarningJob {
            ORDER BY recorded_at DESC LIMIT 15`,
           [learner.child_id]
         );
-        let avgScore = 67;
+        let avgScore = null;
         if (marksRes.rows.length > 0) {
-          const pcts = marksRes.rows.map(r => 
-            r.percentage ? Number(r.percentage) : Math.round((Number(r.score) / (Number(r.max_score) || 100)) * 100)
-          );
-          avgScore = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+          const pcts = marksRes.rows.map(r => {
+            if (r.percentage !== null && r.percentage !== undefined && r.percentage !== '') return Number(r.percentage);
+            if (r.score === null || r.score === undefined || r.score === '') return null;
+            const max = Number(r.max_score);
+            if (!Number.isFinite(Number(r.score)) || !Number.isFinite(max) || max <= 0) return null;
+            return Math.round((Number(r.score) / max) * 100);
+          }).filter((value) => Number.isFinite(value));
+          if (pcts.length > 0) avgScore = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
         }
 
         // Fetch study habits profile
@@ -180,16 +198,26 @@ class GelezaEarlyWarningJob {
         );
         const prof = profRes.rows[0] || {};
 
+        const recordedHours = Number(prof.weekly_hours_studied);
+        if (attendancePct === null || avgScore === null || !Number.isFinite(recordedHours)) {
+          stats.skipped_insufficient = (stats.skipped_insufficient || 0) + 1;
+          continue;
+        }
+
         const payload = {
           Attendance: attendancePct,
-          Hours_Studied: Number(prof.weekly_hours_studied) || 18,
-          Access_to_Resources: prof.access_to_resources || 'Medium',
+          Hours_Studied: recordedHours,
+          Access_to_Resources: prof.access_to_resources || null,
           Previous_Scores: avgScore,
-          Parental_Involvement: prof.parental_involvement || 'Medium',
-          Tutoring_Sessions: Number(prof.tutoring_sessions) || 1
+          Parental_Involvement: prof.parental_involvement || null,
+          Tutoring_Sessions: Number.isFinite(Number(prof.tutoring_sessions)) ? Number(prof.tutoring_sessions) : null
         };
 
         const prediction = await aiAdvisorService.predictGelezaPerformance(payload);
+        if (!prediction || prediction.prediction_available === false || !prediction.risk_tier) {
+          stats.skipped_insufficient = (stats.skipped_insufficient || 0) + 1;
+          continue;
+        }
         const tierId = prediction.risk_tier.id; // 0: Priority, 1: Core, 2: High
 
         if (tierId === 0) stats.priority_support_count++;
@@ -197,21 +225,15 @@ class GelezaEarlyWarningJob {
         else if (tierId === 2) stats.high_achiever_count++;
 
         // 3. Early Warning Trigger Logic
-        const isPriorityRisk = tierId === 0 || prediction.predicted_score <= 65 || attendancePct < 75;
-        let shouldDispatchAlert = false;
-
-        if (isPriorityRisk) {
-          // Check cooldown: avoid spamming teachers if alerted within the last 7 days,
-          // UNLESS forceAlert is on OR the student newly degraded into Priority Support.
-          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-          const lastAlertDate = learner.last_alert_at ? new Date(learner.last_alert_at) : null;
-          const isNewlyDowngraded = learner.last_risk_tier !== null && learner.last_risk_tier > 0;
-          const isCooldownExpired = !lastAlertDate || lastAlertDate < sevenDaysAgo;
-
-          if (forceAlert || isNewlyDowngraded || isCooldownExpired) {
-            shouldDispatchAlert = true;
-          }
-        }
+        const alertDecision = decideEarlyWarningAlert({
+          predictionAvailable: true,
+          riskTierId: tierId,
+          predictedScore: prediction.predicted_score,
+          attendancePct,
+          lastAlertAt: learner.last_alert_at,
+          force: forceAlert
+        });
+        const shouldDispatchAlert = alertDecision.dispatch;
 
         // 4. Save prediction snapshot (unless dryRun)
         let savedPredictionId = null;
@@ -246,35 +268,34 @@ class GelezaEarlyWarningJob {
         // 5. Dispatch Alert Notifications
         if (shouldDispatchAlert && !dryRun) {
           // Gather recipient educator IDs
-          const recipientIds = new Set();
-
-          // A. Homeroom / Assigned class teacher
-          if (learner.homeroom_teacher_id) recipientIds.add(learner.homeroom_teacher_id);
-          if (learner.assigned_teacher_id) recipientIds.add(learner.assigned_teacher_id);
-
-          // B. Subject teachers assigned to this class
+          const teacherIds = [learner.homeroom_teacher_id, learner.assigned_teacher_id].filter(Boolean);
           if (learner.class_id) {
             const assignRes = await db.query(
               `SELECT teacher_id FROM teacher_assignments WHERE class_id = $1`,
               [learner.class_id]
             );
-            assignRes.rows.forEach(r => recipientIds.add(r.teacher_id));
+            assignRes.rows.forEach(r => teacherIds.push(r.teacher_id));
           }
 
-          // C. School Admins / Principal (fallback if no teacher assigned)
-          if (recipientIds.size === 0 && learner.school_id) {
+          let people = [];
+          if (teacherIds.length > 0) {
+            const usersRes = await db.query(
+              `SELECT id, school_id FROM users WHERE id = ANY($1::int[])`,
+              [teacherIds]
+            );
+            people = usersRes.rows;
+          }
+          let targetUsers = sameSchoolRecipientIds(people, learner.school_id);
+          if (targetUsers.length === 0 && learner.school_id) {
             const adminRes = await db.query(
-              `SELECT id FROM users WHERE school_id = $1 AND role IN ('admin', 'principal') LIMIT 3`,
+              `SELECT id, school_id FROM users WHERE school_id = $1 AND role IN ('admin', 'principal') LIMIT 3`,
               [learner.school_id]
             );
-            adminRes.rows.forEach(r => recipientIds.add(r.id));
+            targetUsers = sameSchoolRecipientIds(adminRes.rows, learner.school_id);
           }
-
-          const targetUsers = Array.from(recipientIds);
           if (targetUsers.length > 0) {
-            const topNudge = prediction.actionable_nudges?.[0] || 'Remedial tutoring and attendance monitoring recommended.';
-            const alertTitle = `🚨 Early Warning: ${learner.full_name} ${learner.surname} (Grade ${learner.grade})`;
-            const alertMessage = `Projected Exam Score: ${prediction.predicted_score}% (Priority Support). Attendance: ${attendancePct}%. Recommended action: ${topNudge}`;
+            const alertTitle = `Early warning: ${learner.full_name} ${learner.surname} (Grade ${learner.grade})`;
+            const alertMessage = `Recorded attendance is ${attendancePct}%. A projection from the recorded inputs is ${prediction.predicted_score}%. ${projectionNotice}`;
 
             await NotificationService.sendToUsers({
               userIds: targetUsers,
@@ -289,7 +310,9 @@ class GelezaEarlyWarningJob {
                 risk_tier_id: 0,
                 attendance_pct: attendancePct,
                 prediction_id: savedPredictionId,
-                alert_type: 'academic_risk'
+                alert_type: 'academic_risk',
+                official_result: false,
+                notice: projectionNotice
               },
               sendToMessages: false,
               sendEmail: false
@@ -355,16 +378,17 @@ class GelezaEarlyWarningJob {
 
     console.log(`[GELEZA EARLY-WARNING JOB] Initializing automated daily background risk audit (interval: ${intervalMs / 1000 / 3600}h)...`);
 
-    // Grace delay after server start before initial execution
-    setTimeout(() => {
-      this.runRiskAudit({ triggeredBy: 'startup_scheduled' }).catch(err => {
-        console.warn('[GELEZA EARLY-WARNING JOB] Startup audit notice:', err.message);
-      });
-    }, 45000);
-
-    // Periodic repeating interval
     this.timer = setInterval(() => {
-      this.runRiskAudit({ triggeredBy: 'periodic_cron' }).catch(err => {
+      const plan = periodicAuditPlan(process.env);
+      if (!plan.run) {
+        console.warn('[GELEZA EARLY-WARNING JOB] Periodic audit skipped because GELEZA_AUDIT_TERM is not 1, 2, 3, or 4.');
+        return;
+      }
+      this.runRiskAudit({
+        term: plan.term,
+        academicYear: plan.academicYear,
+        triggeredBy: 'periodic_cron'
+      }).catch(err => {
         console.warn('[GELEZA EARLY-WARNING JOB] Periodic audit notice:', err.message);
       });
     }, intervalMs);

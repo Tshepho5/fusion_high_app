@@ -3,6 +3,7 @@ const fs = require('fs');
 const pdf = require('pdf-parse');
 const path = require('path');
 const db = require('../../../db/db');
+const { loadedTutorGrade } = require('../../../lib/tutorGrade');
 require('dotenv').config();
 
 const scienceCurriculum = require('../curriculum/science');
@@ -94,7 +95,7 @@ function queryPhysicalSciencesGrade10Model(userText) {
   }
 
   if (lower.includes('practice') || lower.includes('exam') || lower.includes('test') || lower.includes('quiz') || lower.includes('question')) {
-    return { ...physicalSciencesGrade10KB[0], matchScore: 1.5, grade: 10 };
+    return null;
   }
 
   return null;
@@ -130,7 +131,7 @@ function evaluatePhysicalSciencesGrade10Answer(itemId, studentAnswer) {
     commonMisconceptions: item.common_misconceptions,
     humanGuidance: item.human_guidance,
     feedback: percentage >= 80 
-      ? "Outstanding Grade 10 mastery! Your steps and units follow official DBE CAPS examination guidelines perfectly."
+      ? "Outstanding Grade 10 mastery! Your steps and units follow the loaded study notes examination guidelines perfectly."
       : percentage >= 50
         ? "Good conceptual work! Make sure to write down the standard formula, substitution with signs, and final SI unit to capture full rubric marks."
         : "Needs revision. In Grade 10 examinations, markers require the explicit formula from the formula sheet and correct SI units."
@@ -139,8 +140,10 @@ function evaluatePhysicalSciencesGrade10Answer(itemId, studentAnswer) {
 
 function queryPhysicalSciencesModel(userText, grade = null) {
   if (!userText) return null;
-  const isGr10 = grade === 10 || grade === '10';
-  const isGr12 = grade === 12 || grade === '12';
+  const loadedGrade = loadedTutorGrade(grade, [10, 12]);
+  if (!loadedGrade) return null;
+  const isGr10 = loadedGrade === '10';
+  const isGr12 = loadedGrade === '12';
 
   if (isGr10) {
     return queryPhysicalSciencesGrade10Model(userText);
@@ -169,36 +172,7 @@ function queryPhysicalSciencesModel(userText, grade = null) {
     return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches, grade: 12 } : null;
   }
 
-  // If grade not specified, check both and pick highest match
-  const gr10Match = queryPhysicalSciencesGrade10Model(userText);
-  let gr12Match = null;
-  if (physicalSciencesKB && physicalSciencesKB.length > 0) {
-    const lower = userText.toLowerCase();
-    let bestItem = null;
-    let maxMatches = 0;
-    for (const item of physicalSciencesKB) {
-      let matches = 0;
-      for (const kw of item.keywords) {
-        if (lower.includes(kw.toLowerCase())) matches += 1.8;
-      }
-      const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
-      for (const w of words) {
-        if (w.length > 3 && lower.includes(w)) matches += 0.5;
-      }
-      if (matches > maxMatches) {
-        maxMatches = matches;
-        bestItem = item;
-      }
-    }
-    if (maxMatches >= 1.5 && bestItem) {
-      gr12Match = { ...bestItem, matchScore: maxMatches, grade: 12 };
-    }
-  }
-
-  if (gr10Match && gr12Match) {
-    return gr10Match.matchScore >= gr12Match.matchScore ? gr10Match : gr12Match;
-  }
-  return gr10Match || gr12Match;
+  return null;
 }
 
 function evaluatePhysicalSciencesAnswer(itemId, studentAnswer) {
@@ -233,7 +207,7 @@ function evaluatePhysicalSciencesAnswer(itemId, studentAnswer) {
     commonMisconceptions: item.common_misconceptions,
     humanGuidance: item.human_guidance,
     feedback: percentage >= 80 
-      ? "Outstanding mastery! Your steps and units follow official DBE CAPS examination guidelines perfectly."
+      ? "Outstanding mastery! Your steps and units follow the loaded study notes examination guidelines perfectly."
       : percentage >= 50
         ? "Good conceptual work! Make sure to write down the standard formula, substitution with signs, and final SI unit to capture full rubric marks."
         : "Needs revision. In the matric exam, markers require the explicit formula from the formula sheet and correct SI units."
@@ -252,7 +226,8 @@ try {
   console.warn('[AI SERVICE] Could not load Mathematics KB:', e.message);
 }
 
-function queryMathematicsModel(userText) {
+function queryMathematicsModel(userText, grade = null) {
+  if (!loadedTutorGrade(grade, [12])) return null;
   if (!mathematicsKB || mathematicsKB.length === 0 || !userText) return null;
   const lower = userText.toLowerCase();
   let bestItem = null;
@@ -278,7 +253,7 @@ function queryMathematicsModel(userText) {
   }
 
   if (lower.includes('practice') || lower.includes('exam') || lower.includes('test') || lower.includes('quiz') || lower.includes('question')) {
-    return { ...mathematicsKB[0], matchScore: 1.5 };
+    return null;
   }
 
   return null;
@@ -313,7 +288,7 @@ function evaluateMathematicsAnswer(itemId, studentAnswer) {
     commonMisconceptions: item.common_misconceptions,
     humanGuidance: item.human_guidance,
     feedback: percentage >= 80 
-      ? "Outstanding mathematical mastery! Your algebraic steps, reasoning, and standard form follow official DBE CAPS marking criteria."
+      ? "Outstanding mathematical mastery! Your algebraic steps, reasoning, and standard form follow the loaded study notes marking criteria."
       : percentage >= 50
         ? "Good working! Ensure all intermediate algebraic steps, critical values/signs, and geometric reasons [in brackets] are explicitly stated to earn full method marks."
         : "Needs revision. In the matric mathematics examination, full marks require standard formula substitution, correct sign conventions, and explicit mathematical justifications."
@@ -346,7 +321,7 @@ function queryLifeSciencesGrade10Model(userText) {
   }
 
   if (lower.includes('practice') || lower.includes('exam') || lower.includes('test') || lower.includes('quiz') || lower.includes('question')) {
-    return { ...lifeSciencesGrade10KB[0], matchScore: 1.5, grade: 10 };
+    return null;
   }
 
   return null;
@@ -382,7 +357,7 @@ function evaluateLifeSciencesGrade10Answer(itemId, studentAnswer) {
     commonMisconceptions: item.common_misconceptions,
     humanGuidance: item.human_guidance,
     feedback: percentage >= 80 
-      ? "Outstanding biological mastery! Your Grade 10 terminology and conceptual explanations follow official DBE CAPS guidelines."
+      ? "Outstanding biological mastery! Your Grade 10 terminology and conceptual explanations follow the loaded study notes guidelines."
       : percentage >= 50
         ? "Good conceptual work! Ensure you state precise scientific keywords and biological cause-and-effect to gain full rubric marks."
         : "Needs revision. Official CAPS markers require exact scientific definitions and correct organelle/process terminology."
@@ -391,8 +366,10 @@ function evaluateLifeSciencesGrade10Answer(itemId, studentAnswer) {
 
 function queryLifeSciencesModel(userText, grade = null) {
   if (!userText) return null;
-  const isGr10 = grade === 10 || grade === '10';
-  const isGr12 = grade === 12 || grade === '12';
+  const loadedGrade = loadedTutorGrade(grade, [10, 12]);
+  if (!loadedGrade) return null;
+  const isGr10 = loadedGrade === '10';
+  const isGr12 = loadedGrade === '12';
 
   if (isGr10) {
     return queryLifeSciencesGrade10Model(userText);
@@ -421,36 +398,7 @@ function queryLifeSciencesModel(userText, grade = null) {
     return maxMatches >= 1.5 && bestItem ? { ...bestItem, matchScore: maxMatches, grade: 12 } : null;
   }
 
-  // If grade not specified, compare both
-  const gr10Match = queryLifeSciencesGrade10Model(userText);
-  let gr12Match = null;
-  if (lifeSciencesKB && lifeSciencesKB.length > 0) {
-    const lower = userText.toLowerCase();
-    let bestItem = null;
-    let maxMatches = 0;
-    for (const item of lifeSciencesKB) {
-      let matches = 0;
-      for (const kw of item.keywords) {
-        if (lower.includes(kw.toLowerCase())) matches += 1.5;
-      }
-      const words = (item.topic + ' ' + item.subtopic + ' ' + item.question).toLowerCase().split(/\s+/);
-      for (const w of words) {
-        if (w.length > 3 && lower.includes(w)) matches += 0.5;
-      }
-      if (matches > maxMatches) {
-        maxMatches = matches;
-        bestItem = item;
-      }
-    }
-    if (maxMatches >= 1.5 && bestItem) {
-      gr12Match = { ...bestItem, matchScore: maxMatches, grade: 12 };
-    }
-  }
-
-  if (gr10Match && gr12Match) {
-    return gr10Match.matchScore >= gr12Match.matchScore ? gr10Match : gr12Match;
-  }
-  return gr10Match || gr12Match;
+  return null;
 }
 
 function evaluateLifeSciencesAnswer(itemId, studentAnswer) {
@@ -485,7 +433,7 @@ function evaluateLifeSciencesAnswer(itemId, studentAnswer) {
     commonMisconceptions: item.common_misconceptions,
     humanGuidance: item.human_guidance,
     feedback: percentage >= 80 
-      ? "Outstanding biological mastery! You used official DBE CAPS scientific terminology accurately and concisely."
+      ? "Outstanding biological mastery! You used the loaded study notes scientific terminology accurately and concisely."
       : percentage >= 50
         ? "Good conceptual understanding! Ensure you include the missing technical keywords and state cause-and-effect clearly to gain full marks."
         : "Needs revision. Official CAPS markers deduct marks if key biological terms and sequential phases are missing."
@@ -513,7 +461,7 @@ async function callAI(prompt, isJson = false, modelOverride = null) {
 
   const modelCandidates = modelOverride
     ? [modelOverride]
-    : ['gemini-3.5-flash', 'gemini-3.8-flash'];
+    : require('./ai/aiProvider').modelCandidates();
   let lastError = null;
 
   for (const targetModel of modelCandidates) {
@@ -658,7 +606,7 @@ function generateCAPSLocalFallback(prompt, explicitSubject, explicitGrade, expli
       wrong: (t, i) => [`B) Secondary factors have zero influence`, `C) Both factors are identical`, `D) Neither factor affects ${t}`]
     },
     {
-      stem: (g, s, t, i) => `In an official DBE assessment on ${t}, how is the net rate of change calculated?`,
+      stem: (g, s, t, i) => `In a practice question on ${t}, how is the net rate of change calculated?`,
       correct: (t, i) => `A) Net Rate = Total Change / Time Elapsed`,
       wrong: (t, i) => [`B) Net Rate = Time * Constant`, `C) Net Rate = Initial Value + Final Value`, `D) Net Rate = Zero`]
     },
@@ -1194,7 +1142,7 @@ async function safeAICall(prompt, isJson = false, retries = 1) {
     throw err;
   }
 
-  const models = ['gemini-3.5-flash', 'gemini-3.8-flash'];
+  const models = require('./ai/aiProvider').modelCandidates();
   let lastError = null;
 
   for (const m of models) {
@@ -1737,7 +1685,7 @@ function getExplainTopicResponse(normSubject, normGrade) {
   } else if (isPhys && (normGrade === 10 || normGrade === '10')) {
     text = `### ⚛️ Grade 10 Physical Sciences CAPS Syllabus Overview\n\n- **Paper 1 (Physics)**: Transverse & Longitudinal Waves, Sound & Ultrasound, Electromagnetic Radiation, Electric Circuits, 1D Motion & Equations of Motion, Mechanical Energy.\n- **Paper 2 (Chemistry)**: States of Matter & Kinetic Molecular Theory, Atomic Structure & Electron Configurations, Chemical Bonding & Lewis Diagrams, The Mole Concept & Stoichiometry, Physical & Chemical Change.\n\n👉 *Select a topic to start practicing!*`;
   } else {
-    text = `### 📚 ${normSubject} (Grade ${normGrade}) CAPS Syllabus Overview\n\nI cover all official South African Department of Basic Education (DBE) examination modules for ${normSubject} (Grade ${normGrade}).\n\n👉 *Which specific topic or chapter would you like to explore or practice today?*`;
+    text = `### ${normSubject || 'Subject'} (Grade ${normGrade || 'not recorded'})\n\nLoaded study notes are available for Life Sciences, Physical Sciences, and Mathematics where a grade file exists. A matching note was not found for this grade and subject. This is not an official curriculum statement.`;
   }
 
   return {
@@ -1752,11 +1700,11 @@ function getPracticeQuestionResponse(normSubject, normGrade, matchedKB, userText
   const isMath = (normSubject || '').toLowerCase().includes('math');
 
   if (isLife && (normGrade === 10 || normGrade === '10')) {
-    const item = matchedKB || (lifeSciencesGrade10KB && lifeSciencesGrade10KB[0]);
+    const item = matchedKB;
     if (item && item.model_answer) {
       const qText = item.model_answer.split(/memorandum:/i)[0].replace(/^Question:\s*/i, '').trim();
       return {
-        reply: `### 🌿 Grade 10 Life Sciences Examination Practice\n**Topic: ${item.topic} (${item.subtopic})**\n**Total: [5 Marks]**\n\n${qText}\n\n---\n📝 **Instructions:**\nReply with your answers to each sub-question below (e.g. "1. ..., 2. ..."). I will grade your answers according to the official DBE CAPS memorandum and award your marks!`,
+        reply: `### 🌿 Grade 10 Life Sciences Examination Practice\n**Topic: ${item.topic} (${item.subtopic})**\n**Total: [5 Marks]**\n\n${qText}\n\n---\n📝 **Instructions:**\nReply with your answers to each sub-question below (e.g. "1. ..., 2. ..."). This is practice against the loaded notes. The result is not an official school mark.`,
         suggestions: [
           'Show me the marking memorandum',
           `Explain ${item.topic} key concepts`,
@@ -1767,11 +1715,11 @@ function getPracticeQuestionResponse(normSubject, normGrade, matchedKB, userText
   }
 
   if (isPhys && (normGrade === 10 || normGrade === '10')) {
-    const item = matchedKB || (physicalSciencesGrade10KB && physicalSciencesGrade10KB[0]);
+    const item = matchedKB;
     if (item && item.model_answer) {
       const qText = item.model_answer.split(/model calculation:/i)[0].replace(/^Question:\s*/i, '').trim();
       return {
-        reply: `### ⚛️ Grade 10 Physical Sciences Examination Practice\n**Topic: ${item.topic} (${item.subtopic})**\n**Total: [5 Marks]**\n\n${qText}\n\n---\n📝 **Instructions:**\nState the standard formula, substitution with correct signs/units, and final value. I will grade your solution against the DBE marking rubric!`,
+        reply: `### ⚛️ Grade 10 Physical Sciences Examination Practice\n**Topic: ${item.topic} (${item.subtopic})**\n**Total: [5 Marks]**\n\n${qText}\n\n---\n📝 **Instructions:**\nState the standard formula, substitution with correct signs/units, and final value. This is practice against the loaded notes. The result is not an official school mark.`,
         suggestions: [
           'Show me the step-by-step solution',
           `Explain formula for ${item.topic}`,
@@ -1782,11 +1730,11 @@ function getPracticeQuestionResponse(normSubject, normGrade, matchedKB, userText
   }
 
   if (isMath) {
-    const item = matchedKB || (mathematicsKB && mathematicsKB[0]);
+    const item = matchedKB;
     if (item && item.model_answer) {
       const qText = item.model_answer.split(/step-by-step algebraic working:/i)[0].replace(/^Question:\s*/i, '').trim();
       return {
-        reply: `### 📐 Grade 12 Mathematics Examination Practice\n**Topic: ${item.topic} (${item.subtopic})**\n**Total: [5 Marks]**\n\n${qText}\n\n---\n📝 **Instructions:**\nType your algebraic steps and final solution below. I will mark your steps against the official CAPS marking guideline!`,
+        reply: `### 📐 Grade 12 Mathematics Examination Practice\n**Topic: ${item.topic} (${item.subtopic})**\n**Total: [5 Marks]**\n\n${qText}\n\n---\n📝 **Instructions:**\nType your algebraic steps and final solution below. This is practice against the loaded notes. The result is not an official school mark.`,
         suggestions: [
           'Show me the step-by-step working',
           `Explain ${item.topic} method`,
@@ -1797,7 +1745,7 @@ function getPracticeQuestionResponse(normSubject, normGrade, matchedKB, userText
   }
 
   return {
-    reply: `### 📝 Grade ${normGrade} ${normSubject} Practice Question [5 Marks]\n\nState the primary theoretical principle and solve the fundamental problem application for ${normSubject} Grade ${normGrade}.\n\nReply with your solution to receive your feedback and marking guideline!`,
+    reply: `No practice note matched this subject and grade. Ask about a specific topic that is loaded, such as a Life Sciences, Physical Sciences, or Mathematics topic. A practice score from these notes is not an official school mark.`,
     suggestions: generateAcademicSuggestions(userText, normSubject, normGrade)
   };
 }
@@ -2101,7 +2049,7 @@ Respond with human warmth, empathy, and mathematical clarity. Show every algebra
 `;
     }
   } else if (isMath) {
-    const mathMatch = queryMathematicsModel(userText);
+    const mathMatch = queryMathematicsModel(userText, normGrade);
     if (mathMatch) {
       return `
 ### 📐 DEDICATED GRADE 12 MATHEMATICS SPECIALIST KNOWLEDGE BASE (STRICT DBE CAPS RAG):
@@ -2259,7 +2207,7 @@ Detailed, Warm, Helpful Response:
         matchedKB = queryPhysicalSciencesModel(userText, normGrade);
         subjectLabel = `Physical Sciences (Grade ${normGrade})`;
       } else if (isMath) {
-        matchedKB = queryMathematicsModel(userText);
+        matchedKB = queryMathematicsModel(userText, normGrade);
         subjectLabel = `Mathematics (Grade ${normGrade})`;
       }
 

@@ -1,5 +1,6 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const { questionBankArguments } = require('../../../lib/questionBankRequest');
 
 const QUESTION_BANK_DIR = path.resolve(__dirname, '../../../QuestionBank');
 const BRIDGE_SCRIPT = path.join(QUESTION_BANK_DIR, 'api_bridge.py');
@@ -8,9 +9,11 @@ const BRIDGE_SCRIPT = path.join(QUESTION_BANK_DIR, 'api_bridge.py');
  * Execute QuestionBank Python CLI Bridge
  */
 function runBridge(action, args = {}) {
-    return new Promise((resolve, reject) => {
+    const cleaned = questionBankArguments(args);
+    if (!cleaned.ok) return Promise.resolve(cleaned);
+    return new Promise((resolve) => {
         const cliArgs = [BRIDGE_SCRIPT, action];
-        for (const [k, v] of Object.entries(args)) {
+        for (const [k, v] of Object.entries(cleaned.args)) {
             if (v !== undefined && v !== null && v !== '') {
                 cliArgs.push(`${k}=${v}`);
             }
@@ -69,15 +72,15 @@ class QuestionBankService {
     }
 
     /**
-     * Build an official CAPS test and memo
+     * Assemble a draft paper from the local question bank.
      */
-    async buildTest({ marks = 30, grade = 10, subject = 'Physical Sciences', topic, title, qtype } = {}) {
+    async buildTest({ marks, grade, subject, topic, title, qtype } = {}) {
         return runBridge('build', {
             marks,
             grade,
             subject,
             topic: topic || '',
-            title: title || `${subject} Grade ${grade} Test`,
+            title: title || 'Draft practice paper',
             qtype: qtype || ''
         });
     }

@@ -13,6 +13,8 @@ const { loadActor } = require('../services/familyAccess');
 const { parentCardView, paymentEntitlement } = require('../../../lib/reportRelease');
 const reportReleases = require('../services/reportReleaseService');
 const { termIndex, markPercentage, markBelongsToYear } = require('../../../lib/reportTerm');
+const { percentageFromMark } = require('../../../lib/academicEvidence');
+const { subjectEntries, recordedAverage, reportIsComplete, reportPeriod, reportLearnerRows, termResultLabel } = require('../../../lib/reportRecord');
 const { keepPreviousReport } = require('../services/reportVersionService');
 
 /**
@@ -125,16 +127,20 @@ async function learnerIdentitySelect() {
  */
 exports.getGradeTemplateMarks = async (req, res) => {
   try {
-    const grade = parseInt(req.query.grade || '10', 10);
-    let stream = (req.query.stream || 'Science').trim();
+    const period = reportPeriod(req.query);
+    const grade = period.grade;
+    let stream = String(req.query.stream || '').trim();
     if (stream.toLowerCase().includes('science')) stream = 'Science';
     else if (stream.toLowerCase().includes('commerce')) stream = 'Commerce';
     else if (stream.toLowerCase().includes('tourism')) stream = 'Tourism';
     else if (stream.toLowerCase().includes('general')) stream = 'General';
 
     const className = (req.query.class_name || req.query.class || req.query.className || '').trim();
-    const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
-    const academicYear = parseInt(req.query.academic_year || req.query.academicYear || '2026', 10);
+    const termNum = period.term;
+    const academicYear = period.academicYear;
+    if (!grade || !termNum || !academicYear) {
+      return res.status(400).json({ success: false, error: 'Choose a grade, a term, and an academic year.' });
+    }
     const rawSchoolId = resolveSchoolId(req);
     const schoolId = parseInt(rawSchoolId, 10);
     if (!Number.isInteger(schoolId)) {
@@ -192,7 +198,7 @@ exports.getGradeTemplateMarks = async (req, res) => {
     const learnersQuery = `
       SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects,
              ${identity.admission}, ${identity.idNumber}, ${identity.dob},
-             COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+             cl.name as class_name,
              p.email as parent_email, CONCAT(p.full_name, ' ', p.surname) as parent_name, p.phone as parent_phone
       FROM children c
       LEFT JOIN classes cl ON c.class_id = cl.id
@@ -298,18 +304,19 @@ exports.getGradeTemplateMarks = async (req, res) => {
           let examWeightSum = 0;
           let examTotalWeight = 0;
 
-          assessments = matchingMarks.map(m => {
-            const rawScore = Number(m.score) || 0;
-            const maxScore = Number(m.max_score) || 100;
-            const pct = m.percentage ? Number(m.percentage) : Math.round((rawScore / (maxScore || 100)) * 100);
+          assessments = matchingMarks.flatMap(m => {
+            const pct = percentageFromMark(m);
+            if (pct === null) return [];
+            const rawScore = Number(m.score);
+            const maxScore = Number(m.max_score);
             const w = Number(m.weight) || maxScore || 100;
             const aType = (m.assessment_type || m.assessment_name || '').toLowerCase();
             const isExam = aType.includes('exam') || aType.includes('examination');
 
             totalWeight += w;
             weightedSum += pct * w;
-            rawScoreSum += rawScore;
-            maxScoreSum += maxScore;
+            if (Number.isFinite(rawScore)) rawScoreSum += rawScore;
+            if (Number.isFinite(maxScore) && maxScore > 0) maxScoreSum += maxScore;
 
             if (isExam) {
               examWeightSum += pct * w;
@@ -338,8 +345,8 @@ exports.getGradeTemplateMarks = async (req, res) => {
             finalSubjectPct = sbaMark;
           } else if (examMark !== null) {
             finalSubjectPct = examMark;
-          } else {
-            finalSubjectPct = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : Math.round(assessments[0].percentage);
+            } else {
+            finalSubjectPct = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : null;
           }
         } else if (existingCard && Array.isArray(existingCard.marks_breakdown)) {
           // Fallback to previously saved card breakdown if admin already verified & saved
@@ -516,38 +523,46 @@ exports.getGradeTemplateMarks = async (req, res) => {
  */
 exports.saveGradeReportCardTemplate = async (req, res) => {
   try {
-    const { grade, term = 3, academic_year = 2026, school_id, learners_reports } = req.body;
+    const period = reportPeriod(req.body);
+    const learnerRows = reportLearnerRows(req.body);
     const targetSchoolId = resolveSchoolId(req);
-    const tNum = parseInt(term, 10);
-    const yr = parseInt(academic_year, 10);
+    const tNum = period.term;
+    const yr = period.academicYear;
+    const grade = period.grade;
 
-    if (!Array.isArray(learners_reports) || learners_reports.length === 0) {
+    if (!tNum || !yr) {
+      return res.status(400).json({ success: false, error: 'Choose a term and an academic year before saving the reports.' });
+    }
+    if (!Array.isArray(learnerRows) || learnerRows.length === 0) {
       return res.status(400).json({ success: false, error: 'No learner report records provided.' });
     }
 
     let savedCount = 0;
+    let incompleteCount = 0;
 
-    for (const item of learners_reports) {
+    for (const item of learnerRows) {
       const childId = parseInt(item.child_id, 10);
       if (!childId) continue;
 
-      const subjects = (item.subjects || []).map(s => {
-        const mark = Math.min(100, Math.max(0, Math.round(Number(s.mark) || 0)));
-        const caps = getCapsLevel(mark);
+      const subjects = subjectEntries(item.subjects).map((entry) => {
+        const caps = getCapsLevel(entry.mark);
         return {
-          subject: s.subject,
-          mark: mark,
+          subject: entry.subject,
+          mark: entry.mark,
           level: caps.level,
           rating: caps.rating,
           descriptor: caps.descriptor,
-          assessments: s.assessments || []
+          assessments: entry.assessments
         };
       });
 
-      const totalMarks = subjects.reduce((sum, s) => sum + s.mark, 0);
-      const avg = subjects.length > 0 ? Math.round(totalMarks / subjects.length) : 0;
+      const avg = recordedAverage(subjects);
       const caps = getCapsLevel(avg);
-      const promotionDecision = item.promotion_status || calculateSouthAfricanPromotion(subjects, avg);
+      const complete = reportIsComplete(subjects);
+      if (!complete) incompleteCount += 1;
+      const promotionDecision = complete
+        ? (item.promotion_status || calculateSouthAfricanPromotion(subjects, avg))
+        : null;
 
       const daysPresent = parseInt(item.attendance?.days_present ?? item.days_present ?? 0, 10);
       const daysAbsent = parseInt(item.attendance?.days_absent ?? item.days_absent ?? 0, 10);
@@ -557,23 +572,11 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
       // Compute or preserve AI Advisory (Option A)
       let aiAdvisory = item.ai_advisory || null;
       if (!aiAdvisory && subjects.length > 0) {
-        const scoresMap = {};
-        subjects.forEach(s => { scoresMap[(s.subject || '').toLowerCase()] = s.mark; });
-        const aiPayload = {
-          math_score: scoresMap['mathematics'] || scoresMap['maths'] || scoresMap['math'] || avg || 75,
-          physics_score: scoresMap['physical sciences'] || scoresMap['physics'] || avg || 70,
-          chemistry_score: scoresMap['chemistry'] || scoresMap['physical sciences'] || avg || 70,
-          biology_score: scoresMap['life sciences'] || scoresMap['biology'] || avg || 72,
-          english_score: scoresMap['english fal'] || scoresMap['english'] || scoresMap['home language'] || avg || 75,
-          history_score: scoresMap['history'] || scoresMap['social sciences'] || avg || 70,
-          geography_score: scoresMap['geography'] || avg || 70,
-          absence_days: daysAbsent,
-          weekly_self_study_hours: 18,
-          extracurricular_activities: 1
-        };
-        try {
-          aiAdvisory = await aiAdvisorService.predictStudent(aiPayload);
-        } catch (_) {}
+        const { observedMarkSummary } = require('../../../lib/academicEvidence');
+        aiAdvisory = observedMarkSummary(subjects.map((entry) => ({
+          subject: entry.subject,
+          score: entry.mark
+        })));
       }
 
       // Check if existing
@@ -617,9 +620,9 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
             daysAbsent,
             totalDays,
             attRate,
-            item.teacher_comment || 'Satisfactory academic progress demonstrated.',
-            item.principal_comment || 'Promoted with commendation.',
-            item.principal_signature || 'Dr. T. Makola (Signed)',
+            item.teacher_comment || null,
+            item.principal_comment || null,
+            item.principal_signature || null,
             aiAdvisory ? JSON.stringify(aiAdvisory) : null,
             existRes.rows[0].id
           ]
@@ -637,7 +640,7 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
           [
             targetSchoolId,
             childId,
-            grade || item.grade || 10,
+            grade || item.grade || null,
             item.class_name || null,
             item.stream || null,
             tNum,
@@ -650,9 +653,9 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
             daysAbsent,
             totalDays,
             attRate,
-            item.teacher_comment || 'Satisfactory academic progress demonstrated.',
-            item.principal_comment || 'Promoted with commendation.',
-            item.principal_signature || 'Dr. T. Makola (Signed)',
+            item.teacher_comment || null,
+            item.principal_comment || null,
+            item.principal_signature || null,
             aiAdvisory ? JSON.stringify(aiAdvisory) : null
           ]
         );
@@ -662,8 +665,11 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Successfully verified and compiled ${savedCount} official CAPS report cards in database. Ready for publication.`,
-      compiled_count: savedCount
+      message: incompleteCount > 0
+        ? `Saved ${savedCount} report card(s). ${incompleteCount} still have a blank subject, so no promotion was stored for those.`
+        : `Saved ${savedCount} report card(s).`,
+      compiled_count: savedCount,
+      incomplete_count: incompleteCount
     });
 
   } catch (err) {
@@ -678,10 +684,14 @@ exports.saveGradeReportCardTemplate = async (req, res) => {
  */
 exports.publishGradeReportCards = async (req, res) => {
   try {
-    const { grade = 10, term = 3, academic_year = 2026 } = req.body;
+    const period = reportPeriod(req.body);
     const targetSchoolId = resolveSchoolId(req);
-    const tNum = parseInt(term, 10);
-    const yr = parseInt(academic_year, 10);
+    const tNum = period.term;
+    const yr = period.academicYear;
+    const grade = period.grade;
+    if (!tNum || !yr || grade === null) {
+      return res.status(400).json({ error: 'Choose a grade, a term, and an academic year before publishing.' });
+    }
     const className = String(req.body.class_name || req.body.class || '').trim();
     const readiness = await loadReportReadiness({
       schoolId: targetSchoolId,
@@ -873,11 +883,11 @@ async function denyUnassignedTeacher(req, res, childId) {
   return false;
 }
 
-async function buildFullReportCardData(schoolId, childId, academicYear = 2026, targetTerm = 3) {
-  const tNum = termIndex(targetTerm) || 3;
-  const yr = parseInt(String(academicYear || '2026'), 10) || 2026;
+async function buildFullReportCardData(schoolId, childId, academicYear, targetTerm) {
+  const tNum = termIndex(targetTerm);
+  const yr = parseInt(String(academicYear || ''), 10);
   const targetChildId = parseInt(childId, 10);
-  if (!targetChildId) return null;
+  if (!targetChildId || !tNum || !Number.isInteger(yr) || yr < 2000) return null;
 
   // 1. Fetch Child and School Details
   const identity = await learnerIdentitySelect();
@@ -886,7 +896,7 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
             ${identity.admission}, ${identity.idNumber}, ${identity.dob},
             c.grade, c.stream, c.subjects,
             c.home_language, c.school_id,
-            COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name,
+            cl.name as class_name,
             u.id_number as user_id_number, u.dob as user_dob,
             p.email as parent_email, CONCAT(p.full_name, ' ', p.surname) as parent_name,
             p.phone as parent_phone
@@ -1138,24 +1148,28 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
       : null;
   }
 
-  // Determine Progression / Outcomes
+  // Terms 1 to 3 use Achieved or Not Achieved. Term 4 uses Promoted or Not Promoted.
+  // A term stays blank until every subject on the report has a mark for that term.
   const outcomes = {};
-  for (const tk of ['term1', 'term2', 'term3', 'term4']) {
-    const avg = termAverages[tk];
-    outcomes[tk] = avg !== null ? (avg >= 40 ? 'Achieved' : 'Not Achieved') : '-';
-  }
+  ['term1', 'term2', 'term3', 'term4'].forEach((key, index) => {
+    const complete = multiTermSubjects.length > 0 && multiTermSubjects.every((row) => {
+      const cell = row[key];
+      return cell && Number.isFinite(Number(cell.mark));
+    });
+    outcomes[key] = termResultLabel(index + 1, termAverages[key], complete);
+  });
   const finalAvg = termAverages.final;
   outcomes.final = existingRc?.promotion_status || (finalAvg !== null ? (finalAvg >= 50 ? 'Promoted' : (finalAvg >= 40 ? 'Progressed' : 'Not Promoted')) : '-');
 
   // Dates
   const repSettings = school.report_settings || {};
-  const closingDate = existingRc?.closing_date || repSettings.closing_date || '2026/09/23';
-  const reopeningDate = existingRc?.reopening_date || repSettings.reopening_date || '2026/10/06';
+  const closingDate = existingRc?.closing_date || repSettings.closing_date || null;
+  const reopeningDate = existingRc?.reopening_date || repSettings.reopening_date || null;
   const issueDate = existingRc?.issue_date || new Date().toISOString().substring(0, 10).replace(/-/g, '/');
 
   // Teacher & Principal comments
-  const teacherComment = existingRc?.teacher_comment || (finalAvg !== null && finalAvg >= 70 ? 'Outstanding academic commitment demonstrated this term.' : (finalAvg !== null && finalAvg >= 50 ? 'Satisfactory academic progress shown. Continue working consistently.' : 'Needs focused academic intervention and regular revision.'));
-  const principalComment = existingRc?.principal_comment || (outcomes.final === 'Promoted' ? 'Promoted with commendation.' : 'Verified by School Administration.');
+  const teacherComment = existingRc?.teacher_comment || null;
+  const principalComment = existingRc?.principal_comment || null;
 
   const cleanSurname = (child.surname || '').trim().toUpperCase();
   const cleanFirst = (child.full_name || '').trim().toUpperCase();
@@ -1184,9 +1198,9 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
       id_number: child.id_number || child.user_id_number || '',
       dob: child.dob || child.user_dob || null,
       grade: child.grade,
-      class_name: child.class_name || `${child.grade}A`,
-      stream: child.stream || 'General',
-      home_language: child.home_language || 'Sepedi'
+      class_name: child.class_name || null,
+      stream: child.stream || null,
+      home_language: child.home_language || null
     },
     meta: {
       academic_year: yr,
@@ -1207,11 +1221,11 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
       averages: termAverages,
       outcome: outcomes,
       attendance: {
-        term1_absent: attMap.term1 ?? 0,
-        term2_absent: attMap.term2 ?? 0,
-        term3_absent: attMap.term3 ?? 0,
-        term4_absent: attMap.term4 ?? 0,
-        total_absent: totalAbsent
+        term1_absent: attMap.term1 ?? null,
+        term2_absent: attMap.term2 ?? null,
+        term3_absent: attMap.term3 ?? null,
+        term4_absent: attMap.term4 ?? null,
+        total_absent: attRes.rows.length > 0 ? totalAbsent : null
       }
     },
     remarks: {
@@ -1220,10 +1234,10 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
       general_remarks: existingRc?.general_remarks || teacherComment
     },
     signatures: {
-      educator_name: 'Class Educator',
-      hod_name: 'Department Head',
-      principal_name: school.principal_name || 'Principal',
-      parent_name: child.parent_name || 'Parent / Guardian'
+      educator_name: child.class_teacher_name || null,
+      hod_name: null,
+      principal_name: school.principal_name || null,
+      parent_name: child.parent_name || null
     },
     status: existingRc?.status || (existingRc?.is_published ? 'published' : 'draft'),
     is_published: Boolean(existingRc?.is_published),
@@ -1237,12 +1251,16 @@ async function buildFullReportCardData(schoolId, childId, academicYear = 2026, t
 exports.getOfficialReportCardView = async (req, res) => {
   try {
     const childId = parseInt(req.query.childId || req.query.child_id || req.params?.childId, 10);
-    const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
-    const academicYear = parseInt(req.query.academic_year || req.query.academicYear || '2026', 10);
+    const period = reportPeriod(req.query);
+    const termNum = period.term;
+    const academicYear = period.academicYear;
     const userSchoolId = resolveSchoolId(req);
 
     if (!childId) {
       return res.status(400).json({ error: 'Child ID is required.' });
+    }
+    if (!termNum || !academicYear) {
+      return res.status(400).json({ error: 'Choose a term and an academic year before opening the report.' });
     }
 
     if (!(await assertChildAccess(req, res, childId))) return;
@@ -1306,16 +1324,18 @@ exports.getOfficialReportCardView = async (req, res) => {
       learner: reportData.learner,
       subjects: formattedSubjects,
       attendance: {
-        days_present: 0,
-        days_absent: reportData.summary?.attendance?.total_absent ?? 0,
-        total_days: 0,
+        days_present: null,
+        days_absent: reportData.summary?.attendance?.total_absent ?? null,
+        total_days: null,
         attendance_percentage: null
       },
       summary: reportData.summary,
       overall_average: overallAvg,
       overall_level: overallCaps.level,
       overall_rating: overallCaps.rating,
-      promotion_status: reportData.summary?.outcome?.final || 'PROMOTED',
+      promotion_status: reportData.summary?.outcome?.final && reportData.summary.outcome.final !== '-'
+        ? reportData.summary.outcome.final
+        : null,
       term: `Term ${termNum}`,
       academic_year: academicYear,
       ai_advisory: reportData.ai_advisory,
@@ -1334,12 +1354,16 @@ exports.getOfficialReportCardView = async (req, res) => {
 exports.downloadLearnerReportPdf = async (req, res) => {
   try {
     const childId = parseInt(req.query.childId || req.query.child_id || req.params?.childId, 10);
-    const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
-    const academicYear = parseInt(req.query.academic_year || req.query.academicYear || '2026', 10);
+    const period = reportPeriod(req.query);
+    const termNum = period.term;
+    const academicYear = period.academicYear;
     const userSchoolId = resolveSchoolId(req);
 
     if (!childId) {
       return res.status(400).json({ error: 'Child ID is required.' });
+    }
+    if (!termNum || !academicYear) {
+      return res.status(400).json({ error: 'Choose a term and an academic year before downloading the report.' });
     }
 
     if (!(await assertChildAccess(req, res, childId))) return;
@@ -1382,10 +1406,14 @@ exports.downloadLearnerReportPdf = async (req, res) => {
  */
 exports.downloadBatchReportCardsZip = async (req, res) => {
   try {
-    const grade = parseInt(req.query.grade || '10', 10);
+    const period = reportPeriod(req.query);
+    const grade = period.grade;
     const className = (req.query.class_name || req.query.class || req.query.className || '').trim();
-    const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
-    const academicYear = parseInt(req.query.academic_year || req.query.academicYear || '2026', 10);
+    const termNum = period.term;
+    const academicYear = period.academicYear;
+    if (!grade || !termNum || !academicYear) {
+      return res.status(400).json({ error: 'Choose a grade, a term, and an academic year before downloading the reports.' });
+    }
     const schoolId = parseInt(resolveSchoolId(req), 10);
 
     if (!Number.isInteger(schoolId)) {
@@ -1445,10 +1473,15 @@ exports.downloadBatchReportCardsZip = async (req, res) => {
  */
 exports.approveGradeReportCards = async (req, res) => {
   try {
-    const { grade = 10, term = 3, academic_year = 2026, class_name } = req.body;
+    const period = reportPeriod(req.body);
+    const class_name = req.body.class_name;
     const targetSchoolId = resolveSchoolId(req);
-    const tNum = parseInt(term, 10);
-    const yr = parseInt(academic_year, 10);
+    const grade = period.grade;
+    const tNum = period.term;
+    const yr = period.academicYear;
+    if (!grade || !tNum || !yr) {
+      return res.status(400).json({ success: false, error: 'Choose a grade, a term, and an academic year before approving.' });
+    }
 
     let query = `
       UPDATE report_cards
@@ -1579,8 +1612,12 @@ exports.batchCompileAndEmailReportCards = exports.publishGradeReportCards;
  */
 exports.getTeacherSubmissionsOverview = async (req, res) => {
   try {
-    const grade = parseInt(req.query.grade || '10', 10);
-    const termNum = parseInt(String(req.query.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
+    const period = reportPeriod(req.query);
+    const grade = period.grade;
+    const termNum = period.term;
+    if (!grade || !termNum) {
+      return res.status(400).json({ success: false, error: 'Choose a grade and a term.' });
+    }
     const className = (req.query.class_name || req.query.class || '').trim();
     const stream = (req.query.stream || '').trim();
     const rawSchoolId = resolveSchoolId(req);
@@ -1709,11 +1746,15 @@ exports.getTeacherSubmissionsOverview = async (req, res) => {
  */
 exports.transferTeacherMarksToTemplate = async (req, res) => {
   try {
-    const grade = parseInt(req.body.grade || '10', 10);
-    const termNum = parseInt(String(req.body.term || '3').replace(/[^0-9]/g, ''), 10) || 3;
+    const period = reportPeriod(req.body);
+    const grade = period.grade;
+    const termNum = period.term;
     const className = (req.body.class_name || req.body.class || req.body.className || '').trim();
     const stream = (req.body.stream || '').trim();
-    const academicYear = parseInt(req.body.academic_year || req.body.academicYear || '2026', 10);
+    const academicYear = period.academicYear;
+    if (!grade || !termNum || !academicYear) {
+      return res.status(400).json({ success: false, error: 'Choose a grade, a term, and an academic year before transferring marks.' });
+    }
     const rawSchoolId = resolveSchoolId(req);
     const schoolId = parseInt(rawSchoolId, 10);
     if (!Number.isInteger(schoolId)) {
@@ -1730,7 +1771,7 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
 
     const { rows: learners } = await db.query(
       `SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.subjects,
-              COALESCE(cl.name, CONCAT(c.grade, 'A')) as class_name
+              cl.name as class_name
        FROM children c
        LEFT JOIN classes cl ON c.class_id = cl.id
        WHERE (c.school_id = $1 OR $1 IS NULL) AND c.grade = $2
@@ -1811,18 +1852,19 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
           let rawScoreSum = 0;
           let maxScoreSum = 0;
 
-          const detailedAssessments = matching.map(m => {
-            const rawScore = Number(m.score) || 0;
-            const maxScore = Number(m.max_score) || 100;
-            const pct = m.percentage ? Number(m.percentage) : Math.round((rawScore / (maxScore || 100)) * 100);
-            const w = Number(m.weight) || maxScore || 100;
+          const detailedAssessments = matching.flatMap(m => {
+            const pct = percentageFromMark(m);
+            if (pct === null) return [];
+            const rawScore = Number(m.score);
+            const maxScore = Number(m.max_score);
+            const w = Number(m.weight) || (Number.isFinite(maxScore) && maxScore > 0 ? maxScore : 100);
             const aType = (m.assessment_type || m.assessment_name || '').toLowerCase();
             const isExam = aType.includes('exam') || aType.includes('examination');
 
             totalWeight += w;
             weightedSum += pct * w;
-            rawScoreSum += rawScore;
-            maxScoreSum += maxScore;
+            if (Number.isFinite(rawScore)) rawScoreSum += rawScore;
+            if (Number.isFinite(maxScore) && maxScore > 0) maxScoreSum += maxScore;
 
             if (isExam) {
               examWeightSum += pct * w;
@@ -1842,7 +1884,27 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
             };
           });
 
-          const finalSubjectPct = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : Math.round(detailedAssessments[0].percentage);
+          const finalSubjectPct = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : null;
+          if (finalSubjectPct === null) {
+            subjectBreakdown.push({
+              subject: sName,
+              code: sName.substring(0, 4).toUpperCase(),
+              mark_display: '-',
+              raw_score: null,
+              max_score: null,
+              mark: null,
+              percentage: null,
+              sba_mark: null,
+              exam_mark: null,
+              level: '-',
+              rating: 'Pending Upload',
+              descriptor: 'Teacher Marks Not Uploaded',
+              badge: 'amber',
+              is_pending: true,
+              assessments: []
+            });
+            continue;
+          }
           const sbaMark = sbaTotalWeight > 0 ? Math.round(sbaWeightSum / sbaTotalWeight) : finalSubjectPct;
           const examMark = examTotalWeight > 0 ? Math.round(examWeightSum / examTotalWeight) : null;
           const markDisplay = maxScoreSum > 0 ? `${rawScoreSum} / ${maxScoreSum}` : `${finalSubjectPct}%`;
@@ -1891,29 +1953,18 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
       const hasAnyMarks = gradedSubs.length > 0;
       const overallAvg = hasAnyMarks ? Math.round(gradedSubs.reduce((sum, s) => sum + s.mark, 0) / gradedSubs.length) : null;
       const overallCaps = hasAnyMarks ? getCapsLevel(overallAvg) : { level: '-', rating: 'Pending' };
-      const promotionDecision = hasAnyMarks ? calculateSouthAfricanPromotion(gradedSubs, overallAvg) : 'PENDING TEACHER MARKS';
+      const promotionDecision = subjectBreakdown.length > 0 && subjectBreakdown.every((entry) => entry.mark !== null && !entry.is_pending)
+        ? calculateSouthAfricanPromotion(gradedSubs, overallAvg)
+        : 'PENDING TEACHER MARKS';
 
       // 3. Run AI Advisor if learner has verified marks
       let aiAdvisory = null;
       if (hasAnyMarks) {
-        const aiPayload = {
-          grade: l.grade || grade,
-          math_score: scoresForAi['mathematics'] || scoresForAi['maths'] || scoresForAi['math'] || overallAvg,
-          physics_score: scoresForAi['physical sciences'] || scoresForAi['physics'] || scoresForAi['natural sciences'] || overallAvg,
-          chemistry_score: scoresForAi['chemistry'] || scoresForAi['physical sciences'] || overallAvg,
-          biology_score: scoresForAi['life sciences'] || scoresForAi['biology'] || overallAvg,
-          english_score: scoresForAi['english fal'] || scoresForAi['english'] || scoresForAi['home language'] || overallAvg,
-          history_score: scoresForAi['history'] || scoresForAi['social sciences'] || overallAvg,
-          geography_score: scoresForAi['geography'] || overallAvg,
-          ems_score: scoresForAi['ems'] || scoresForAi['economic and management sciences'] || scoresForAi['accounting'] || overallAvg,
-          absence_days: daysAbsent,
-          weekly_self_study_hours: 15,
-          extracurricular_activities: 1
-        };
-
-        try {
-          aiAdvisory = await aiAdvisorService.predictStudent(aiPayload);
-        } catch (_) {}
+        const { observedMarkSummary } = require('../../../lib/academicEvidence');
+        aiAdvisory = observedMarkSummary(gradedSubs.map((entry) => ({
+          subject: entry.subject,
+          score: entry.mark
+        })));
       }
 
       // Upsert into report_cards table
@@ -1982,9 +2033,9 @@ exports.transferTeacherMarksToTemplate = async (req, res) => {
             daysAbsent,
             totalDays,
             attPct,
-            'Teacher marks transferred to official template.',
-            'Awaiting final end-of-term certification.',
-            'Dr. T. Makola (Signed)',
+            null,
+            null,
+            null,
             aiAdvisory ? JSON.stringify(aiAdvisory) : null
           ]
         );

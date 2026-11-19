@@ -76,6 +76,9 @@ interface GelezaEarlyWarningRadarProps {
 export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = ({ onNavigateTab }) => {
   const [learners, setLearners] = useState<LearnerRadarItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string>('');
+  const [auditTerm, setAuditTerm] = useState<string>('');
+  const [auditYear, setAuditYear] = useState<string>('');
   const [evaluating, setEvaluating] = useState<boolean>(false);
   const [selectedGrade, setSelectedGrade] = useState<string>('all');
   const [activeTierFilter, setActiveTierFilter] = useState<'all' | 'priority' | 'core' | 'high' | 'unassessed'>('all');
@@ -125,9 +128,13 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
           ...res.data.summary.unassessed
         ];
         setLearners(combined);
+        setLoadError('');
+      } else {
+        setLoadError('The early-warning list did not load.');
       }
     } catch (err) {
-      console.warn('Could not fetch live early warning data, using cached state:', err);
+      console.warn('Could not fetch live early warning data:', err);
+      setLoadError('The early-warning list did not load.');
     } finally {
       setLoading(false);
     }
@@ -156,11 +163,15 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
   // 3. One-Click Batch Evaluate Class / Grade
   const handleEvaluateCohort = async () => {
     try {
+      if (!auditTerm || !auditYear) {
+        setLoadError('Choose a term and an academic year before refreshing the roster.');
+        return;
+      }
       setEvaluating(true);
       const schoolId = readAuthValue('active_school_id', [localStorage, sessionStorage]);
       const payload: any = {
-        academic_year: 2026,
-        term: 1
+        academic_year: Number(auditYear),
+        term: Number(auditTerm)
       };
       if (schoolId) payload.school_id = parseInt(schoolId, 10);
       if (selectedGrade !== 'all') {
@@ -171,6 +182,7 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
       await fetchRadarData();
     } catch (err) {
       console.error('Batch evaluation error:', err);
+      setLoadError('The roster refresh did not finish. The list below is unchanged.');
     } finally {
       setEvaluating(false);
     }
@@ -178,32 +190,32 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
 
   // 4. Run Simulation
   const handleRunSimulation = async () => {
-    if (!inspectingLearner) return;
+    if (!inspectingLearner || inspectingLearner.predicted_score == null) {
+      setSimResult(null);
+      return;
+    }
     try {
       setSimulating(true);
       const baseline = {
-        Hours_Studied: 14,
-        Attendance: 75,
-        Previous_Scores: inspectingLearner.predicted_score || 65,
-        Access_to_Resources: 'Medium',
-        Parental_Involvement: 'Medium',
-        Tutoring_Sessions: 0
+        Hours_Studied: simulationData.hours,
+        Attendance: simulationData.attendance,
+        Previous_Scores: inspectingLearner.predicted_score
       };
       const adjustments = {
         Hours_Studied: simulationData.hours,
         Attendance: simulationData.attendance,
-        Previous_Scores: inspectingLearner.predicted_score || 65,
-        Access_to_Resources: 'Medium',
-        Parental_Involvement: 'Medium',
-        Tutoring_Sessions: simulationData.tutoring
+        Previous_Scores: inspectingLearner.predicted_score
       };
 
       const res = await api.post('/api/ai-advisor/geleza/simulate', { baseline, adjustments });
-      if (res.data?.success) {
+      if (res.data?.prediction_available !== false && res.data?.simulated?.predicted_score != null) {
         setSimResult(res.data);
+      } else {
+        setSimResult(null);
       }
     } catch (err) {
       console.error('Simulation error:', err);
+      setSimResult(null);
     } finally {
       setSimulating(false);
     }
@@ -307,6 +319,26 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
               <span>Test Single Learner</span>
             </button>
 
+            <select
+              value={auditTerm}
+              onChange={(e) => setAuditTerm(e.target.value)}
+              className="px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm"
+              aria-label="Audit term"
+            >
+              <option value="">Term</option>
+              <option value="1">Term 1</option>
+              <option value="2">Term 2</option>
+              <option value="3">Term 3</option>
+              <option value="4">Term 4</option>
+            </select>
+            <input
+              value={auditYear}
+              onChange={(e) => setAuditYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="Year"
+              inputMode="numeric"
+              className="w-24 px-3 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 text-sm"
+              aria-label="Academic year"
+            />
             <button
               onClick={handleEvaluateCohort}
               disabled={evaluating}
@@ -515,7 +547,18 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
         {loading ? (
           <div className="py-20 text-center space-y-3">
             <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin mx-auto" />
-            <p className="text-slate-400 text-sm">Querying academic factors & computing predictions...</p>
+            <p className="text-slate-400 text-sm">Loading recorded early-warning rows...</p>
+          </div>
+        ) : loadError ? (
+          <div className="py-16 text-center space-y-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-transparent p-8">
+            <p className="text-slate-700 dark:text-slate-200 text-sm">{loadError}</p>
+            <button
+              onClick={fetchRadarData}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Try again
+            </button>
           </div>
         ) : filteredLearners.length === 0 ? (
           <div className="py-16 text-center space-y-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-transparent p-8">
@@ -690,6 +733,7 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
                   <p className="text-xs text-slate-400">
                     {inspectingLearner.full_name} {inspectingLearner.surname} • Grade {inspectingLearner.grade}
                   </p>
+                  <p className="text-xs text-slate-500">The sliders are trial numbers. They are not this learner's recorded study hours or attendance.</p>
                 </div>
               </div>
               <button
@@ -705,7 +749,7 @@ export const GelezaEarlyWarningRadar: React.FC<GelezaEarlyWarningRadarProps> = (
               <div>
                 <span className="text-[11px] text-slate-400 font-semibold uppercase">Current Projected Mark</span>
                 <div className="text-2xl font-bold text-white mt-1">
-                  {inspectingLearner.predicted_score || 65}%
+                  {inspectingLearner.predicted_score == null ? 'Not available' : `${inspectingLearner.predicted_score}%`}
                 </div>
                 <div className="text-xs text-slate-400 mt-0.5">
                   {inspectingLearner.risk_tier_label || 'Core Progress'}

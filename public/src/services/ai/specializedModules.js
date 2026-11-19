@@ -1,4 +1,5 @@
 const aiProvider = require('./aiProvider');
+const { assessmentDraft } = require('../../../../lib/assessmentDraft');
 const ragService = require('./ragService');
 const db = require('../../../../db/db');
 
@@ -18,15 +19,15 @@ class SpecializedAiModules {
 
         const contextSnippet = knowledgeItems.map(k => k.snippet).join('\n---\n');
 
-        const prompt = `You are the Geleza AI CAPS Educational Tutor.
+        const prompt = `You are a study tutor. This quiz is a draft for practice.
 Subject: ${subject}
 Grade: ${grade}
 Topic: ${topic}
 Difficulty: ${difficulty}
 Total Questions: ${questionCount}
 
-APPROVED DBE CAPS CURRICULUM CONTEXT:
-${contextSnippet || 'Use South Africa DBE CAPS standards for this topic.'}
+Retrieved notes:
+${contextSnippet || 'No curriculum note was retrieved. Do not claim this quiz is CAPS-approved or officially aligned.'}
 
 Generate a structured practice quiz in valid JSON format only (no markdown code blocks, just raw JSON).
 Output schema:
@@ -49,22 +50,25 @@ Output schema:
   ]
 }`;
 
-        const res = await aiProvider.generateContent({
-            prompt,
-            temperature: 0.2
-        });
-
         try {
+            const res = await aiProvider.generateContent({
+                prompt,
+                temperature: 0.2
+            });
             const cleanJson = res.text.replace(/```json/g, '').replace(/```/g, '').trim();
-            return JSON.parse(cleanJson);
+            const quiz = JSON.parse(cleanJson);
+            return { ...quiz, status: 'draft', official: false, caps_verified: Boolean(contextSnippet) };
         } catch (e) {
-            // Fallback structured quiz if model returns text
             return {
-                quizTitle: `${subject} Grade ${grade}: ${topic} Practice`,
+                status: 'draft',
+                official: false,
+                caps_verified: false,
+                provider_status: 'unavailable',
                 subject,
                 grade,
                 topic,
-                rawExplanation: res.text
+                questions: null,
+                message: 'A practice quiz was not produced. Nothing was saved.'
             };
         }
     }
@@ -95,7 +99,7 @@ Provide a constructive explanation:
      * Generates a formal CAPS-aligned lesson plan
      */
     async generateLessonPlan({ subject, grade, topic, term = 1, durationMinutes = 60 }) {
-        const prompt = `You are the Geleza Teacher Copilot. Draft an official CAPS lesson plan for South African educators.
+        const prompt = `You are helping one teacher draft a lesson. Do not claim it is CAPS-approved or officially aligned.
 Subject: ${subject}
 Grade: ${grade}
 Topic: ${topic}
@@ -103,7 +107,7 @@ Term: Term ${term}
 Lesson Duration: ${durationMinutes} minutes
 
 Structure your lesson plan with clear markdown headings:
-1. **CAPS Specific Aims & Learning Outcomes**
+1. **Learning aims for this draft**
 2. **Prior Knowledge & Concepts Required**
 3. **Resources & Equipment Needed**
 4. **Lesson Phases & Time Allocation**:
@@ -115,13 +119,32 @@ Structure your lesson plan with clear markdown headings:
 5. **Differentiated Teaching Strategies** (Support for struggling learners vs Extension for advanced learners)
 6. **Formative Assessment Checkpoints & Informal Reflection Notes**`;
 
-        const res = await aiProvider.generateContent({ prompt, temperature: 0.3 });
-        return {
-            subject,
-            grade,
-            topic,
-            lessonPlanMarkdown: res.text
-        };
+        try {
+            const res = await aiProvider.generateContent({ prompt, temperature: 0.3 });
+            return {
+                status: 'draft',
+                official: false,
+                caps_verified: false,
+                subject,
+                grade,
+                topic,
+                durationMinutes,
+                lessonPlanMarkdown: res.text
+            };
+        } catch (err) {
+            return {
+                status: 'draft',
+                official: false,
+                caps_verified: false,
+                provider_status: 'unavailable',
+                subject,
+                grade,
+                topic,
+                durationMinutes,
+                lessonPlanMarkdown: null,
+                message: 'The lesson draft was not produced. The subject, grade, and topic were kept.'
+            };
+        }
     }
 
     /**
@@ -138,17 +161,17 @@ Structure your lesson plan with clear markdown headings:
 
         const contextSnippet = knowledgeItems.map(k => k.snippet).join('\n---\n');
 
-        const prompt = `You are the Geleza Teacher Copilot. Generate a complete official test paper and marking memorandum.
+        const prompt = `You are helping one teacher draft a test and a marking guide. Do not claim it is an official or CAPS-approved paper. Put every question mark in square brackets, such as [2]. The bracketed marks must add up to ${totalMarks}.
 Subject: ${subject}
 Grade: ${grade}
 Topic: ${topic}
 Total Marks: ${totalMarks} Marks
 
-APPROVED CAPS CURRICULUM CONTEXT:
-${contextSnippet}
+Retrieved notes:
+${contextSnippet || 'No curriculum note was retrieved. Do not claim this paper follows an official curriculum.'}
 
 Requirements:
-- Balance questions according to DBE CAPS cognitive levels:
+- Balance questions across recall, routine procedure, complex procedure, and problem solving:
   * Level 1: Knowledge / Recall (~20%)
   * Level 2: Routine Procedure (~35%)
   * Level 3: Complex Procedure (~30%)
@@ -156,14 +179,28 @@ Requirements:
 - Mark allocations on every question (e.g., [2], [4], [5]).
 - Complete **SECTION B: MARKING MEMORANDUM & GUIDELINES** with step-by-step mark breakdown (e.g., ✓ Formula, ✓ Substitution, ✓ Final SI unit).`;
 
-        const res = await aiProvider.generateContent({ prompt, temperature: 0.3 });
-        return {
-            subject,
-            grade,
-            topic,
-            totalMarks,
-            assessmentMarkdown: res.text
-        };
+        try {
+            const res = await aiProvider.generateContent({ prompt, temperature: 0.3 });
+            return {
+                subject,
+                grade,
+                topic,
+                totalMarks,
+                assessmentMarkdown: res.text,
+                ...assessmentDraft({ requestedTotal: totalMarks, text: res.text })
+            };
+        } catch (err) {
+            return {
+                ...assessmentDraft({ requestedTotal: totalMarks, text: '' }),
+                provider_status: 'unavailable',
+                subject,
+                grade,
+                topic,
+                totalMarks,
+                assessmentMarkdown: null,
+                message: 'The paper was not produced. Nothing was published.'
+            };
+        }
     }
 
     /**
@@ -188,13 +225,17 @@ Write a polite, warm, and constructive message suitable for school messaging or 
      * MODULE 5: GELEZA INSIGHT
      * Computes deterministic class performance analytics
      */
-    async getClassAnalytics({ classId }) {
+    async getClassAnalytics({ classId, schoolId }) {
+        const school = Number(schoolId);
+        if (!Number.isInteger(school) || school <= 0) {
+            return { error: 'Class not found', official_result: false };
+        }
         const learnersRes = await db.query(
             `SELECT c.id, c.full_name, c.surname, c.grade, cl.name as class_name 
              FROM children c
              JOIN classes cl ON c.class_id = cl.id
-             WHERE c.class_id = $1`,
-            [classId]
+             WHERE c.class_id = $1 AND cl.school_id = $2`,
+            [classId, school]
         );
 
         if (learnersRes.rows.length === 0) {
@@ -221,30 +262,32 @@ Write a polite, warm, and constructive message suitable for school messaging or 
         let failCount = 0;
 
         marksRes.rows.forEach(r => {
-            const sc = parseFloat(r.score) || 0;
-            const mx = parseFloat(r.total_marks) || 100;
+            const sc = Number(r.score);
+            const mx = Number(r.total_marks);
+            if (!Number.isFinite(sc) || !Number.isFinite(mx) || mx <= 0) return;
             totalScore += sc;
             totalMax += mx;
-            const pct = mx > 0 ? (sc / mx) * 100 : 0;
+            const pct = (sc / mx) * 100;
             if (pct > highestPct) highestPct = pct;
             if (pct < lowestPct) lowestPct = pct;
             if (pct >= 50) passCount++;
             else failCount++;
         });
 
-        const totalTasks = marksRes.rows.length;
-        const classAverage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
-        const passRate = totalTasks > 0 ? Math.round((passCount / totalTasks) * 100) : 100;
+        const totalTasks = passCount + failCount;
+        const classAverage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : null;
+        const passRate = totalTasks > 0 ? Math.round((passCount / totalTasks) * 100) : null;
 
         return {
             className: learnersRes.rows[0].class_name,
             totalEnrolledLearners: learnersRes.rows.length,
             totalGradedSubmissions: totalTasks,
-            classAverage: `${classAverage}%`,
-            highestScore: `${Math.round(highestPct)}%`,
-            lowestScore: totalTasks > 0 ? `${Math.round(lowestPct)}%` : '0%',
-            passRate: `${passRate}%`,
-            academicHealthStatus: classAverage >= 60 ? 'Healthy Performance' : 'Requires Intervention'
+            classAverage: classAverage === null ? null : `${classAverage}%`,
+            highestScore: totalTasks > 0 ? `${Math.round(highestPct)}%` : null,
+            lowestScore: totalTasks > 0 ? `${Math.round(lowestPct)}%` : null,
+            passRate: passRate === null ? null : `${passRate}%`,
+            academicHealthStatus: classAverage === null ? 'Not enough recorded marks' : (classAverage >= 60 ? 'Recorded average is 60% or above' : 'Recorded average is below 60%'),
+            official_result: false
         };
     }
 }

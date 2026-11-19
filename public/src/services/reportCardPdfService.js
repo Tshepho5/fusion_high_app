@@ -1,3 +1,4 @@
+const { termResultLabel } = require('../../../lib/reportRecord');
 const PDFDocument = require('pdfkit');
 const JSZip = require('jszip');
 const path = require('path');
@@ -311,7 +312,13 @@ function generateLearnerReportCardPdf(reportData) {
 
       let outX = tableX + subColWidth;
       for (const tk of termsArr) {
-        const resVal = sumOutcomes[tk] || (sumAves[tk] ? (Number(sumAves[tk]) >= 40 ? 'Achieved' : 'Not Achieved') : '-');
+        const termNumber = termsArr.indexOf(tk) + 1;
+        const subjects = reportData.subjects || [];
+        const complete = subjects.length > 0 && subjects.every((row) => row[tk] && Number.isFinite(Number(row[tk].mark)));
+        const supplied = sumOutcomes[tk];
+        const resVal = supplied && supplied !== '-'
+          ? supplied
+          : termResultLabel(termNumber, sumAves[tk], complete);
         doc.rect(outX, currentY, termGroupWidth, rowHeight).stroke();
         doc.fontSize(6.8).font('Helvetica').text(resVal, outX, currentY + 3.5, { width: termGroupWidth, align: 'center' });
         outX += termGroupWidth;
@@ -423,7 +430,8 @@ function generateLearnerReportCardPdf(reportData) {
 
       // Verification footer
       doc.fontSize(5).font('Helvetica').fillColor('#94a3b8');
-      doc.text(`Official Geleza SA Educational Report Card • Academic Year ${meta.academic_year || 2026} • School ID: ${school.id || 'N/A'} • Authenticated Document`, leftMargin, currentY + 10, { width: contentWidth, align: 'center' });
+      const yearLabel = meta.academic_year ? `Academic year ${meta.academic_year}` : 'Academic year not recorded';
+      doc.text(`Geleza SA report card • ${yearLabel} • School ${school.id || 'not recorded'}`, leftMargin, currentY + 10, { width: contentWidth, align: 'center' });
 
       doc.end();
     } catch (err) {

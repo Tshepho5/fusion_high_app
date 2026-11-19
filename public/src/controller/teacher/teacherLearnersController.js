@@ -132,44 +132,23 @@ exports.getMyLearners = async (req, res) => {
 
         // 2. Compute Real Machine Learning Pass Prediction & Risk Flags for each learner
         const enriched = rows.map(learner => {
-            const age = (parseInt(learner.grade, 10) || 10) + 6;
-            const perfAvg = parseFloat(learner.performance_avg) || 50;
-            const attRate = parseFloat(learner.attendance_pct) || 85;
-
-            const studentData = {
-                student_id: learner.learner_number || `STU-${learner.id}`,
-                age: age,
-                study_hours_per_week: 15,
-                attendance_rate: attRate,
-                previous_score: perfAvg,
-                gender: learner.gender || 'Female',
-                parent_education: 'High School',
-                internet_access: 'Yes',
-                extracurricular: 'Yes'
-            };
-
-            let ml = null;
-            try {
-                ml = academicMlService.predictStudent(studentData);
-            } catch (mlErr) {
-                console.warn(`[AcademicML] Prediction error for learner ${learner.id}:`, mlErr.message);
-            }
-
-            const riskTier = ml ? (ml.risk_tier === 'Medium' ? 'Moderate' : ml.risk_tier) : (perfAvg < 50 ? 'High' : 'Low');
-            const passProb = ml ? ml.pass_probability : Math.round(perfAvg);
-            const predScore = ml ? ml.projected_final_score : Math.round(perfAvg);
+            const perfAvg = parseFloat(learner.performance_avg);
+            const attRate = parseFloat(learner.attendance_pct);
+            const recordedAverage = Number.isFinite(perfAvg) ? perfAvg : null;
+            const recordedAttendance = Number.isFinite(attRate) ? attRate : null;
 
             return {
                 ...learner,
-                ml_prediction: ml,
-                risk_tier: riskTier,
-                risk_label: ml ? ml.risk_label : (riskTier === 'High' ? 'High Risk' : 'On Track'),
-                risk_badge: ml ? ml.risk_badge : (riskTier === 'High' ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'),
-                predicted_score: predScore,
-                pass_probability: passProb,
-                is_at_risk: riskTier === 'High' || passProb < 50,
-                interventions: ml ? ml.interventions : ['Maintain consistent study and homework completion.'],
-                drivers: ml ? ml.drivers : []
+                ml_prediction: null,
+                prediction_available: false,
+                official_result: false,
+                risk_tier: null,
+                risk_label: recordedAverage === null ? 'No recorded marks' : 'Recorded marks only',
+                risk_badge: 'bg-slate-100 text-slate-700',
+                predicted_score: null,
+                pass_probability: null,
+                recorded_average: recordedAverage,
+                recorded_attendance: recordedAttendance
             };
         });
 
@@ -397,25 +376,6 @@ exports.getClassList = async (req, res) => {
                 calculationMethod = `Controlled Examination: ${examMark}%`;
             }
 
-            const age = (parseInt(learner.grade, 10) || 10) + 6;
-            const perfAvg = finalCalculatedMark !== null ? finalCalculatedMark : (parseFloat(learner.current_mark) || null);
-            const studentData = {
-                student_id: learner.learner_number || `STU-${learner.id}`,
-                age: age,
-                study_hours_per_week: 15,
-                attendance_rate: 85,
-                previous_score: perfAvg || 65,
-                gender: 'Female',
-                parent_education: 'High School',
-                internet_access: 'Yes',
-                extracurricular: 'Yes'
-            };
-
-            let ml = null;
-            try {
-                ml = academicMlService.predictStudent(studentData);
-            } catch (e) {}
-
             return {
                 ...learner,
                 test1,
@@ -428,11 +388,14 @@ exports.getClassList = async (req, res) => {
                 final_calculated_mark: finalCalculatedMark,
                 calculation_method: calculationMethod,
                 assessments_count: studentMarks.length,
-                ml_prediction: ml,
-                risk_tier: ml ? (ml.risk_tier === 'Medium' ? 'Moderate' : ml.risk_tier) : (perfAvg !== null && perfAvg < 50 ? 'High' : 'Low'),
-                predicted_score: ml ? ml.projected_final_score : perfAvg,
-                pass_probability: ml ? ml.pass_probability : perfAvg,
-                interventions: ml ? ml.interventions : []
+                ml_prediction: null,
+                prediction_available: false,
+                official_result: false,
+                risk_tier: null,
+                predicted_score: null,
+                pass_probability: null,
+                recorded_mark: finalCalculatedMark,
+                interventions: []
             };
         });
 

@@ -3,12 +3,10 @@ const router = express.Router();
 const behaviorMlController = require('../controller/behaviorMlController');
 const { auth: authenticateToken } = require('../../../authMiddleware');
 
-// Public/Open endpoints for personas catalogue & simulation
 router.get('/personas', behaviorMlController.getPersonasCatalogue);
-router.post('/simulate', behaviorMlController.simulateIntervention);
 
-// Authenticated endpoints
 router.use(authenticateToken);
+router.post('/simulate', behaviorMlController.simulateIntervention);
 
 // Learner prediction (single subject or full 7-subject profile)
 router.get('/learner/:childId', behaviorMlController.getLearnerPrediction);

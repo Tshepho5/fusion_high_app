@@ -9,6 +9,9 @@ const aiAdvisorService = require('../services/aiAdvisorService');
 const gelezaEarlyWarningJob = require('../services/gelezaEarlyWarningJob');
 const { auth: authenticateToken } = require('../../../authMiddleware');
 const { resolveSchoolId } = require('../services/schoolScope');
+const { loadAuthorisedLearner } = require('../../../lib/aiLearnerAccess');
+const { percentageFromMark, observedMarkSummary, finiteNumber } = require('../../../lib/academicEvidence');
+const { describeRecordedMarks } = require('../../../lib/academicRecord');
 const db = require('../../../db/db');
 
 router.use(authenticateToken);
@@ -33,61 +36,52 @@ router.post('/predict', async (req, res) => {
  */
 router.get('/learner/:childId', async (req, res) => {
   try {
-    const { childId } = req.params;
-
-    // Fetch learner and attendance
-    const learnerRes = await db.query(
-      `SELECT c.id, c.full_name, c.surname, c.grade, c.stream,
-              COALESCE((SELECT COUNT(*) FROM attendance WHERE child_id = c.id AND status = 'absent'), 2) as absences
-       FROM children c WHERE c.id = $1 LIMIT 1`,
-      [childId]
-    );
-
-    if (learnerRes.rows.length === 0) {
+    const access = await loadAuthorisedLearner(db, req.user, req.params.childId);
+    if (access.status !== 200) {
       return res.status(404).json({ error: 'Learner not found' });
     }
+    const learner = access.learner;
 
-    const learner = learnerRes.rows[0];
-
-    // Fetch latest marks per subject
     const marksRes = await db.query(
-      `SELECT subject, score, max_score, percentage 
-       FROM marks 
+      `SELECT subject, score, max_score, percentage
+       FROM marks
        WHERE child_id = $1 OR learner_id = $1
        ORDER BY recorded_at DESC`,
-      [childId]
+      [learner.id]
     );
 
-    const scoresMap = {};
-    for (const r of marksRes.rows) {
-      const sub = (r.subject || '').toLowerCase();
-      const pct = r.percentage ? Number(r.percentage) : Math.round((Number(r.score) / (Number(r.max_score) || 100)) * 100);
-      
-      if (!scoresMap[sub]) scoresMap[sub] = pct;
+    const scores = [];
+    const seen = new Set();
+    const chronological = [];
+    for (const row of marksRes.rows) {
+      const subject = String(row.subject || '').trim();
+      const percentage = percentageFromMark(row);
+      if (!subject || percentage === null) continue;
+      chronological.push({ subject, score: percentage });
+      const key = subject.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      scores.push({ subject, score: percentage });
     }
 
-    const payload = {
-      math_score: scoresMap['mathematics'] || scoresMap['maths'] || scoresMap['math'] || 75,
-      physics_score: scoresMap['physical sciences'] || scoresMap['physics'] || 72,
-      chemistry_score: scoresMap['chemistry'] || scoresMap['physical sciences'] || 70,
-      biology_score: scoresMap['life sciences'] || scoresMap['biology'] || 74,
-      english_score: scoresMap['english fal'] || scoresMap['english'] || scoresMap['home language'] || 78,
-      history_score: scoresMap['history'] || scoresMap['social sciences'] || 70,
-      geography_score: scoresMap['geography'] || 70,
-      absence_days: parseInt(learner.absences, 10) || 2,
-      weekly_self_study_hours: 18,
-      extracurricular_activities: 1
-    };
+    const absenceRes = await db.query(
+      `SELECT COUNT(*)::int AS absences FROM attendance WHERE child_id = $1 AND status = 'absent'`,
+      [learner.id]
+    );
+    const recordedAbsences = finiteNumber(absenceRes.rows[0] && absenceRes.rows[0].absences);
 
-    const aiResult = await aiAdvisorService.predictStudent(payload);
+    const summary = observedMarkSummary(scores);
     res.json({
       success: true,
+      official_result: false,
       learner: {
         id: learner.id,
         name: `${learner.full_name} ${learner.surname}`.trim(),
         grade: learner.grade
       },
-      ...aiResult
+      recorded_absences: recordedAbsences,
+      academic_notes: describeRecordedMarks(chronological),
+      ...summary
     });
   } catch (err) {
     console.error('Error fetching learner AI prediction:', err);
@@ -715,14 +709,19 @@ router.post('/geleza/job/run-audit', async (req, res) => {
   try {
     const schoolId = resolveSchoolId(req);
     const { grade, term, academic_year, force_alert, dry_run } = req.body;
+    const termNumber = parseInt(term, 10);
+    const yearNumber = parseInt(academic_year, 10);
     if (!req.user?.is_superadmin && !schoolId) {
       return res.status(403).json({ success: false, error: 'This account is not attached to a school.' });
+    }
+    if (![1, 2, 3, 4].includes(termNumber) || !Number.isInteger(yearNumber)) {
+      return res.status(400).json({ success: false, error: 'Choose a term from 1 to 4 and an academic year before running the audit.' });
     }
     const result = await gelezaEarlyWarningJob.runRiskAudit({
       schoolId: schoolId,
       grade: grade && grade !== 'all' ? parseInt(grade, 10) : null,
-      term: term ? parseInt(term, 10) : 1,
-      academicYear: academic_year ? parseInt(academic_year, 10) : 2026,
+      term: termNumber,
+      academicYear: yearNumber,
       forceAlert: force_alert === true,
       dryRun: dry_run === true,
       triggeredBy: req.user?.id ? `user_${req.user.id}` : 'manual_api'

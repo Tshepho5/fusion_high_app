@@ -6,6 +6,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { advisorEvidence, gelezaInputs, unavailablePrediction, observedMarkSummary, finiteNumber } = require('../../../lib/academicEvidence');
 
 const VENV_PYTHON = path.join(__dirname, '..', '..', '..', '.venv', 'Scripts', 'python.exe');
 const PYTHON_BIN = fs.existsSync(VENV_PYTHON) ? VENV_PYTHON : 'python';
@@ -20,6 +21,17 @@ const GELEZA_METRICS_PATH = path.join(__dirname, '..', '..', '..', 'ml_models', 
  * @returns {Promise<Object>} AI Advisor results
  */
 async function predictStudent(studentData) {
+  const source = studentData || {};
+  const required = ['math_score', 'physics_score', 'biology_score', 'english_score', 'history_score'];
+  const recorded = required
+    .map((key) => ({ subject: key, score: finiteNumber(source[key]) }))
+    .filter((entry) => entry.score !== null);
+  if (recorded.length !== required.length) {
+    return unavailablePrediction(
+      'A prediction was not produced because the subject marks are incomplete. Missing marks were not replaced.',
+      observedMarkSummary(recorded)
+    );
+  }
   return new Promise((resolve) => {
     try {
       const pythonProcess = spawn(PYTHON_BIN, [PREDICT_SCRIPT, '--stdin'], {
@@ -128,116 +140,22 @@ async function predictBatch(studentsList) {
  * Robust fallback aligned with South African CAPS standards
  */
 function getFallbackPrediction(data) {
-  const grade = parseInt(data.grade, 10) || 10;
-  const math = Number(data.math_score) || 70;
-  const physics = Number(data.physics_score) || Number(data.natural_sciences_score) || 70;
-  const biology = Number(data.biology_score) || 70;
-  const english = Number(data.english_score) || 75;
-  const history = Number(data.history_score) || Number(data.social_sciences_score) || 70;
-  const ems = Number(data.ems_score) || Number(data.accounting) || 65;
-  const absences = Number(data.absence_days) || 2;
-  const studyHours = Number(data.weekly_self_study_hours) || 15;
-
-  const stemAvg = (math + physics + biology) / 3;
-  const overallAvg = Math.round((math + physics + biology + english + history) / 5);
-
-  // 1. Career recommendations: strictly for Grade 12 Matric learners
-  let topCareers = null;
-  if (grade === 12) {
-    if (stemAvg >= 80 && biology >= 80) {
-      topCareers = [
-        { career: 'Doctor', confidence: 78.5 },
-        { career: 'Scientist', confidence: 12.3 },
-        { career: 'Software Engineer', confidence: 9.2 }
-      ];
-    } else if (stemAvg >= 75 && math >= 80) {
-      topCareers = [
-        { career: 'Software Engineer', confidence: 72.0 },
-        { career: 'Construction Engineer', confidence: 18.0 },
-        { career: 'Banker', confidence: 10.0 }
-      ];
-    } else if (english >= 75 && history >= 75) {
-      topCareers = [
-        { career: 'Lawyer', confidence: 68.4 },
-        { career: 'Writer', confidence: 21.2 },
-        { career: 'Government Officer', confidence: 10.4 }
-      ];
-    } else {
-      topCareers = [
-        { career: 'Business Owner', confidence: 55.0 },
-        { career: 'Accountant', confidence: 28.0 },
-        { career: 'Real Estate Developer', confidence: 17.0 }
-      ];
-    }
-  }
-
-  // 2. Stream selection: strictly for Grade 9 transitioning into Grade 10
-  let streamSelection = null;
-  if (grade === 9) {
-    const scienceSuitability = Math.round((math * 0.5) + (physics * 0.5));
-    const commerceSuitability = Math.round((ems * 0.6) + (math * 0.4));
-    const humanitiesSuitability = Math.round((english * 0.5) + (history * 0.5));
-
-    const streams = [
-      {
-        stream: 'Science Stream',
-        suitability: scienceSuitability,
-        focus: 'STEM, Engineering, Medicine & Environmental Sciences',
-        subjects: ['Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'English FAL', 'Home Language', 'Life Orientation']
-      },
-      {
-        stream: 'Commerce Stream',
-        suitability: commerceSuitability,
-        focus: 'Accounting, Finance, Economics & Business Leadership',
-        subjects: ['Accounting', 'Business Studies', 'Economics', 'Mathematics', 'English FAL', 'Home Language', 'Life Orientation']
-      },
-      {
-        stream: 'Humanities & Tourism Stream',
-        suitability: humanitiesSuitability,
-        focus: 'Law, Social Sciences, Tourism Management & Media',
-        subjects: ['Tourism', 'History', 'Geography', 'Mathematical Literacy', 'English FAL', 'Home Language', 'Life Orientation']
-      }
-    ];
-    streams.sort((a, b) => b.suitability - a.suitability);
-    const top = streams[0];
-
-    streamSelection = {
-      recommended_stream: top.stream,
-      match_percentage: top.suitability,
-      recommended_subjects: top.subjects,
-      all_streams: streams,
-      guidance_summary: `Based on strong aptitude in ${top.stream}, the learner demonstrates optimal academic capability to excel in Grade 10.`
-    };
-  }
-
-  const isAtRisk = overallAvg < 50 || absences >= 8;
-  const riskLevel = overallAvg < 40 || absences >= 10 ? 'High' : (isAtRisk ? 'Moderate' : 'Low');
-
-  return {
-    grade,
-    career_recommendations: topCareers,
-    stream_selection: streamSelection,
-    performance_prediction: {
-      predicted_overall_score: overallAvg,
-      tier: overallAvg >= 80 ? 'Distinction (Level 7)' : (overallAvg >= 50 ? 'Adequate (Level 4 - Bachelor Admission)' : 'Not Achieved (Remediation Required)')
-    },
-    at_risk_assessment: {
-      is_at_risk: isAtRisk,
-      risk_probability: isAtRisk ? 82.0 : 12.0,
-      risk_level: riskLevel,
-      intervention_guidance: isAtRisk 
-        ? 'Student requires targeted tutoring in core subjects and attendance monitoring.'
-        : 'Student is performing within stable parameters.'
-    }
-  };
+  const evidence = advisorEvidence(data || {});
+  const observed = observedMarkSummary(evidence.recorded);
+  return unavailablePrediction(
+    'The prediction service is unavailable. No estimated marks, careers, or risk scores were created.',
+    { recorded_marks: observed.recorded_marks, observed_average: observed.observed_average }
+  );
 }
 
-/**
- * Predicts continuous exam mark and balanced risk tier using Geleza SA Performance Factor Model
- * @param {Object} studentData
- * @returns {Promise<Object>}
- */
 async function predictGelezaPerformance(studentData) {
+  const inputs = gelezaInputs(studentData || {});
+  if (!inputs.complete) {
+    return unavailablePrediction(
+      'A performance prediction was not produced because attendance, study hours, or marks are missing. Sample values were not used.',
+      { missing: inputs.missing }
+    );
+  }
   return new Promise((resolve) => {
     try {
       const pythonProcess = spawn(PYTHON_BIN, [GELEZA_PREDICT_SCRIPT, '--stdin'], {
@@ -339,8 +257,16 @@ async function simulateGelezaStudyImpact(baselineData, simulatedAdjustments) {
     predictGelezaPerformance(adjustedData)
   ]);
 
+  if (baselinePred.predicted_score == null || adjustedPred.predicted_score == null) {
+    return {
+      success: false,
+      prediction_available: false,
+      official_result: false,
+      message: 'The comparison was not produced because a recorded baseline or adjustment is missing.'
+    };
+  }
   const scoreDiff = Math.round((adjustedPred.predicted_score - baselinePred.predicted_score) * 10) / 10;
-  const tierChanged = baselinePred.risk_tier.id !== adjustedPred.risk_tier.id;
+  const tierChanged = baselinePred.risk_tier && adjustedPred.risk_tier && baselinePred.risk_tier.id !== adjustedPred.risk_tier.id;
 
   return {
     baseline: baselinePred,
@@ -395,30 +321,11 @@ function scoreSupportBand(score) {
  * Robust fallback for Geleza student predictions
  */
 function getGelezaFallback(data) {
-  const attendance = Number(data.Attendance) || 75;
-  const hours = Number(data.Hours_Studied) || 15;
-  const prev = Number(data.Previous_Scores) || 65;
-  const estScore = Math.min(100, Math.max(40, Math.round(prev * 0.4 + attendance * 0.35 + hours * 0.7)));
-  const band = scoreSupportBand(estScore);
-  return {
-    predicted_score: estScore,
-    risk_tier: {
-      id: band.id,
-      label: band.label,
-      color: band.color,
-      badge: band.badge,
-      probabilities: {
-        priority_support: band.id === 0 ? 100 : 0,
-        core_progress: band.id === 1 ? 100 : 0,
-        high_achiever: band.id === 2 ? 100 : 0
-      }
-    },
-    actionable_nudges: [
-      attendance < 85 ? `Boosting attendance from ${attendance}% to 90%+ is the single highest-impact factor for grade recovery.` : null,
-      hours < 20 ? `Increasing weekly study hours from ${hours} to 20+ hrs is projected to raise marks.` : null
-    ].filter(Boolean),
-    is_fallback: true
-  };
+  const inputs = gelezaInputs(data || {});
+  return unavailablePrediction(
+    'The performance model is unavailable. No estimated mark was created.',
+    { missing: inputs.missing, is_fallback: true }
+  );
 }
 
 module.exports = {
@@ -428,5 +335,6 @@ module.exports = {
   predictGelezaBatch,
   simulateGelezaStudyImpact,
   getGelezaModelMetrics,
-  scoreSupportBand
+  scoreSupportBand,
+  getFallbackPrediction
 };

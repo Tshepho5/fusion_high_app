@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const behaviorMlService = require('../services/behaviorMlService');
+const { loadAuthorisedLearner, loadAuthorisedClass } = require('../../../lib/aiLearnerAccess');
 
 /**
  * Controller: Behavioral & Environmental Machine Learning
@@ -8,64 +9,28 @@ const behaviorMlService = require('../services/behaviorMlService');
 // 1. Predict single learner (or 7-subject profile)
 exports.getLearnerPrediction = async (req, res) => {
   try {
-    const { childId } = req.params;
-    const { subject } = req.query;
-
-    let studentData = req.body && Object.keys(req.body).length > 0 ? req.body : null;
-
-    if (!studentData && childId) {
-      // Fetch learner record from PostgreSQL database
-      const q = `
-        SELECT c.id as child_id, c.full_name, c.surname, u.gender, c.grade, c.stream,
-               cl.name as class_name,
-               COALESCE((SELECT COUNT(*) FROM children ch WHERE ch.class_id = c.class_id), 35) as class_size,
-               COALESCE((
-                 SELECT COUNT(*) FROM attendance a 
-                 WHERE a.child_id = c.id AND a.status = 'absent'
-               ), 2) as absent_count,
-               COALESCE((
-                 SELECT ROUND(AVG(score)) FROM assessment_results ar 
-                 WHERE ar.child_id = c.id
-               ), 60) as avg_assessment
-        FROM children c
-        LEFT JOIN users u ON c.learner_user_id = u.id
-        LEFT JOIN classes cl ON c.class_id = cl.id
-        WHERE c.id = $1
-      `;
-      const result = await db.query(q, [childId]);
-      if (result.rows.length > 0) {
-        const row = result.rows[0];
-        const gradeStr = row.grade ? `Grade ${row.grade}` : 'Grade 10';
-        studentData = {
-          student_id: `STU${row.child_id}`,
-          full_name: `${row.full_name || ''} ${row.surname || ''}`.trim(),
-          gender: (row.gender || 'Male').toLowerCase() === 'female' ? 'Female' : 'Male',
-          grade: gradeStr,
-          stream: row.stream || 'Science',
-          class_name: row.class_name || '10A',
-          class_size: parseInt(row.class_size, 10) || 35,
-          absence_days: (parseInt(row.absent_count, 10) || 0) > 7 ? 'Above-7' : 'Under-7',
-          weekly_study_hours: 14,
-          visited_resources: 65,
-          announcements_viewed: 50,
-          discussion_participation: 45,
-          homework_completion_rate: 70
-        };
-      }
+    const childId = req.params.childId || req.body.childId;
+    const access = await loadAuthorisedLearner(db, req.user, childId);
+    if (access.status !== 200) {
+      return res.status(404).json({ error: 'Learner not found' });
     }
-
-    if (!studentData) {
-      return res.status(400).json({ error: 'Learner record not found or no student payload provided.' });
-    }
-
-    if (subject) {
-      const prediction = behaviorMlService.predictLearnerSubject(studentData, subject);
-      return res.json(prediction);
-    }
-
-    // Default: full 7-subject profile with NSC endorsement
-    const fullProfile = behaviorMlService.predictLearnerFullProfile(studentData);
-    return res.json(fullProfile);
+    const learner = access.learner;
+    const attendance = await db.query(
+      `SELECT COUNT(*)::int AS absences FROM attendance WHERE child_id = $1 AND status = 'absent'`,
+      [learner.id]
+    );
+    return res.json({
+      prediction_available: false,
+      official_result: false,
+      learner: {
+        id: learner.id,
+        name: `${learner.full_name || ''} ${learner.surname || ''}`.trim(),
+        grade: learner.grade || null,
+        stream: learner.stream || null
+      },
+      recorded_absences: attendance.rows[0] ? attendance.rows[0].absences : null,
+      message: 'A behaviour prediction was not produced. Study habits, gender, and missing marks are not replaced with sample values.'
+    });
   } catch (err) {
     console.error('[BehaviorML Controller] Error getting learner prediction:', err);
     res.status(500).json({ error: 'Failed to generate behavioral prediction: ' + err.message });
@@ -75,45 +40,30 @@ exports.getLearnerPrediction = async (req, res) => {
 // 2. Predict Class Cohort
 exports.getClassPrediction = async (req, res) => {
   try {
-    const { classId } = req.params;
-
-    // Fetch students in this class
-    const q = `
-      SELECT c.id as child_id, c.full_name, c.surname, u.gender, c.grade, c.stream,
-             cl.name as class_name,
-             COALESCE((
-               SELECT COUNT(*) FROM attendance a 
-               WHERE a.child_id = c.id AND a.status = 'absent'
-             ), 2) as absent_count
-      FROM children c
-      LEFT JOIN users u ON c.learner_user_id = u.id
-      LEFT JOIN classes cl ON c.class_id = cl.id
-      WHERE c.class_id = $1
-    `;
-    const result = await db.query(q, [classId]);
-    const students = result.rows.map(r => ({
-      student_id: `STU${r.child_id}`,
-      full_name: `${r.full_name || ''} ${r.surname || ''}`.trim(),
-      gender: (r.gender || 'Male').toLowerCase() === 'female' ? 'Female' : 'Male',
-      grade: r.grade ? `Grade ${r.grade}` : 'Grade 10',
-      stream: r.stream || 'Science',
-      class_size: result.rows.length,
-      absence_days: r.absent_count > 7 ? 'Above-7' : 'Under-7',
-      weekly_study_hours: 12,
-      visited_resources: 55,
-      announcements_viewed: 45,
-      discussion_participation: 40,
-      homework_completion_rate: 65
-    }));
-
-    const classInfo = {
-      name: result.rows[0]?.class_name || `Class ${classId}`,
-      class_size: students.length,
-      stream: result.rows[0]?.stream || 'Science'
-    };
-
-    const cohortReport = behaviorMlService.predictClassCohort(students, classInfo);
-    res.json(cohortReport);
+    const access = await loadAuthorisedClass(db, req.user, req.params.classId);
+    if (access.status !== 200) {
+      return res.status(404).json({ error: 'Class not found' });
+    }
+    const result = await db.query(
+      `SELECT c.id, c.full_name, c.surname, c.grade, c.stream,
+              (SELECT COUNT(*)::int FROM attendance a WHERE a.child_id = c.id AND a.status = 'absent') AS absences
+       FROM children c
+       WHERE c.class_id = $1 AND c.school_id = $2`,
+      [access.classRow.id, access.classRow.school_id]
+    );
+    res.json({
+      prediction_available: false,
+      official_result: false,
+      class_name: access.classRow.name || null,
+      learners: result.rows.map((row) => ({
+        id: row.id,
+        name: `${row.full_name || ''} ${row.surname || ''}`.trim(),
+        grade: row.grade || null,
+        stream: row.stream || null,
+        recorded_absences: row.absences
+      })),
+      message: 'A class behaviour prediction was not produced from sample study habits or sample marks.'
+    });
   } catch (err) {
     console.error('[BehaviorML Controller] Error predicting class cohort:', err);
     res.status(500).json({ error: 'Failed to predict class cohort: ' + err.message });

@@ -526,21 +526,21 @@ const optionalTokenAuth = (req, res, next) => {
 const aiRoutes = require('./public/src/routes/aiRoutes');
 app.use('/api/ai', aiRoutes);
 
-app.post('/api/ai/legacy-chat', optionalTokenAuth, aiTutorController.sendChatMessage);
+app.post('/api/ai/legacy-chat', authenticateToken, aiTutorController.sendChatMessage);
 app.get('/api/ai/physics/topics', optionalTokenAuth, aiTutorController.getPhysicalSciencesTopics);
-app.post('/api/ai/physics/evaluate', optionalTokenAuth, aiTutorController.evaluatePhysicalSciencesAnswer);
+app.post('/api/ai/physics/evaluate', authenticateToken, aiTutorController.evaluatePhysicalSciencesAnswer);
 app.get('/api/ai/physics-grade10/topics', optionalTokenAuth, aiTutorController.getPhysicalSciencesGrade10Topics);
-app.post('/api/ai/physics-grade10/evaluate', optionalTokenAuth, aiTutorController.evaluatePhysicalSciencesAnswer);
+app.post('/api/ai/physics-grade10/evaluate', authenticateToken, aiTutorController.evaluatePhysicalSciencesAnswer);
 app.get('/api/ai/physical-sciences/topics', optionalTokenAuth, aiTutorController.getPhysicalSciencesTopics);
-app.post('/api/ai/physical-sciences/evaluate', optionalTokenAuth, aiTutorController.evaluatePhysicalSciencesAnswer);
+app.post('/api/ai/physical-sciences/evaluate', authenticateToken, aiTutorController.evaluatePhysicalSciencesAnswer);
 app.get('/api/ai/math/topics', optionalTokenAuth, aiTutorController.getMathematicsTopics);
-app.post('/api/ai/math/evaluate', optionalTokenAuth, aiTutorController.evaluateMathematicsAnswer);
+app.post('/api/ai/math/evaluate', authenticateToken, aiTutorController.evaluateMathematicsAnswer);
 app.get('/api/ai/mathematics/topics', optionalTokenAuth, aiTutorController.getMathematicsTopics);
-app.post('/api/ai/mathematics/evaluate', optionalTokenAuth, aiTutorController.evaluateMathematicsAnswer);
+app.post('/api/ai/mathematics/evaluate', authenticateToken, aiTutorController.evaluateMathematicsAnswer);
 app.get('/api/ai/life-sciences/topics', optionalTokenAuth, aiTutorController.getLifeSciencesTopics);
-app.post('/api/ai/life-sciences/evaluate', optionalTokenAuth, aiTutorController.evaluateLifeSciencesAnswer);
+app.post('/api/ai/life-sciences/evaluate', authenticateToken, aiTutorController.evaluateLifeSciencesAnswer);
 app.get('/api/ai/lifesciences/topics', optionalTokenAuth, aiTutorController.getLifeSciencesTopics);
-app.post('/api/ai/lifesciences/evaluate', optionalTokenAuth, aiTutorController.evaluateLifeSciencesAnswer);
+app.post('/api/ai/lifesciences/evaluate', authenticateToken, aiTutorController.evaluateLifeSciencesAnswer);
 
 // Import and use route modules
 app.use('/api/teacher', teacherRoutes);

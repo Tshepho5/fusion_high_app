@@ -5,8 +5,22 @@ require('dotenv').config();
 class AIProvider {
     constructor() {
         this._client = null;
-        this.defaultModel = process.env.AI_MODEL || 'gemini-3.5-flash';
-        this.fallbackModels = ['gemini-3.5-flash', 'gemini-3.8-flash'];
+        // Google's model list (November 2026) documents gemini-3.6-flash as the
+        // successor that gemini-3.5-flash routes to, and gemini-3.5-flash-lite
+        // as the lighter fallback. AI_MODEL overrides the primary id.
+        this.defaultModel = process.env.AI_MODEL || 'gemini-3.6-flash';
+        this.fallbackModel = process.env.AI_MODEL_FALLBACK || 'gemini-3.5-flash-lite';
+        this.usage = { requests: 0, successes: 0, failures: 0, fallbacks: 0, lastFailureAt: null, lastFailureCode: null };
+    }
+
+    modelCandidates() {
+        const primary = this.defaultModel;
+        const fallback = this.fallbackModel;
+        return fallback && fallback !== primary ? [primary, fallback] : [primary];
+    }
+
+    usageSnapshot() {
+        return { ...this.usage, model: this.defaultModel, fallback: this.fallbackModel };
     }
 
     _getKey() {
@@ -45,9 +59,10 @@ class AIProvider {
             throw err;
         }
 
-        const candidates = [this.defaultModel, ...this.fallbackModels.filter(m => m !== this.defaultModel)];
+        const candidates = this.modelCandidates();
         let lastError = null;
         const startTime = Date.now();
+        this.usage.requests += 1;
 
         for (const modelName of candidates) {
             for (let attempt = 0; attempt < 2; attempt++) {
@@ -85,6 +100,8 @@ class AIProvider {
                     const latencyMs = Date.now() - startTime;
 
                     console.info(`[AI DIAGNOSTIC: SUCCESS] model=${modelName} latency=${latencyMs}ms responseLength=${text.length}`);
+                    this.usage.successes += 1;
+                    if (modelName !== candidates[0]) this.usage.fallbacks += 1;
 
                     return {
                         text,
@@ -95,9 +112,11 @@ class AIProvider {
                     };
                 } catch (err) {
                     lastError = err;
-                    const msg = err.message || '';
-                    console.warn(`[AI DIAGNOSTIC: ATTEMPT FAILED] model=${modelName} attempt=${attempt + 1} error=${msg}`);
-                    const isTransient = msg.includes('429') || msg.includes('503') || msg.includes('Quota') || msg.includes('busy');
+                    const code = err.status || err.code || 'provider_error';
+                    this.usage.lastFailureAt = new Date().toISOString();
+                    this.usage.lastFailureCode = String(code).slice(0, 40);
+                    console.warn(`[AI DIAGNOSTIC: ATTEMPT FAILED] model=${modelName} attempt=${attempt + 1} code=${this.usage.lastFailureCode}`);
+                    const isTransient = code === 429 || code === 503 || code === '429' || code === '503';
                     if (isTransient && attempt === 0) {
                         await new Promise(r => setTimeout(r, 1000));
                         continue;
@@ -107,8 +126,18 @@ class AIProvider {
             }
         }
 
-        console.error(`[AI DIAGNOSTIC: ALL FAILED] totalDuration=${Date.now() - startTime}ms lastError=${lastError?.message}`);
+        this.usage.failures += 1;
+        console.error(`[AI DIAGNOSTIC: ALL FAILED] totalDuration=${Date.now() - startTime}ms`);
         throw lastError || new Error('All AI model candidate attempts failed.');
+    }
+
+    async generateResponse(prompt, options = {}) {
+        const result = await this.generateContent({
+            prompt,
+            systemInstruction: options.systemInstruction,
+            temperature: options.temperature
+        });
+        return result && result.text ? result.text : '';
     }
 
     /**

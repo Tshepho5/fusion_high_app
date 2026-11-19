@@ -33,20 +33,23 @@ exports.getQuestions = async (req, res) => {
 exports.generateAssessment = async (req, res) => {
     try {
         const { marks, grade, subject, topic, title, qtype } = req.body;
+        if (!grade || !subject) {
+            return res.status(400).json({ success: false, error: 'Choose a grade and a subject before assembling a paper.' });
+        }
         const result = await questionBankService.buildTest({
-            marks: marks || 30,
-            grade: grade || 10,
-            subject: subject || 'Physical Sciences',
-            topic: topic || '',
-            title: title || `${subject || 'CAPS'} Test Paper`,
-            qtype: qtype || ''
+            marks,
+            grade,
+            subject,
+            topic,
+            title,
+            qtype
         });
 
         if (!result.ok) {
-            return res.status(400).json({ success: false, error: result.message || 'Could not assemble test from question bank.' });
+            return res.status(400).json({ success: false, error: result.message || result.error || 'Could not assemble a draft from the question bank.' });
         }
 
-        res.json({ success: true, ...result });
+        res.json({ success: true, status: 'draft', official: false, ...result });
     } catch (err) {
         console.error('[QuestionBank Controller Generate Error]', err);
         res.status(500).json({ success: false, error: 'Failed to generate assessment paper from question bank.' });

@@ -99,44 +99,24 @@ exports.getChildren = async (req, res) => {
                 console.warn('[ParentChildrenML] Error fetching child performance for ML:', queryErr.message);
             }
 
-            const studentAge = child.dob
-                ? Math.floor((new Date() - new Date(child.dob)) / (365.25 * 24 * 60 * 60 * 1000))
-                : (parseInt(child.grade, 10) + 6 || 16);
-
-            const studentData = {
-                student_id: child.learner_number || `STU-${child.id}`,
-                age: studentAge,
-                study_hours_per_week: 15,
-                attendance_rate: attRate,
-                previous_score: avgScore,
-                gender: child.gender || 'Female',
-                parent_education: 'High School',
-                internet_access: 'Yes',
-                extracurricular: 'Yes'
-            };
-
-            let ml = null;
-            try {
-                ml = academicMlService.predictStudent(studentData);
-            } catch (mlErr) {
-                console.warn('[ParentAcademicML] Prediction error:', mlErr.message);
-            }
-
-            const riskTier = ml ? (ml.risk_tier === 'Medium' ? 'Moderate' : ml.risk_tier) : (avgScore < 50 ? 'High' : 'Low');
-            const passProb = ml ? ml.pass_probability : Math.round(avgScore);
-            const predScore = ml ? ml.projected_final_score : Math.round(avgScore);
+            const recordedAverage = Number.isFinite(avgScore) && avgScore > 0 ? avgScore : null;
+            const recordedAttendance = Number.isFinite(attRate) ? attRate : null;
 
             return {
                 ...child,
-                ml_prediction: ml,
-                risk_tier: riskTier,
-                risk_label: ml ? ml.risk_label : (riskTier === 'High' ? 'High Risk' : 'On Track'),
-                risk_badge: ml ? ml.risk_badge : (riskTier === 'High' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'),
-                predicted_final_mark: predScore,
-                pass_probability: passProb,
-                is_at_risk: riskTier === 'High' || passProb < 50,
-                interventions: ml ? ml.interventions : ['Maintain consistent study rhythm.'],
-                drivers: ml ? ml.drivers : []
+                ml_prediction: null,
+                prediction_available: false,
+                official_result: false,
+                risk_tier: null,
+                risk_label: recordedAverage === null ? 'No recorded marks' : 'Recorded marks only',
+                risk_badge: 'bg-slate-100 text-slate-700',
+                predicted_final_mark: null,
+                pass_probability: null,
+                is_at_risk: false,
+                recorded_average: recordedAverage,
+                recorded_attendance: recordedAttendance,
+                interventions: [],
+                drivers: []
             };
         }));
 
@@ -1210,34 +1190,10 @@ exports.getChildPerformanceOverview = async (req, res) => {
         const validScores = allProgress.map(p => parseFloat(p.score)).filter(s => !isNaN(s));
         const overallCurrentAvg = validScores.length > 0
             ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
-            : 0;
+            : null;
 
-        // 4. Calculate Real Machine Learning Predicted Final Exam Mark & Risk Tier
-        const studentAge = child.dob
-            ? Math.floor((new Date() - new Date(child.dob)) / (365.25 * 24 * 60 * 60 * 1000))
-            : (parseInt(child.grade, 10) + 6 || 16);
-
-        const studentMlInput = {
-            student_id: child.learner_number || `STU-${child.id}`,
-            age: studentAge,
-            study_hours_per_week: 15,
-            attendance_rate: attPct,
-            previous_score: overallCurrentAvg > 0 ? overallCurrentAvg : 50,
-            gender: child.gender || 'Female',
-            parent_education: 'High School',
-            internet_access: 'Yes',
-            extracurricular: 'Yes'
-        };
-
-        let mlPrediction = null;
-        try {
-            mlPrediction = academicMlService.predictStudent(studentMlInput);
-        } catch (mlErr) {
-            console.warn('[ParentPerformanceML] Error predicting student mark:', mlErr.message);
-        }
-
-        let predictedOverallMark = mlPrediction ? mlPrediction.projected_final_score : overallCurrentAvg;
-        if (!predictedOverallMark && overallCurrentAvg > 0) predictedOverallMark = overallCurrentAvg;
+        const mlPrediction = null;
+        const predictedOverallMark = null;
 
         // 5. Build Subject Performance Table & Individual AI Predictions
         const subjectTable = [];
@@ -1270,20 +1226,15 @@ exports.getChildPerformanceOverview = async (req, res) => {
             const subjScores = subjectProgress.map(p => parseFloat(p.score)).filter(s => !isNaN(s));
             const subjectAvg = subjScores.length > 0
                 ? Math.round(subjScores.reduce((a, b) => a + b, 0) / subjScores.length)
-                : (overallCurrentAvg > 0 ? overallCurrentAvg : 0);
-
-            // Predict subject final mark
-            let predictedSubjScore = subjectAvg;
-            if (subjScores.length > 0) {
-                const latestScore = subjScores[0];
-                const trendBlended = (subjectAvg * 0.7) + (latestScore * 0.3);
-                predictedSubjScore = Math.min(100, Math.max(0, Math.round(trendBlended + attendanceImpactFactor)));
-            }
+                : null;
+            const predictedSubjScore = null;
 
             // CAPS Level Classification
-            let capsLevel = 'Level 4: Adequate (50-59%)';
-            let gradeLetter = 'C';
-            if (subjectAvg >= 80) { capsLevel = 'Level 7: Outstanding (80-100%)'; gradeLetter = 'A'; }
+            let capsLevel = 'Not recorded';
+            let gradeLetter = null;
+            if (subjectAvg === null) {
+              capsLevel = 'Not recorded';
+            } else if (subjectAvg >= 80) { capsLevel = 'Level 7: Outstanding (80-100%)'; gradeLetter = 'A'; }
             else if (subjectAvg >= 70) { capsLevel = 'Level 6: Meritorious (70-79%)'; gradeLetter = 'B'; }
             else if (subjectAvg >= 60) { capsLevel = 'Level 5: Substantial (60-69%)'; gradeLetter = 'C+'; }
             else if (subjectAvg >= 50) { capsLevel = 'Level 4: Adequate (50-59%)'; gradeLetter = 'C'; }
@@ -1329,15 +1280,15 @@ exports.getChildPerformanceOverview = async (req, res) => {
         const term2Entries = allProgress.filter(p => (p.term || '').toLowerCase().includes('2')).map(p => parseFloat(p.score)).filter(s => !isNaN(s));
         const term3Entries = allProgress.filter(p => (p.term || '').toLowerCase().includes('3')).map(p => parseFloat(p.score)).filter(s => !isNaN(s));
 
-        const term1Avg = term1Entries.length > 0 ? Math.round(term1Entries.reduce((a, b) => a + b, 0) / term1Entries.length) : (overallCurrentAvg > 0 ? overallCurrentAvg - 4 : 0);
-        const term2Avg = term2Entries.length > 0 ? Math.round(term2Entries.reduce((a, b) => a + b, 0) / term2Entries.length) : (overallCurrentAvg > 0 ? overallCurrentAvg - 1 : 0);
-        const term3Avg = term3Entries.length > 0 ? Math.round(term3Entries.reduce((a, b) => a + b, 0) / term3Entries.length) : (overallCurrentAvg > 0 ? overallCurrentAvg + 2 : 0);
+        const averageOf = (entries) => entries.length > 0 ? Math.round(entries.reduce((a, b) => a + b, 0) / entries.length) : null;
+        const term1Avg = averageOf(term1Entries);
+        const term2Avg = averageOf(term2Entries);
+        const term3Avg = averageOf(term3Entries);
 
         const termComparison = [
-            { term: 'Term 1', child_avg: term1Avg, class_avg: Math.max(45, term1Avg - 5) },
-            { term: 'Term 2', child_avg: term2Avg, class_avg: Math.max(48, term2Avg - 4) },
-            { term: 'Term 3', child_avg: term3Avg, class_avg: Math.max(50, term3Avg - 3) },
-            { term: 'Predicted Final', child_avg: predictedOverallMark, class_avg: Math.max(52, predictedOverallMark - 4) }
+            { term: 'Term 1', child_avg: term1Avg, class_avg: null },
+            { term: 'Term 2', child_avg: term2Avg, class_avg: null },
+            { term: 'Term 3', child_avg: term3Avg, class_avg: null }
         ];
 
         // 7. Dynamic Strengths & Areas for Improvement
@@ -1356,7 +1307,6 @@ exports.getChildPerformanceOverview = async (req, res) => {
         if (attPct >= 85) {
             strengths.push(`Reliable classroom attendance at ${attPct}% across all recorded sessions.`);
         }
-        strengths.push('Regular completion of educator-assigned coursework.');
 
         const improvements = [];
         if (lowestSubject && lowestSubject.average_pct > 0) {
@@ -1381,7 +1331,7 @@ exports.getChildPerformanceOverview = async (req, res) => {
 
         res.json({
             child_id: child.id,
-            learner_number: child.learner_number || `2026-FHS-${child.id}`,
+            learner_number: child.learner_number || null,
             name: `${child.full_name} ${child.surname}`,
             first_name: child.full_name,
             grade: child.grade,
@@ -1392,11 +1342,13 @@ exports.getChildPerformanceOverview = async (req, res) => {
             average_mark: overallCurrentAvg,
             predicted_final_mark: predictedOverallMark,
             ml_prediction: mlPrediction,
-            risk_tier: mlPrediction ? (mlPrediction.risk_tier === 'Medium' ? 'Moderate' : mlPrediction.risk_tier) : (overallCurrentAvg < 50 ? 'High' : 'Low'),
-            risk_label: mlPrediction ? mlPrediction.risk_label : (overallCurrentAvg < 50 ? 'High Risk' : 'On Track'),
-            risk_badge: mlPrediction ? mlPrediction.risk_badge : (overallCurrentAvg < 50 ? 'bg-red-100 text-red-800 border-red-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300'),
-            pass_probability: mlPrediction ? mlPrediction.pass_probability : Math.round(overallCurrentAvg || 75),
-            interventions: mlPrediction ? mlPrediction.interventions : improvements,
+            prediction_available: false,
+            official_result: false,
+            risk_tier: null,
+            risk_label: overallCurrentAvg === null ? 'No recorded marks' : 'Recorded marks only',
+            risk_badge: 'bg-slate-100 text-slate-700',
+            pass_probability: null,
+            interventions: improvements,
             total_subjects: subjectsList.length,
             completed_assessments: validScores.length,
             subject_performance_table: subjectTable,

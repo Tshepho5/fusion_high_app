@@ -59,7 +59,7 @@ def get_questions(grade=None, subject=None, topic=None, qtype=None, limit=50):
             break
     return {"ok": True, "count": len(filtered), "questions": filtered}
 
-def build_test(marks=30, grade=None, subject=None, topic=None, title="CAPS Controlled Test", qtype=None):
+def build_test(marks=30, grade=None, subject=None, topic=None, title="Draft practice paper", qtype=None):
     groups = builder.load_groups()
     filters = {
         "allow_diagram": False,
@@ -73,10 +73,6 @@ def build_test(marks=30, grade=None, subject=None, topic=None, title="CAPS Contr
         filters["grades"] = [str(grade)]
 
     res = builder.generate(groups, marks=int(marks), **filters)
-    if not res["ok"] and topic:
-        # Fallback to general pool for the grade if topic pool is too small
-        filters.pop("topics", None)
-        res = builder.generate(groups, marks=int(marks), **filters)
 
     if not res["ok"]:
         return {"ok": False, "message": res.get("message", "Could not build test matching criteria.")}
@@ -112,7 +108,9 @@ def build_test(marks=30, grade=None, subject=None, topic=None, title="CAPS Contr
         "memoText": mtext,
         "questions": structured_questions,
         "memorandum": structured_memo,
-        "groupsCount": len(res["chosen"])
+        "groupsCount": len(res["chosen"]),
+        "status": "draft",
+        "official": False
     }
 
 def main():

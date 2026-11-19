@@ -396,8 +396,7 @@ class GelezaAutomationService {
           if (recipients.length === 0) continue;
 
           const title = `⚠️ Attendance Alert: ${row.full_name} ${row.surname} (Grade ${row.grade})`;
-          const message = `Attendance rate is ${pct}% over the last ${daysWindow} days (${absent} absences).\n` +
-            `DBE Policy Notice: A minimum of 80% attendance is required for continuous assessment qualification. Please contact the school to coordinate catch-up materials.`;
+          const message = `Recorded attendance is ${pct}% over the last ${daysWindow} days, with ${absent} absences. This notice is not an official result.`;
 
           if (dryRun) {
             stats.details.push({
@@ -648,17 +647,22 @@ class GelezaAutomationService {
    * @param {number} options.classId
    * @returns {Promise<Object>} Educator insight summary
    */
-  async synthesizeClassRiskBriefing({ classId }) {
+  async synthesizeClassRiskBriefing({ classId, actor }) {
     await this.ensureSchema();
-    if (!classId) throw new Error('classId is required for risk briefing.');
-
-    // Fetch class info
+    const { loadAuthorisedClass } = require('../../../../lib/aiLearnerAccess');
+    const { summariseBriefing } = require('../../../../lib/classBriefing');
+    const access = await loadAuthorisedClass(db, actor, classId);
+    if (access.status !== 200) {
+      const error = new Error('Class not found.');
+      error.status = 404;
+      throw error;
+    }
     const classRes = await db.query(
-      `SELECT c.id, c.name, c.grade, c.stream, c.homeroom_teacher_id, s.name as school_name
+      `SELECT c.id, c.name, c.grade, c.stream, c.school_id, s.name as school_name
        FROM classes c
        LEFT JOIN schools s ON c.school_id = s.id
-       WHERE c.id = $1`,
-      [classId]
+       WHERE c.id = $1 AND c.school_id = $2`,
+      [access.classRow.id, access.classRow.school_id]
     );
     if (classRes.rows.length === 0) throw new Error('Class not found.');
     const cls = classRes.rows[0];
@@ -676,68 +680,57 @@ class GelezaAutomationService {
         WHERE child_id = c.id
         ORDER BY created_at DESC LIMIT 1
       ) pred ON TRUE
-      WHERE c.class_id = $1
+      WHERE c.class_id = $1 AND c.school_id = $2
       ORDER BY c.surname ASC
-    `, [classId]);
+    `, [cls.id, cls.school_id]);
 
-    const learners = learnersRes.rows;
-    let priorityCount = 0;
-    let coreCount = 0;
-    let highCount = 0;
-    const priorityStudents = [];
-
-    learners.forEach(l => {
-      const score = Number(l.predicted_score) || 65;
-      const totalAtt = parseInt(l.total_attendance, 10) || 0;
-      const presAtt = parseInt(l.present_attendance, 10) || 0;
-      const attPct = totalAtt > 0 ? Math.round((presAtt / totalAtt) * 100) : 85;
-
-      if (score <= 65 || attPct < 75) {
-        priorityCount++;
-        priorityStudents.push({
-          child_id: l.child_id,
-          name: `${l.full_name} ${l.surname}`,
-          predicted_score: score,
-          attendance_pct: attPct,
-          nudge: l.actionable_nudges?.[0] || 'Remedial review recommended'
-        });
-      } else if (score < 80) {
-        coreCount++;
-      } else {
-        highCount++;
-      }
-    });
-
+    const facts = summariseBriefing(learnersRes.rows);
     const summary = {
       class_id: cls.id,
       class_name: cls.name,
       grade: cls.grade,
       stream: cls.stream,
-      total_students: learners.length,
-      priority_support_count: priorityCount,
-      core_progress_count: coreCount,
-      high_achiever_count: highCount,
-      priority_students: priorityStudents,
+      school_name: cls.school_name,
+      total_students: facts.total,
+      priority_support_count: facts.priority_support_count,
+      core_progress_count: facts.core_progress_count,
+      high_achiever_count: facts.high_achiever_count,
+      insufficient_count: facts.insufficient_count,
+      priority_students: facts.priority_students,
+      official_result: false,
       generated_at: new Date().toISOString()
     };
 
-    // If priority students exist, generate an AI pedagogical recommendation
-    let aiSynthesis = '';
-    if (priorityCount > 0) {
+    summary.provider_status = 'not_requested';
+    summary.ai_pedagogical_plan = null;
+    if (facts.priority_students.length > 0 && aiProvider.isAvailable()) {
       try {
-        const prompt = `You are Geleza AI, advising a South African teacher of Class ${cls.name} (Grade ${cls.grade}). ` +
-          `There are ${priorityCount} out of ${learners.length} learners requiring priority intervention. ` +
-          `Students needing support: ${priorityStudents.map(s => `${s.name} (Score: ${s.predicted_score}%, Attendance: ${s.attendance_pct}%)`).join(', ')}. ` +
-          `Provide a concise 3-bullet pedagogical intervention plan focusing on CAPS remedial techniques and attendance support.`;
-        aiSynthesis = await aiProvider.generateResponse(prompt, { temperature: 0.3 });
-      } catch (_) {
-        aiSynthesis = `• Schedule small-group tutoring during intervention periods.\n• Contact parents of learners below 75% attendance.\n• Assign targeted past CAPS question worksheets.`;
+        const described = facts.priority_students.map((student) => {
+          const score = student.predicted_score === null ? 'no predicted score' : `${student.predicted_score}% predicted`;
+          const attendance = student.attendance_pct === null ? 'no attendance record' : `${student.attendance_pct}% attendance`;
+          return `${student.name} (${score}; ${attendance})`;
+        }).join(', ');
+        const text = await aiProvider.generateResponse(
+          `You are preparing a briefing for an authorised teacher of class ${cls.name}, grade ${cls.grade}. ` +
+          `Use only these recorded indicators: ${described}. ` +
+          `Explain which indicators need attention and that this is not an official academic or disciplinary decision. ` +
+          `Do not invent marks, attendance, or causes.`,
+          { temperature: 0.2 }
+        );
+        summary.ai_pedagogical_plan = text || null;
+        summary.provider_status = text ? 'available' : 'unavailable';
+      } catch (err) {
+        console.warn('[GELEZA BRIEFING] Provider unavailable:', err.message);
+        summary.provider_status = 'unavailable';
+        summary.ai_pedagogical_plan = null;
       }
-    } else {
-      aiSynthesis = `Class performance is healthy. All learners are currently tracking in Core Progress or High Achiever tiers.`;
+    } else if (facts.priority_students.length > 0) {
+      summary.provider_status = 'unavailable';
     }
 
-    summary.ai_pedagogical_plan = aiSynthesis;
+    summary.message = facts.insufficient_count > 0
+      ? 'Learners without a recorded prediction or attendance record were not placed in a support tier.'
+      : 'Support tiers use recorded predictions and attendance only.';
     return summary;
   }
 

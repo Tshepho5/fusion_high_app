@@ -83,7 +83,7 @@ const TOOL_DEFINITIONS = [
                 }
             }
         },
-        allowedRoles: ['learner', 'teacher', 'parent', 'admin', 'visitor']
+        allowedRoles: ['learner', 'teacher', 'parent', 'admin', 'principal', 'vice_principal']
     },
     {
         name: 'get_curriculum_topics',
@@ -102,7 +102,7 @@ const TOOL_DEFINITIONS = [
             },
             required: ['subject']
         },
-        allowedRoles: ['learner', 'teacher', 'parent', 'admin', 'visitor']
+        allowedRoles: ['learner', 'teacher', 'parent', 'admin', 'principal', 'vice_principal']
     },
     {
         name: 'get_teacher_classes',
@@ -134,7 +134,7 @@ const TOOL_DEFINITIONS = [
             },
             required: ['query']
         },
-        allowedRoles: ['learner', 'teacher', 'parent', 'admin', 'visitor']
+        allowedRoles: ['learner', 'teacher', 'parent', 'admin', 'principal', 'vice_principal']
     },
     {
         name: 'get_school_overview_stats',
@@ -143,7 +143,7 @@ const TOOL_DEFINITIONS = [
             type: 'OBJECT',
             properties: {}
         },
-        allowedRoles: ['admin']
+        allowedRoles: ['admin', 'principal', 'vice_principal']
     }
 ];
 
@@ -418,14 +418,19 @@ const TOOL_HANDLERS = {
     },
 
     async get_school_announcements(args, context) {
+        const schoolId = parseInt(context.user && context.user.school_id, 10);
+        if (!Number.isInteger(schoolId) || schoolId <= 0) {
+            return { error: 'School context is required before announcements can be read.' };
+        }
         const limit = Math.min(args.limit || 5, 10);
         const role = context.user.role || 'learner';
         const res = await db.query(
-            `SELECT title, content, grade_target, role_target, created_at 
+            `SELECT title, content, grade_target, role_target, created_at
              FROM announcements
-             WHERE role_target IN ('all', $1)
-             ORDER BY created_at DESC LIMIT $2`,
-            [role, limit]
+             WHERE school_id = $1
+               AND (role_target IN ('all', $2) OR role_target IS NULL)
+             ORDER BY created_at DESC LIMIT $3`,
+            [schoolId, role, limit]
         );
 
         return {
@@ -455,13 +460,18 @@ const TOOL_HANDLERS = {
 
     async get_teacher_classes(args, context) {
         const teacherUserId = context.user.id;
+        const schoolId = parseInt(context.user && context.user.school_id, 10);
+        if (!Number.isInteger(schoolId) || schoolId <= 0) {
+            return { error: 'School context is required before classes can be read.' };
+        }
         const res = await db.query(
-            `SELECT c.id, c.name, c.grade, c.stream, 
-                    (SELECT COUNT(*)::int FROM children WHERE class_id = c.id) as learner_count
+            `SELECT c.id, c.name, c.grade, c.stream,
+                    (SELECT COUNT(*)::int FROM children WHERE class_id = c.id AND school_id = $2) as learner_count
              FROM classes c
-             WHERE c.homeroom_teacher_id = $1 OR c.assigned_teacher_id = $1
+             WHERE c.school_id = $2
+               AND (c.homeroom_teacher_id = $1 OR c.assigned_teacher_id = $1)
              ORDER BY c.name ASC`,
-            [teacherUserId]
+            [teacherUserId, schoolId]
         );
 
         return {
@@ -477,7 +487,10 @@ const TOOL_HANDLERS = {
     },
 
     async get_school_overview_stats(args, context) {
-        const schoolId = context.user.school_id || 1;
+        const schoolId = parseInt(context.user && context.user.school_id, 10);
+        if (!Number.isInteger(schoolId) || schoolId <= 0) {
+            return { error: 'School context is required before school statistics can be read.' };
+        }
         const [learnersRes, staffRes] = await Promise.all([
             db.query(`SELECT COUNT(*)::int as count FROM children WHERE school_id = $1`, [schoolId]),
             db.query(`SELECT COUNT(*)::int as count FROM users WHERE school_id = $1 AND role_id = (SELECT id FROM roles WHERE name = 'teacher')`, [schoolId])
@@ -545,8 +558,8 @@ async function executeTool(toolName, args, context) {
         throw new Error(`Tool '${toolName}' does not exist.`);
     }
 
-    const userRole = (context.user?.role || 'visitor').toLowerCase();
-    if (!toolDef.allowedRoles.includes(userRole) && userRole !== 'admin' && userRole !== 'superadmin') {
+    const userRole = (context.user?.role || '').toLowerCase();
+    if (!toolDef.allowedRoles.includes(userRole)) {
         throw new Error(`Access Denied: Role '${userRole}' is not authorized to execute tool '${toolName}'.`);
     }
 

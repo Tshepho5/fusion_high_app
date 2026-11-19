@@ -681,12 +681,12 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId, onNavig
                     ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                     : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                 }`}>
-                  {performanceData?.risk_tier || selectedChild.risk_tier || 'Low'} Risk
+                  {performanceData?.risk_tier || selectedChild.risk_tier || 'Not assessed'}
                 </span>
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold text-amber-400 font-display">
-                  {performanceData?.pass_probability || selectedChild.pass_probability || 85}%
+                  {performanceData?.pass_probability ?? selectedChild.pass_probability ?? 'Not available'}{performanceData?.pass_probability || selectedChild.pass_probability ? '%' : ''}
                 </span>
                 <span className="text-xs text-slate-400">ML Confidence</span>
               </div>

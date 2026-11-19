@@ -2017,32 +2017,22 @@ exports.getCareerPathway = async (req, res) => {
             [String(userId)]
         );
 
-        let child = childRes.rows[0];
+        const child = childRes.rows[0];
         if (!child) {
-            child = {
-                id: 0,
-                full_name: req.user.full_name || 'Learner',
-                surname: req.user.surname || '',
-                grade: 10,
-                stream: 'Science',
-                subjects: ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Geography', 'Life Orientation'],
-                home_language: 'isiZulu'
-            };
+            return res.status(404).json({ error: 'No learner record is linked to this account.' });
         }
 
-        const grade = parseInt(child.grade, 10) || 10;
-        const subjectsList = (child.subjects && child.subjects.length > 0) 
-            ? child.subjects 
-            : ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Geography', 'Life Orientation'];
+        const grade = parseInt(child.grade, 10);
+        const subjectsList = Array.isArray(child.subjects) ? child.subjects : [];
 
         // Fetch actual marks recorded by teachers in progress table
         let marksRes = { rows: [] };
         if (child.id) {
             try {
                 marksRes = await db.query(
-                    `SELECT subject, ROUND(AVG(COALESCE(NULLIF(regexp_replace(grade::text, '[^0-9.]', '', 'g'), '')::numeric, score::numeric, 75.0)), 1) as average_mark
+                    `SELECT subject, ROUND(AVG(score::numeric), 1) as average_mark
                      FROM progress
-                     WHERE child_id::text = $1::text
+                     WHERE child_id::text = $1::text AND score IS NOT NULL
                      GROUP BY subject`,
                     [String(child.id)]
                 );
@@ -2052,26 +2042,14 @@ exports.getCareerPathway = async (req, res) => {
         // Build subject marks array
         const recordedMarksMap = {};
         marksRes.rows.forEach(r => {
-            if (r.subject) recordedMarksMap[r.subject.toLowerCase().trim()] = Number(r.average_mark) || 75;
+            if (r.subject && Number.isFinite(Number(r.average_mark))) {
+                recordedMarksMap[r.subject.toLowerCase().trim()] = Number(r.average_mark);
+            }
         });
 
-        const subjectMarks = subjectsList.map(subj => {
-            const cleanSubj = subj.toLowerCase().trim();
-            let mark = recordedMarksMap[cleanSubj];
-            if (mark === undefined) {
-                // Realistic default baseline according to subject
-                if (cleanSubj.includes('math')) mark = 78;
-                else if (cleanSubj.includes('physic')) mark = 74;
-                else if (cleanSubj.includes('life sc')) mark = 82;
-                else if (cleanSubj.includes('english')) mark = 80;
-                else if (cleanSubj.includes('orient')) mark = 88;
-                else mark = 75;
-            }
-            return {
-                subject: subj,
-                mark: Math.round(mark)
-            };
-        });
+        const subjectMarks = Object.keys(recordedMarksMap).length
+            ? Object.entries(recordedMarksMap).map(([subject, mark]) => ({ subject, mark }))
+            : subjectsList.map((subject) => ({ subject, mark: null }));
 
         const apsCalculation = careerAdvisorService.calculateAps(subjectMarks);
         const universityMatches = careerAdvisorService.matchUniversityProgrammes(apsCalculation, subjectMarks);
@@ -2087,7 +2065,13 @@ exports.getCareerPathway = async (req, res) => {
             aps: apsCalculation,
             subject_marks: subjectMarks,
             university_programmes: universityMatches,
-            bursaries: careerAdvisorService.SA_BURSARIES_DIRECTORY,
+            bursaries: careerAdvisorService.SA_BURSARIES_DIRECTORY.map((item) => ({
+                ...item,
+                availability: 'not_verified',
+                current_offer: false,
+                note: 'This is a reference entry. It is not confirmation that the bursary is open or that the learner qualifies.'
+            })),
+            official_admission: false,
             grade9_stream_advice: grade9Advice
         });
     } catch (err) {

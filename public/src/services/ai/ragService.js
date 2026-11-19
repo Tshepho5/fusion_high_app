@@ -19,7 +19,10 @@ class RagService {
                    ts_rank_cd(c.search_vector, plainto_tsquery('english', $1)) as rank
             FROM school_document_chunks c
             JOIN school_documents d ON c.document_id = d.id
-            WHERE (d.school_id IS NULL OR d.school_id = $2)
+            WHERE (
+                d.school_id = $2
+                OR (d.school_id IS NULL AND d.document_type IN ('curriculum', 'caps', 'platform_curriculum'))
+            )
               AND (
                   c.search_vector @@ plainto_tsquery('english', $1)
                   OR c.content ILIKE $3
@@ -70,11 +73,17 @@ class RagService {
         if (!title || !textContent) {
             throw new Error('Title and content are required for document ingestion.');
         }
+        const platformTypes = ['curriculum', 'caps', 'platform_curriculum'];
+        const parsedSchoolId = parseInt(schoolId, 10);
+        const isPlatform = platformTypes.includes(documentType);
+        if (!isPlatform && (!Number.isInteger(parsedSchoolId) || parsedSchoolId <= 0)) {
+            throw new Error('A school document must belong to a school.');
+        }
 
         const docRes = await db.query(
             `INSERT INTO school_documents (school_id, title, document_type, grade, subject)
              VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-            [schoolId ? parseInt(schoolId, 10) : null, title, documentType || 'school_policy', grade, subject]
+            [isPlatform ? null : parsedSchoolId, title, documentType || 'school_policy', grade, subject]
         );
         const docId = docRes.rows[0].id;
 

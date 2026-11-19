@@ -25,28 +25,16 @@ import {
   BarChart3
 } from 'lucide-react';
 
-const DEFAULT_STATS = {
-  totalCandidates: 48,
-  projectedPassRate: 88,
-  bachelorRate: 54,
-  diplomaRate: 25,
-  higherCertRate: 9,
-  atRiskRate: 12,
-  counts: { bachelors: 26, diploma: 12, higherCert: 4, atRisk: 6 },
-  gatewayStats: [
-    { subject: 'Mathematics (Core)', candidates_count: 28, pass_percentage: 82.5, avg_score: 58.4, at_risk_count: 5 },
-    { subject: 'Physical Sciences', candidates_count: 24, pass_percentage: 79.2, avg_score: 55.1, at_risk_count: 4 },
-    { subject: 'Accounting', candidates_count: 18, pass_percentage: 86.0, avg_score: 62.8, at_risk_count: 2 },
-    { subject: 'Life Sciences', candidates_count: 32, pass_percentage: 91.3, avg_score: 66.0, at_risk_count: 3 },
-    { subject: 'Official Home Languages', candidates_count: 48, pass_percentage: 98.0, avg_score: 71.5, at_risk_count: 1 }
-  ],
-  candidates: [
-    { id: 1, candidate_name: 'Sipho Dlamini', candidate_number: '2026-GR12-001', stream: 'Science', home_language: 'isiZulu', aps_score: 38, projected_pass: "Bachelor's Degree Pass", failed_gateways: [], is_at_risk: false, interventions: ['Maintain current revision rhythm and test yourself with past DBE exam papers.'] },
-    { id: 2, candidate_name: 'Ayanda Khumalo', candidate_number: '2026-GR12-002', stream: 'Commerce', home_language: 'Sepedi', aps_score: 22, projected_pass: 'At Risk / Non-Pass', failed_gateways: ['Accounting (34%)', 'Economics (38%)'], is_at_risk: true, interventions: ['Saturday Financial Statements & Ratio Analysis clinic.', 'Attendance recovery plan.'] },
-    { id: 3, candidate_name: 'Nomvula Sithole', candidate_number: '2026-GR12-003', stream: 'Science', home_language: 'isiXhosa', aps_score: 42, projected_pass: "Bachelor's Degree Pass", failed_gateways: [], is_at_risk: false, interventions: ['Participate in distinction study masterclasses.'] },
-    { id: 4, candidate_name: 'Thabo Mokoena', candidate_number: '2026-GR12-004', stream: 'General', home_language: 'Setswana', aps_score: 28, projected_pass: 'Diploma Pass', failed_gateways: ['Maths Lit (44%)'], is_at_risk: false, interventions: ['Boost weekly study hours to reach Bachelor threshold.'] },
-    { id: 5, candidate_name: 'Bongani Ndlovu', candidate_number: '2026-GR12-005', stream: 'Science', home_language: 'isiZulu', aps_score: 19, projected_pass: 'At Risk / Non-Pass', failed_gateways: ['Mathematics (32%)', 'Physical Sciences (28%)'], is_at_risk: true, interventions: ['Compulsory Saturday Mathematics & Physics exam bootcamp.'] }
-  ]
+const EMPTY_STATS = {
+  totalCandidates: 0,
+  projectedPassRate: null as number | null,
+  bachelorRate: null as number | null,
+  diplomaRate: null as number | null,
+  higherCertRate: null as number | null,
+  atRiskRate: null as number | null,
+  counts: { bachelors: 0, diploma: 0, higherCert: 0, atRisk: 0 },
+  gatewayStats: [] as any[],
+  candidates: [] as any[]
 };
 
 const DEFAULT_ML_DATA = {
@@ -67,13 +55,7 @@ const DEFAULT_ML_DATA = {
     { feature: 'previous_score', importance: 0.118 },
     { feature: 'parent_education', importance: 0.045 }
   ],
-  students: [
-    { student_id: 'STU-001', name: 'Sipho Dlamini', stream: 'Science', study_hours_per_week: 25, attendance_rate: 92.5, projected_final_score: 78, pass_probability: 98, caps_achievement_level: { level: 6, label: 'Meritorious Achievement' }, risk_tier: 'Low', risk_label: 'On Track (Low Risk)', risk_badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', interventions: ['Maintain consistent revision schedule.'] },
-    { student_id: 'STU-002', name: 'Ayanda Khumalo', stream: 'Commerce', study_hours_per_week: 6, attendance_rate: 64.0, projected_final_score: 38, pass_probability: 14, caps_achievement_level: { level: 2, label: 'Elementary Achievement' }, risk_tier: 'High', risk_label: 'Critical (High Risk of Failure)', risk_badge: 'bg-red-500/20 text-red-300 border-red-500/30', interventions: ['Increase weekly study time to at least 18 hrs; Attendance recovery plan.'] },
-    { student_id: 'STU-003', name: 'Nomvula Sithole', stream: 'Science', study_hours_per_week: 28, attendance_rate: 96.0, projected_final_score: 84, pass_probability: 100, caps_achievement_level: { level: 7, label: 'Outstanding Achievement' }, risk_tier: 'Low', risk_label: 'On Track (Low Risk)', risk_badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', interventions: ['Target university entrance distinction scholarships.'] },
-    { student_id: 'STU-004', name: 'Thabo Mokoena', stream: 'General', study_hours_per_week: 16, attendance_rate: 86.0, projected_final_score: 58, pass_probability: 72, caps_achievement_level: { level: 4, label: 'Adequate Achievement' }, risk_tier: 'Medium', risk_label: 'Moderate Risk (Intervention Advised)', risk_badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30', interventions: ['Target 4 additional study hours per week.'] },
-    { student_id: 'STU-005', name: 'Bongani Ndlovu', stream: 'Science', study_hours_per_week: 4, attendance_rate: 58.5, projected_final_score: 32, pass_probability: 8, caps_achievement_level: { level: 2, label: 'Elementary Achievement' }, risk_tier: 'High', risk_label: 'Critical (High Risk of Failure)', risk_badge: 'bg-red-500/20 text-red-300 border-red-500/30', interventions: ['Compulsory Saturday mathematics & physics bootcamp.'] }
-  ]
+  students: [] as any[]
 };
 
 // Client-side instant ML formula helper for smooth slider dragging
@@ -124,8 +106,8 @@ function calculateLocalMlPrediction(studyHours: number, attendance: number, prev
 
 export const MatricPassRateProjector: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ml' | 'rules'>('ml');
-  const [stats, setStats] = useState<any>(DEFAULT_STATS);
-  const [mlData, setMlData] = useState<any>(DEFAULT_ML_DATA);
+  const [stats, setStats] = useState<any>(EMPTY_STATS);
+  const [mlData, setMlData] = useState<any>({ total: 0, summary: null, model_metrics: null, feature_importance: [], students: [] });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -215,7 +197,7 @@ export const MatricPassRateProjector: React.FC = () => {
     }
   };
 
-  const candidates = stats?.candidates || DEFAULT_STATS.candidates;
+  const candidates = stats?.candidates || [];
   const filteredCandidates = candidates.filter((c: any) => {
     const matchSearch =
       (c.candidate_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -232,7 +214,7 @@ export const MatricPassRateProjector: React.FC = () => {
     return true;
   });
 
-  const mlStudents = mlData?.students || DEFAULT_ML_DATA.students;
+  const mlStudents = mlData?.students || [];
   const filteredMlStudents = mlStudents.filter((s: any) => {
     const matchSearch =
       (s.student_id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -591,7 +573,7 @@ export const MatricPassRateProjector: React.FC = () => {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-              {(mlData?.feature_importance || DEFAULT_ML_DATA.feature_importance).slice(0, 4).map((feat: any, idx: number) => (
+              {(mlData?.feature_importance || []).slice(0, 4).map((feat: any, idx: number) => (
                 <div key={idx} className="p-4 rounded-2xl bg-surface-darker border border-white/5 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-white truncate">
@@ -742,8 +724,8 @@ export const MatricPassRateProjector: React.FC = () => {
 
             <div className="p-4 rounded-2xl bg-surface-dark border border-emerald-500/30 space-y-1">
               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">Projected Pass %</span>
-              <span className="text-2xl font-black text-emerald-300 font-display">{stats.projectedPassRate}%</span>
-              <span className="text-[10px] text-emerald-400 block">{stats.totalCandidates - stats.counts.atRisk} Passing</span>
+              <span className="text-2xl font-black text-emerald-300 font-display">{stats.projectedPassRate == null ? '—' : `${stats.projectedPassRate}%`}</span>
+              <span className="text-[10px] text-emerald-400 block">{stats.projectedPassRate == null ? 'No recorded result' : `${stats.totalCandidates - stats.counts.atRisk} Passing`}</span>
             </div>
 
             <div className="p-4 rounded-2xl bg-surface-dark border border-brand-500/30 space-y-1">

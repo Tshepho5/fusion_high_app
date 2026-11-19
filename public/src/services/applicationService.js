@@ -5,6 +5,7 @@ const path = require('path');
 const pdf = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { refuseExternalService } = require('../../../lib/testSafety');
+const { compareExtractedDocument } = require('../../../lib/admissionDocumentCheck');
 const { validateSAID } = require('../controller/saIDvalidations');
 
 const SCHOOL_MAX_CAPACITY = 500;
@@ -353,75 +354,27 @@ async function verifyApplicationWithAI(applicationData, uploadedDocs = []) {
   for (const doc of uploadedDocs) {
     const extractedText = await extractDocumentText(doc.file_path, doc.mime_type);
     
-    if (extractedText && extractedText.length > 50 && genAI) {
-      try {
-        const prompt = `
-You are an expert Admissions & South African Home Affairs Document Verification AI for Fusion High School.
-Analyze the following extracted document text against the applicant's declared application details:
-
-[DECLARED DETAILS]
-Learner Name: ${first_name} ${surname}
-Learner ID: ${id_number}
-Learner Date of Birth: ${dob}
-Learner Gender: ${gender}
-Learner Age: ${learnerAge !== null ? learnerAge : 'Unknown'}
-Grade Applied: Grade ${grade_applied}
-Primary Parent: ${primary_parent_name} ${primary_parent_surname}
-Parent ID: ${primary_parent_id_number}
-Document Type Uploaded: ${doc.document_type}
-
-[SOUTH AFRICAN DOCUMENT STANDARDS]
-- SA Smart ID Card / Green Book: Contains 13-digit ID (YYMMDD SSSS C A Z), Surname, First Names, Date of Birth, Gender, Country of Birth (South Africa / Foreign), and Issue Date.
-- SA Birth Certificate: Contains Child's 13-digit ID Number or Birth Entry No, Child's Full Names and Surname, Date of Birth, Place/Country of Birth, Mother's Name & ID, and Father's Name & ID.
-- Age Rule: Learners 16 years and older MUST have an ID Document (Smart ID or Green Book). Learners under 16 have Birth Certificates.
-
-[EXTRACTED DOCUMENT TEXT]
-${extractedText.substring(0, 3000)}
-
-Verify if:
-1. The document is authentic and readable.
-2. The names, 13-digit ID number, date of birth, and gender match the declared details.
-3. For learners 16+, verify that the document is indeed an official SA ID Document and not just a birth certificate.
-4. If there is a noticeable discrepancy (e.g. mismatched name, wrong document type, blurred text).
-
-Return strictly JSON with format:
-{
-  "isAuthentic": true,
-  "confidenceScore": 95,
-  "mismatches": [],
-  "extractedSummary": "Short explanation of document contents and Home Affairs compliance"
-}
-`;
-        refuseExternalService('ai');
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-        const aiResult = await model.generateContent(prompt);
-        const textResp = (await aiResult.response).text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(textResp);
-
-        doc.ai_confidence_score = parsed.confidenceScore || 90;
-        doc.ai_extracted_data = parsed;
-        doc.is_verified = parsed.isAuthentic && (parsed.mismatches || []).length === 0;
-
-        if (parsed.mismatches && parsed.mismatches.length > 0) {
-          parsed.mismatches.forEach(m => {
-            issues.push({
-              field: doc.document_type,
-              type: 'AI_CONTENT_MISMATCH',
-              message: `Document (${doc.document_type}) discrepancy: ${m}`,
-              details: parsed.extractedSummary || 'Mismatch detected between document text and form.'
-            });
-          });
-          overallScore -= 20;
-        }
-      } catch (aiErr) {
-        console.warn('[AI VERIFY] Gemini document check error (fallback to standard check):', aiErr.message);
-        doc.is_verified = true;
-        doc.ai_confidence_score = 85;
-      }
-    } else {
-      // Standard heuristic validation
-      doc.is_verified = true;
-      doc.ai_confidence_score = 90;
+    const localCheck = compareExtractedDocument({
+      text: extractedText,
+      surname,
+      idNumber: id_number
+    });
+    doc.ai_confidence_score = null;
+    doc.ai_extracted_data = { model_called: false, readable: localCheck.readable };
+    doc.is_verified = false;
+    doc.ai_review_required = true;
+    if (localCheck.readable && (localCheck.surname_present === false || localCheck.id_present === false)) {
+      issues.push({
+        field: doc.document_type,
+        type: 'LOCAL_DOCUMENT_MISMATCH',
+        message: `The uploaded ${doc.document_type || 'document'} needs a person to compare it with the application.`,
+        details: 'A local text check did not find every declared detail. The document was not sent to a model, and this is not an admission decision.'
+      });
+    }
+    if (!localCheck.readable) {
+      doc.is_verified = false;
+      doc.ai_confidence_score = null;
+      doc.ai_review_required = true;
     }
 
     verificationLog.push({
@@ -446,79 +399,19 @@ Return strictly JSON with format:
  * Detailed AI Document OCR & Clarity Inspector
  */
 async function inspectDocumentOCR(filePath, mimeType, declaredData = {}) {
+  const { buildDocumentInspection } = require('../../../lib/documentInspection');
   try {
     let extractedText = '';
-    let clarityScore = 96;
-    let isAuthentic = true;
-    let discrepancies = [];
-    let extractedFields = {};
-
-    if (filePath && fs.existsSync(filePath)) {
-      if (mimeType === 'application/pdf' || (filePath && filePath.endsWith('.pdf'))) {
-        const dataBuffer = fs.readFileSync(filePath);
-        const pdfData = await pdf(dataBuffer);
-        extractedText = pdfData.text || '';
-      }
+    const isPdf = mimeType === 'application/pdf' || (filePath && String(filePath).toLowerCase().endsWith('.pdf'));
+    if (filePath && isPdf && fs.existsSync(filePath)) {
+      const dataBuffer = fs.readFileSync(filePath);
+      const pdfData = await pdf(dataBuffer);
+      extractedText = pdfData.text || '';
     }
-
-    if (!extractedText || extractedText.length < 10) {
-      clarityScore = 94;
-      extractedText = `Official Certified South African Document Copy: ${path.basename(filePath || 'document.pdf')}`;
-    }
-
-    // Inspect SA ID format
-    const saIdRegex = /\b\d{13}\b/g;
-    const foundIds = extractedText.match(saIdRegex) || [];
-    
-    if (foundIds.length > 0) {
-      const primaryId = foundIds[0];
-      const validCheck = validateSAID(primaryId);
-      extractedFields.id_number = primaryId;
-      extractedFields.dob = validCheck.dob;
-      extractedFields.gender = validCheck.gender;
-      extractedFields.checksum_valid = validCheck.isValid;
-      
-      if (declaredData.id_number && declaredData.id_number !== primaryId) {
-        discrepancies.push(`Extracted ID (${primaryId}) differs from declared ID (${declaredData.id_number})`);
-        clarityScore -= 15;
-      }
-    } else if (declaredData.id_number) {
-      const idVal = validateSAID(declaredData.id_number);
-      extractedFields.id_number = declaredData.id_number;
-      extractedFields.dob = idVal.dob;
-      extractedFields.gender = idVal.gender;
-      extractedFields.checksum_valid = idVal.isValid;
-    }
-
-    extractedFields.document_authenticity = 'Department of Home Affairs Certified & Validated';
-    extractedFields.clarity_rating = `${clarityScore}% (High Readability)`;
-    extractedFields.verified_features = [
-      'Document Resolution Clear',
-      'Barcode / Stamp Signature Detected',
-      'Official CAPS Admissions Compliance'
-    ];
-
-    return {
-      success: true,
-      clarity_score: clarityScore,
-      is_authentic: isAuthentic && discrepancies.length === 0,
-      extracted_text_preview: extractedText.substring(0, 500),
-      extracted_fields: extractedFields,
-      discrepancies
-    };
+    return buildDocumentInspection({ extractedText, declaredData });
   } catch (err) {
-    console.error('Error during OCR document inspection:', err);
-    return {
-      success: true,
-      clarity_score: 90,
-      is_authentic: true,
-      extracted_text_preview: 'Document scanned and verified against Department of Basic Education compliance rules.',
-      extracted_fields: {
-        document_authenticity: 'Standard Verified Format',
-        clarity_rating: '90% Clear'
-      },
-      discrepancies: []
-    };
+    console.error('Error during document text inspection:', err.message);
+    return buildDocumentInspection({ extractedText: '', declaredData });
   }
 }
 

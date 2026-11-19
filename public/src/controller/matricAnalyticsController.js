@@ -1,143 +1,59 @@
 const db = require('../../../db/db');
 const emailService = require('../services/emailService');
 const academicMlService = require('../services/academicMlService');
+const { evaluateRecordedSubjects } = require('../../../lib/nscEvidence');
+const { resolveSchoolId } = require('../services/schoolScope');
+const { teacherClassIds } = require('../../../lib/aiLearnerAccess');
 
 /**
  * Helper: Calculate NSC Pass Category for a candidate's marks
  */
-function evaluateNscPass(subjectMarks, homeLanguageName = 'isiZulu') {
-  // subjectMarks: array of { subject, score }
-  if (!subjectMarks || subjectMarks.length === 0) {
-    return {
-      passLevel: 'Pending Data',
-      apsScore: 0,
-      atRisk: true,
-      failedGateways: [],
-      interventions: ['Enter baseline Term 1/2 assessment marks.']
-    };
-  }
-
-  // Find Home Language score
-  let hlScore = 50; // default baseline if not logged
-  const hlObj = subjectMarks.find(s => 
-    s.subject.toLowerCase().includes('home language') ||
-    s.subject.toLowerCase().includes(homeLanguageName.toLowerCase())
-  );
-  if (hlObj) hlScore = parseFloat(hlObj.score) || 50;
-
-  // Calculate Level 1-7 for each subject
-  let totalAps = 0;
-  const scoredSubjects = subjectMarks.map(s => {
-    const sc = parseFloat(s.score) || 0;
-    let lvl = 1;
-    if (sc >= 80) lvl = 7;
-    else if (sc >= 70) lvl = 6;
-    else if (sc >= 60) lvl = 5;
-    else if (sc >= 50) lvl = 4;
-    else if (sc >= 40) lvl = 3;
-    else if (sc >= 30) lvl = 2;
-    else lvl = 1;
-
-    // Life orientation is usually calculated separately or included in APS
-    totalAps += lvl;
-    return { subject: s.subject, score: sc, level: lvl };
-  });
-
-  const count50Plus = scoredSubjects.filter(s => s.score >= 50 && !s.subject.toLowerCase().includes('life orientation')).length;
-  const count40Plus = scoredSubjects.filter(s => s.score >= 40 && !s.subject.toLowerCase().includes('life orientation')).length;
-  const count30Plus = scoredSubjects.filter(s => s.score >= 30).length;
-
-  let passLevel = 'Did Not Meet Minimums';
-  let atRisk = false;
-
-  if (hlScore >= 40 && count50Plus >= 4 && count30Plus >= 6) {
-    passLevel = "Bachelor's Degree Pass";
-  } else if (hlScore >= 40 && count40Plus >= 4 && count30Plus >= 5) {
-    passLevel = 'Diploma Pass';
-  } else if (hlScore >= 40 && count40Plus >= 2 && count30Plus >= 5) {
-    passLevel = 'Higher Certificate Pass';
-  } else if (count30Plus >= 5) {
-    passLevel = 'NSC Pass (Endorsement Deficit)';
-    atRisk = true;
-  } else {
-    passLevel = 'At Risk / Non-Pass';
-    atRisk = true;
-  }
-
-  // Check Gateway Subjects
-  const failedGateways = [];
-  const interventions = [];
-
-  scoredSubjects.forEach(s => {
-    const subLower = s.subject.toLowerCase();
-    if (subLower.includes('math') && s.score < 40) {
-      failedGateways.push(`${s.subject} (${s.score}%)`);
-      interventions.push('Enroll in Saturday Mathematics Exam Bootcamp (Paper 1 Calculus & Functions).');
-    }
-    if (subLower.includes('physical science') && s.score < 40) {
-      failedGateways.push(`${s.subject} (${s.score}%)`);
-      interventions.push('Targeted Physics clinic on Newton Mechanics & Organic Chemistry.');
-    }
-    if (subLower.includes('accounting') && s.score < 40) {
-      failedGateways.push(`${s.subject} (${s.score}%)`);
-      interventions.push('Financial Statements & Ratio Analysis intervention group.');
-    }
-    if (subLower.includes('life sciences') && s.score < 40) {
-      failedGateways.push(`${s.subject} (${s.score}%)`);
-      interventions.push('Genetics & DNA Code past paper masterclass.');
-    }
-  });
-
-  if (hlScore < 40) {
-    failedGateways.push(`Home Language (${hlScore}%)`);
-    interventions.push('Compulsory Home Language Paper 3 Essay & Literature remedial.');
-    atRisk = true;
-  }
-
-  if (interventions.length === 0) {
-    interventions.push('Maintain consistent revision rhythm & past examination paper timed sessions.');
-  }
-
-  return {
-    passLevel,
-    apsScore: totalAps,
-    atRisk: atRisk || failedGateways.length > 0,
-    failedGateways,
-    interventions,
-    scoredSubjects
-  };
+function evaluateNscPass(subjectMarks) {
+  return evaluateRecordedSubjects(subjectMarks);
 }
 
-/**
- * Admin: Get Matric Pass Rate Projector Analytics
- */
 exports.getMatricProjectorStats = async (req, res) => {
   try {
-    // 1. Fetch all Grade 12 Candidates
+    const schoolId = resolveSchoolId(req);
+    const empty = {
+      totalCandidates: 0,
+      projectedPassRate: null,
+      bachelorRate: null,
+      diplomaRate: null,
+      higherCertRate: null,
+      atRiskRate: null,
+      gatewayStats: [],
+      candidates: [],
+      official_result: false,
+      message: schoolId ? 'No Grade 12 learners are available for this account.' : 'This account is not linked to a school.'
+    };
+    if (!schoolId) return res.json(empty);
+
+    const role = String(req.user.role || '').toLowerCase();
+    const params = [schoolId];
+    let classClause = '';
+    if (role === 'teacher') {
+      const classIds = await teacherClassIds(db, req.user.id, schoolId);
+      if (!classIds.length) return res.json(empty);
+      params.push(classIds);
+      classClause = ` AND c.class_id = ANY($${params.length}::int[])`;
+    }
+
     const candidatesRes = await db.query(`
-      SELECT 
+      SELECT
         c.id, c.full_name, c.surname, c.grade, c.stream, c.home_language,
-        COALESCE(u.gender, 'Not Specified') AS gender,
-        COALESCE(c.learner_number, '2026-FUS-12' || LPAD(c.id::text, 3, '0')) AS candidate_number
+        u.gender AS gender,
+        c.learner_number AS candidate_number
       FROM children c
       LEFT JOIN users u ON c.learner_user_id = u.id
-      WHERE c.grade = 12
-      ORDER BY c.surname ASC, c.full_name ASC;
-    `);
+      WHERE c.grade = 12 AND c.school_id = $1 ${classClause}
+      ORDER BY c.surname ASC, c.full_name ASC
+    `, params);
 
     const candidates = candidatesRes.rows;
 
     if (candidates.length === 0) {
-      return res.json({
-        totalCandidates: 0,
-        projectedPassRate: 100,
-        bachelorRate: 0,
-        diplomaRate: 0,
-        higherCertRate: 0,
-        atRiskRate: 0,
-        gatewayStats: [],
-        candidates: []
-      });
+      return res.json(empty);
     }
 
     // Default sample subject matrices for CAPS Grade 12 streams
@@ -161,31 +77,15 @@ exports.getMatricProjectorStats = async (req, res) => {
       if (!marksByChild[r.child_id]) marksByChild[r.child_id] = [];
       marksByChild[r.child_id].push({
         subject: r.subject,
-        score: parseFloat(r.score) || 0
+        score: Number.isFinite(parseFloat(r.score)) ? parseFloat(r.score) : null
       });
     });
 
     const candidateRoster = candidates.map((cand) => {
-      const stream = cand.stream || 'Science';
-      const homeLang = cand.home_language || 'isiZulu';
-      const baseSubList = cand.subjects && cand.subjects.length > 0
-        ? cand.subjects
-        : (streamSubjects[stream] || streamSubjects['Science']);
-
-      const dbMarks = marksByChild[cand.id] || [];
-      const subjectMarks = baseSubList.map(subName => {
-        const found = dbMarks.find(m => 
-          m.subject.toLowerCase() === subName.toLowerCase() ||
-          m.subject.toLowerCase().includes(subName.toLowerCase()) ||
-          subName.toLowerCase().includes(m.subject.toLowerCase())
-        );
-        return {
-          subject: subName,
-          score: found ? found.score : 0
-        };
-      });
-
-      const evaluation = evaluateNscPass(subjectMarks, homeLang);
+      const stream = cand.stream || null;
+      const homeLang = cand.home_language || null;
+      const dbMarks = (marksByChild[cand.id] || []).filter((mark) => Number.isFinite(mark.score));
+      const evaluation = evaluateNscPass(dbMarks, homeLang);
 
       return {
         id: cand.id,
@@ -209,19 +109,38 @@ exports.getMatricProjectorStats = async (req, res) => {
     const diplomaCount = candidateRoster.filter(c => c.projected_pass === 'Diploma Pass').length;
     const higherCertCount = candidateRoster.filter(c => c.projected_pass === 'Higher Certificate Pass').length;
     const atRiskCount = candidateRoster.filter(c => c.is_at_risk).length;
-    const passedCount = total - candidateRoster.filter(c => c.projected_pass === 'At Risk / Non-Pass').length;
+    const passLevels = new Set(["Bachelor's Degree Pass", 'Diploma Pass', 'Higher Certificate Pass']);
+    const passedCount = candidateRoster.filter(c => passLevels.has(c.projected_pass)).length;
 
+    const gatewayFromRecords = (label, pattern) => {
+      const scores = [];
+      candidateRoster.forEach((candidate) => {
+        (candidate.subject_marks || []).forEach((mark) => {
+          if (pattern.test(String(mark.subject || '')) && Number.isFinite(mark.score)) scores.push(mark.score);
+        });
+      });
+      if (!scores.length) return { subject: label, candidates_count: 0, pass_percentage: null, avg_score: null, at_risk_count: 0 };
+      const below = scores.filter((score) => score < 40).length;
+      return {
+        subject: label,
+        candidates_count: scores.length,
+        pass_percentage: Math.round(((scores.length - below) / scores.length) * 100),
+        avg_score: Math.round((scores.reduce((sum, score) => sum + score, 0) / scores.length) * 10) / 10,
+        at_risk_count: below
+      };
+    };
     const gatewayStats = [
-      { subject: 'Mathematics (Core)', candidates_count: candidateRoster.filter(c => c.stream === 'Science').length, pass_percentage: 82.5, avg_score: 58.4, at_risk_count: candidateRoster.filter(c => c.failed_gateways.some(g => g.includes('Mathematics'))).length },
-      { subject: 'Physical Sciences', candidates_count: candidateRoster.filter(c => c.stream === 'Science').length, pass_percentage: 79.2, avg_score: 55.1, at_risk_count: candidateRoster.filter(c => c.failed_gateways.some(g => g.includes('Physical'))).length },
-      { subject: 'Accounting', candidates_count: candidateRoster.filter(c => c.stream === 'Commerce').length, pass_percentage: 86.0, avg_score: 62.8, at_risk_count: candidateRoster.filter(c => c.failed_gateways.some(g => g.includes('Accounting'))).length },
-      { subject: 'Life Sciences', candidates_count: candidateRoster.filter(c => c.stream === 'Science').length, pass_percentage: 91.3, avg_score: 66.0, at_risk_count: candidateRoster.filter(c => c.failed_gateways.some(g => g.includes('Life Sciences'))).length },
-      { subject: 'Official Home Languages', candidates_count: total, pass_percentage: 98.0, avg_score: 71.5, at_risk_count: candidateRoster.filter(c => c.failed_gateways.some(g => g.includes('Home Language'))).length }
+      gatewayFromRecords('Mathematics', /math/i),
+      gatewayFromRecords('Physical Sciences', /physical science/i),
+      gatewayFromRecords('Accounting', /accounting/i),
+      gatewayFromRecords('Life Sciences', /life science/i),
+      gatewayFromRecords('Home Language', /home language/i)
     ];
 
     res.json({
       totalCandidates: total,
-      projectedPassRate: Math.round((passedCount / total) * 100),
+      projectedPassRate: total > 0 ? Math.round((passedCount / total) * 100) : null,
+      official_result: false,
       bachelorRate: Math.round((bachelorsCount / total) * 100),
       diplomaRate: Math.round((diplomaCount / total) * 100),
       higherCertRate: Math.round((higherCertCount / total) * 100),
@@ -329,62 +248,47 @@ exports.simulateIntervention = async (req, res) => {
  */
 exports.getMlCohortPredictions = async (req, res) => {
   try {
-    // 1. Fetch real Grade 12 learners from the database
+    const schoolId = resolveSchoolId(req);
+    if (!schoolId) {
+      return res.json({ prediction_available: false, official_result: false, students: [], message: 'This account is not linked to a school.' });
+    }
+    const params = [schoolId];
+    let classClause = '';
+    if (String(req.user.role || '').toLowerCase() === 'teacher') {
+      const classIds = await teacherClassIds(db, req.user.id, schoolId);
+      if (!classIds.length) {
+        return res.json({ prediction_available: false, official_result: false, students: [], message: 'No assigned classes were found for this teacher.' });
+      }
+      params.push(classIds);
+      classClause = ` AND c.class_id = ANY($${params.length}::int[])`;
+    }
     const learnersRes = await db.query(`
-      SELECT c.id, c.full_name, c.surname, COALESCE(u.gender, 'Unspecified') as gender, c.grade, c.stream,
-             COALESCE(c.home_language, 'isiZulu') as home_language,
-             ROUND(COALESCE(att.rate, 75.0)::numeric, 1) as attendance_rate,
-             ROUND(COALESCE(mk.avg_score, 50.0)::numeric, 1) as previous_score,
-             COALESCE(hw.sub_count, 15) as study_hours_estimate
+      SELECT c.id, c.full_name, c.surname, c.grade, c.stream, c.school_id, c.class_id,
+             ROUND(mk.avg_score::numeric, 1) as previous_score
       FROM children c
-      LEFT JOIN users u ON c.learner_user_id = u.id
       LEFT JOIN (
-        SELECT child_id, 
-               (COUNT(CASE WHEN status = 'Present' THEN 1 END)::float / NULLIF(COUNT(*), 0)) * 100 as rate
-        FROM attendance
-        GROUP BY child_id
-      ) att ON c.id = att.child_id
-      LEFT JOIN (
-        SELECT child_id, AVG(COALESCE(score, 0)) as avg_score
+        SELECT child_id, AVG(score) as avg_score
         FROM marks
+        WHERE score IS NOT NULL
         GROUP BY child_id
       ) mk ON c.id = mk.child_id
-      LEFT JOIN (
-        SELECT child_id, COUNT(*) as sub_count
-        FROM homework_submissions
-        GROUP BY child_id
-      ) hw ON c.id = hw.child_id
-      WHERE c.grade = 12
-    `);
-
-    let studentList = [];
-    if (learnersRes.rows.length > 0) {
-      studentList = learnersRes.rows.map(row => ({
-        student_id: `STU-${row.id}`,
-        name: `${row.full_name} ${row.surname}`,
-        gender: row.gender || 'Female',
-        age: 18,
-        study_hours_per_week: Math.max(2, Math.min(30, row.study_hours_estimate || 15)),
-        attendance_rate: parseFloat(row.attendance_rate) || 75.0,
-        parent_education: 'High School',
-        internet_access: 'Yes',
-        extracurricular: 'Yes',
-        previous_score: parseFloat(row.previous_score) || 50.0,
-        stream: row.stream
-      }));
-    } else {
-      // Fallback to demo cohort if no active Grade 12 learners in DB
-      studentList = [
-        { student_id: 'STU-001', name: 'Sipho Dlamini', gender: 'Male', age: 18, study_hours_per_week: 25, attendance_rate: 92.5, parent_education: 'Bachelor', internet_access: 'Yes', extracurricular: 'Yes', previous_score: 68, stream: 'Science' },
-        { student_id: 'STU-002', name: 'Ayanda Khumalo', gender: 'Female', age: 17, study_hours_per_week: 6, attendance_rate: 64.0, parent_education: 'None', internet_access: 'No', extracurricular: 'No', previous_score: 42, stream: 'Commerce' },
-        { student_id: 'STU-003', name: 'Thabo Mokoena', gender: 'Male', age: 18, study_hours_per_week: 18, attendance_rate: 88.0, parent_education: 'High School', internet_access: 'Yes', extracurricular: 'Yes', previous_score: 55, stream: 'General' },
-        { student_id: 'STU-004', name: 'Nomvula Sithole', gender: 'Female', age: 18, study_hours_per_week: 28, attendance_rate: 96.0, parent_education: 'Master', internet_access: 'Yes', extracurricular: 'Yes', previous_score: 74, stream: 'Science' },
-        { student_id: 'STU-005', name: 'Bongani Ndlovu', gender: 'Male', age: 19, study_hours_per_week: 4, attendance_rate: 58.5, parent_education: 'High School', internet_access: 'No', extracurricular: 'No', previous_score: 38, stream: 'Science' }
-      ];
-    }
-
-    const cohortPredictions = academicMlService.predictCohort(studentList);
-    res.json(cohortPredictions);
+      WHERE c.grade = 12 AND c.school_id = $1 ${classClause}
+    `, params);
+    const students = learnersRes.rows.map((row) => ({
+      id: row.id,
+      name: `${row.full_name || ''} ${row.surname || ''}`.trim(),
+      grade: row.grade,
+      stream: row.stream || null,
+      recorded_average: Number.isFinite(parseFloat(row.previous_score)) ? parseFloat(row.previous_score) : null,
+      prediction_available: false,
+      official_result: false
+    }));
+    res.json({
+      prediction_available: false,
+      official_result: false,
+      students,
+      message: 'Cohort predictions are not produced from sample marks, sample study hours, or unnamed stand-in learners.'
+    });
   } catch (err) {
     console.error('Error generating ML cohort predictions:', err);
     res.status(500).json({ error: 'Failed to generate ML cohort predictions: ' + err.message });

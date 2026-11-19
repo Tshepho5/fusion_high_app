@@ -5,6 +5,7 @@ const db = require('../../../db/db');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
 const { resolveSchoolId } = require('../services/schoolScope');
+const { subjectiveHomeworkReview } = require('../../../lib/homeworkReview');
 
 // Ensure upload directories exist
 const assignmentUploadsDir = path.join(__dirname, '../../uploads/assignments');
@@ -152,48 +153,16 @@ async function evaluateHomeworkSubmission({ assignment, submissionText, fileName
     return {
       ai_score: aiScore,
       ai_percentage: aiPercentage,
+      score_recorded: true,
+      official_mark: false,
+      scoring_method: 'objective_match',
       ai_feedback: feedback,
       ai_strengths: strengths,
       ai_areas_for_improvement: areasForImprovement
     };
   }
 
-  // Clean text sample
-  const textContent = (submissionText || '').trim();
-  const wordCount = textContent ? textContent.split(/\s+/).length : 0;
-  
-  let scoreRatio = 0.75; // Default strong benchmark
-  let feedback = '';
-  let strengths = '';
-  let areasForImprovement = '';
-
-  if (wordCount > 150 || (fileName && fileName.length > 0)) {
-    scoreRatio = 0.84;
-    feedback = 'Comprehensive submission addressing all CAPS syllabus criteria. Key terminology and logical reasoning are well-developed throughout.';
-    strengths = 'Strong conceptual understanding, structured methodology, and clear articulation of principles.';
-    areasForImprovement = 'Verify final calculations and provide additional real-world case examples where applicable.';
-  } else if (wordCount > 50) {
-    scoreRatio = 0.70;
-    feedback = 'Good foundation presented. Main questions addressed, but deeper analysis and supporting workings are recommended.';
-    strengths = 'Identified fundamental core facts accurately.';
-    areasForImprovement = 'Expand on step-by-step explanations to secure full marks in high-weighting sections.';
-  } else {
-    scoreRatio = 0.60;
-    feedback = 'Brief initial draft submitted. Additional elaboration required to meet full assessment rubric standards.';
-    strengths = 'Demonstrated basic comprehension of the topic.';
-    areasForImprovement = 'Include full workings, definitions, and supporting evidence.';
-  }
-
-  const aiScore = Math.round(totalMarks * scoreRatio * 10) / 10;
-  const aiPercentage = Math.round((aiScore / totalMarks) * 100);
-
-  return {
-    ai_score: aiScore,
-    ai_percentage: aiPercentage,
-    ai_feedback: feedback,
-    ai_strengths: strengths,
-    ai_areas_for_improvement: areasForImprovement
-  };
+  return subjectiveHomeworkReview({ submissionText, fileName });
 }
 
 /**
@@ -579,14 +548,14 @@ exports.submitHomework = async (req, res) => {
       `INSERT INTO homework_submissions 
         (assignment_id, child_id, learner_user_id, file_url, file_name, submission_text, submitted_at, status,
          ai_score, ai_percentage, ai_feedback, ai_strengths, ai_areas_for_improvement)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW(), 'ai_evaluated', $7, $8, $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, $8, $9, $10, $11, $12)
        ON CONFLICT (assignment_id, child_id)
        DO UPDATE SET 
          file_url = EXCLUDED.file_url,
          file_name = EXCLUDED.file_name,
          submission_text = EXCLUDED.submission_text,
          submitted_at = NOW(),
-         status = 'ai_evaluated',
+         status = EXCLUDED.status,
          ai_score = EXCLUDED.ai_score,
          ai_percentage = EXCLUDED.ai_percentage,
          ai_feedback = EXCLUDED.ai_feedback,
@@ -600,6 +569,7 @@ exports.submitHomework = async (req, res) => {
         fileUrl,
         fileName,
         submission_text,
+        aiEvaluation.score_recorded ? 'auto_marked' : 'submitted',
         aiEvaluation.ai_score,
         aiEvaluation.ai_percentage,
         aiEvaluation.ai_feedback,
@@ -624,7 +594,9 @@ exports.submitHomework = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Homework successfully submitted and evaluated by Fusion AI Evaluator.',
+      message: aiEvaluation.score_recorded
+        ? 'Homework submitted. Objective answers were matched. This is not an official school mark until a teacher signs it.'
+        : 'Homework submitted. A teacher needs to mark this answer.',
       submission,
       ai_evaluation: aiEvaluation
     });
@@ -844,11 +816,16 @@ exports.batchAIGrade = async (req, res) => {
     }
 
     let gradedCount = 0;
+    let reviewCount = 0;
     for (const sub of subsRes.rows) {
       const totalMarks = parseFloat(sub.total_marks || 50);
-      const scoreVal = sub.ai_score ? parseFloat(sub.ai_score) : Math.round(totalMarks * 0.78);
-      const percentage = Math.round((scoreVal / totalMarks) * 100);
-      const feedback = sub.ai_feedback || 'Well attempted. All main curriculum points addressed with clear working.';
+      const scoreVal = Number(sub.ai_score);
+      if (!Number.isFinite(scoreVal)) {
+        reviewCount += 1;
+        continue;
+      }
+      const percentage = totalMarks > 0 ? Math.round((scoreVal / totalMarks) * 100) : null;
+      const feedback = sub.ai_feedback || 'Objective answers were matched. This is not an official school mark until you confirm it.';
       const teacherFullName = sub.teacher_name ? `${sub.teacher_name} ${sub.teacher_surname}` : 'Subject Educator';
       const learnerFullName = `${sub.learner_name} ${sub.learner_surname}`;
 
@@ -865,23 +842,25 @@ exports.batchAIGrade = async (req, res) => {
         [scoreVal, percentage, feedback, teacherId, sub.id]
       );
 
-      // Record in progress table
-      try {
-        await db.query(
-          `INSERT INTO progress (child_id, subject, term, assessment_type, score, total_marks, grade_symbol, notes, recorded_by, created_at)
-           VALUES ($1, $2, 'Term 3 2026', 'Homework Assignment', $3, $4, $5, $6, $7, NOW())`,
-          [
-            sub.child_id,
-            sub.subject,
-            scoreVal,
-            totalMarks,
-            percentage >= 80 ? '7' : percentage >= 70 ? '6' : percentage >= 60 ? '5' : percentage >= 50 ? '4' : '3',
-            `Homework: ${sub.assignment_title}. AI Feedback: ${feedback}`,
-            teacherFullName
-          ]
-        );
-      } catch (e) {
-        console.warn('[PROGRESS SYNC WARN]:', e.message);
+      if (sub.term) {
+        try {
+          await db.query(
+            `INSERT INTO progress (child_id, subject, term, assessment_type, score, total_marks, grade_symbol, notes, recorded_by, created_at)
+             VALUES ($1, $2, $3, 'Homework Assignment', $4, $5, $6, $7, $8, NOW())`,
+            [
+              sub.child_id,
+              sub.subject,
+              sub.term,
+              scoreVal,
+              totalMarks,
+              percentage >= 80 ? '7' : percentage >= 70 ? '6' : percentage >= 60 ? '5' : percentage >= 50 ? '4' : '3',
+              `Homework: ${sub.assignment_title}. Matched objective answers. Not an official report mark until the report workflow records it.`,
+              teacherFullName
+            ]
+          );
+        } catch (e) {
+          console.warn('[PROGRESS SYNC WARN]:', e.message);
+        }
       }
 
       // Email notifications
@@ -905,8 +884,9 @@ exports.batchAIGrade = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Batch AI Marking complete! Successfully graded and signed off ${gradedCount} submission(s) and notified learners & parents.`,
-      graded_count: gradedCount
+      message: `${gradedCount} objective submission(s) were signed from matched answers. ${reviewCount} submission(s) still need a teacher mark.`,
+      graded_count: gradedCount,
+      review_count: reviewCount
     });
   } catch (err) {
     console.error('Error in batch AI grading:', err);

@@ -27,8 +27,11 @@ function calculateAps(subjectMarks = []) {
     };
   }
 
-  const breakdown = subjectMarks.map(s => {
-    const rawMark = Number(s.mark !== undefined ? s.mark : s.grade) || 0;
+  const breakdown = subjectMarks.flatMap(s => {
+    const source = s.mark !== undefined ? s.mark : s.grade;
+    if (source === null || source === undefined || source === '') return [];
+    const rawMark = Number(source);
+    if (!Number.isFinite(rawMark)) return [];
     const nsc = percentageToNscLevel(rawMark);
     const isLo = (s.subject || s.name || '').toLowerCase().includes('life orientation');
     return {
@@ -60,22 +63,29 @@ function calculateAps(subjectMarks = []) {
   // Bachelor's Degree Pass: 4 subjects at Level 4 (50%+) excluding LO + Home Language 40%+ + LO 30%+
   // Diploma Pass: 4 subjects at Level 3 (40%+) including Home Language
   // Higher Certificate: 3 subjects at Level 3 (40%+) including Home Language
-  let passType = 'Bachelor Degree Pass';
+  let passType = 'Incomplete record';
   const subjectsAt50Plus = breakdown.filter(s => !s.isLo && s.mark >= 50).length;
   const subjectsAt40Plus = breakdown.filter(s => !s.isLo && s.mark >= 40).length;
+  const homeLanguage = breakdown.find(s => /home language/i.test(s.subject || ''));
 
-  if (subjectsAt50Plus >= 4) {
+  if (breakdown.length < 6 || !homeLanguage) {
+    passType = 'Incomplete record';
+  } else if (subjectsAt50Plus >= 4 && homeLanguage.mark >= 40) {
     passType = "Bachelor's Degree Pass (Endorsement to Study Degrees at University)";
   } else if (subjectsAt40Plus >= 4) {
     passType = 'Diploma Pass (Eligible for National Diploma Programmes)';
-  } else {
+  } else if (subjectsAt40Plus >= 3 && homeLanguage.mark >= 40) {
     passType = 'Higher Certificate Pass (Eligible for Higher Certificate Programmes)';
+  } else {
+    passType = 'Incomplete record';
   }
 
   return {
     apsWithoutLo,
     apsTotalWithLo,
     nscPassType: passType,
+    official_result: false,
+    estimate_only: true,
     subjectBreakdown: breakdown,
     topSubjectsCount: top6NonLo.length
   };

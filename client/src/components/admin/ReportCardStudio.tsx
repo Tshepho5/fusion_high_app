@@ -257,7 +257,8 @@ export const ReportCardStudio: React.FC = () => {
   // Recalculate Average and Promotion Decision when admin changes marks inline
   const handleMarkChange = (childId: number, subject: string, rawVal: string) => {
     const isBlank = rawVal.trim() === '';
-    const val = isBlank ? null : Math.min(100, Math.max(0, parseInt(rawVal, 10) || 0));
+    const parsed = parseInt(rawVal, 10);
+    const val = isBlank || !Number.isFinite(parsed) ? null : Math.min(100, Math.max(0, parsed));
 
     setLearners((prev) =>
       prev.map((l) => {
@@ -917,7 +918,7 @@ export const ReportCardStudio: React.FC = () => {
                               ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                               : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                           }`}>
-                            {l.promotion_decision || 'Promoted'}
+                            {l.promotion_decision || 'Not recorded'}
                           </span>
                         )}
                       </td>

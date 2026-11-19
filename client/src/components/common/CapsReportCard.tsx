@@ -19,6 +19,16 @@ function termIndexFromLabel(value?: string | null) {
   return labeled ? Number(labeled[1]) : null;
 }
 
+function termResultText(term: number, subjects: Array<{ term1?: { mark?: number | null }; term2?: { mark?: number | null }; term3?: { mark?: number | null }; term4?: { mark?: number | null } }>) {
+  const key = `term${term}` as 'term1' | 'term2' | 'term3' | 'term4';
+  const marks = subjects.map((subject) => Number(subject[key]?.mark));
+  const complete = subjects.length > 0 && marks.every((mark) => Number.isFinite(mark));
+  if (!complete) return '-';
+  const average = Math.round(marks.reduce((sum, mark) => sum + mark, 0) / marks.length);
+  if (term === 4) return average >= 40 ? 'Promoted' : 'Not Promoted';
+  return average >= 40 ? 'Achieved' : 'Not Achieved';
+}
+
 function readableValue(value?: string | null) {
   const text = String(value || '').trim();
   if (!text) return '';
@@ -74,7 +84,7 @@ interface CapsReportCardProps {
 
 export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   childId,
-  initialTerm = 'Term 3 2026',
+  initialTerm = '',
   onNavigateTab,
   hideControlBar = false,
   previewLearner
@@ -99,7 +109,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   }, [childId, term, previewLearner]);
 
   useEffect(() => {
-    if (!previewLearner || !childId) return;
+    if (!previewLearner || !childId || !term) return;
     let cancelled = false;
     reportService.getCapsReportCard({ child_id: childId, term })
       .then((res) => {
@@ -113,6 +123,12 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   }, [previewLearner, childId, term]);
 
   const fetchReportData = async () => {
+    if (!childId || !term) {
+      setLoading(false);
+      setData(null);
+      setError(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -204,7 +220,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   };
 
   if (loading) {
-    return <LoadingSpinner text="Generating official South African CAPS Report Card..." />;
+    return <LoadingSpinner text="Loading the report..." />;
   }
 
   // Handle case where parent has no linked children
@@ -277,17 +293,17 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
     admission_number: rawLearner.admission_number || rawLearner.learner_number || 'N/A',
     learner_number: rawLearner.learner_number || '',
     dob: rawLearner.dob ? String(rawLearner.dob).substring(0, 10).replace(/-/g, '') : 'N/A',
-    grade: rawLearner.grade || 10,
-    class_name: reportClassLabel(rawLearner.class_name) || `${rawLearner.grade || 10}`,
+    grade: rawLearner.grade ?? '',
+    class_name: reportClassLabel(rawLearner.class_name) || '',
     stream: rawLearner.stream || 'General'
   };
 
   const meta = reportObj.meta || {
-    academic_year: data?.academic_year || 2026,
-    current_term: 3,
-    closing_date: '2026/09/23',
-    reopening_date: '2026/10/06',
-    issue_date: new Date().toISOString().substring(0, 10).replace(/-/g, '/')
+    academic_year: data?.academic_year || null,
+    current_term: data?.term || null,
+    closing_date: null,
+    reopening_date: null,
+    issue_date: null
   };
 
   // Resolve Subjects list
@@ -338,11 +354,11 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
       final: data?.overall_average ?? null
     },
     outcome: {
-      term1: '-',
-      term2: '-',
-      term3: 'Achieved',
-      term4: '-',
-      final: data?.promotion_status || 'Achieved'
+      term1: termResultText(1, subjects),
+      term2: termResultText(2, subjects),
+      term3: termResultText(3, subjects),
+      term4: termResultText(4, subjects),
+      final: data?.promotion_status || '-'
     },
     attendance: {
       term1_absent: null,
@@ -354,8 +370,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   };
 
   const remarks = reportObj.remarks || {
-    teacher_comment: previewLearner?.teacher_comment || data?.report_card?.endorsements?.teacher_comment || 'Continue working hard and remain focused on academic goals.',
-    principal_comment: previewLearner?.principal_comment || data?.report_card?.endorsements?.principal_comment || 'Promoted with commendation.'
+    teacher_comment: previewLearner?.teacher_comment || data?.report_card?.endorsements?.teacher_comment || '',
+    principal_comment: previewLearner?.principal_comment || data?.report_card?.endorsements?.principal_comment || ''
   };
 
   const signatures = reportObj.signatures || {
@@ -366,8 +382,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   };
 
   const termMatch = String(term).match(/term\s*(\d+)/i);
-  const termNumber = termMatch ? parseInt(termMatch[1], 10) : 3;
-  const reportYear = Number(meta.academic_year) || 2026;
+  const termNumber = termMatch ? parseInt(termMatch[1], 10) : '';
+  const reportYear = Number(meta.academic_year) || 'year';
   const safeName = String(learner.full_name || 'Learner').replace(/[^a-zA-Z0-9_-]/g, '_');
   reportFileRef.current = {
     filename: `GelezaSA_Report_${reportYear}_Grade${learner.grade}_${safeName}_Term${termNumber}.pdf`
@@ -434,10 +450,11 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
               onChange={(e) => setTerm(e.target.value)}
               className="rounded-xl bg-surface-darker border border-white/10 px-3 py-1.5 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
+              <option value="">Choose a term</option>
               <option value="Term 1 2026">Term 1 2026</option>
               <option value="Term 2 2026">Term 2 2026</option>
-              <option value="Term 3 2026">Term 3 2026 (Current)</option>
-              <option value="Term 4 2026">Term 4 2026 (Final)</option>
+              <option value="Term 3 2026">Term 3 2026</option>
+              <option value="Term 4 2026">Term 4 2026</option>
             </select>
 
             <button
@@ -530,7 +547,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
               Birth Date: <span className="font-mono">{learner.dob}</span>
             </p>
             <p className="text-slate-800">
-              School Closes: <span className="font-mono">{meta.closing_date}</span>
+              School Closes: <span className="font-mono">{meta.closing_date || 'Not recorded'}</span>
             </p>
           </div>
 
@@ -740,7 +757,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
               General Remarks:
             </span>
             <div className="p-2 border-b-2 border-slate-400 italic text-[12px] text-slate-900 min-h-[48px]">
-              {remarks.teacher_comment}
+              {remarks.teacher_comment || 'No remark has been recorded.'}
             </div>
           </div>
 

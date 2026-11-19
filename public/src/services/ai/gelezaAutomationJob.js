@@ -91,14 +91,7 @@ class GelezaAutomationJob {
       clearInterval(this.timer);
     }
 
-    console.log(`[GELEZA AUTOMATION JOB] Initializing automated school workflow runner (interval: ${intervalMs / 1000 / 3600}h)...`);
-
-    // Grace delay after server start
-    setTimeout(() => {
-      this.runCycle({ triggeredBy: 'startup_scheduled' }).catch(err => {
-        console.warn('[GELEZA AUTOMATION JOB] Startup cycle notice:', err.message);
-      });
-    }, 60000);
+    console.log(`[GELEZA AUTOMATION JOB] Initializing automated school workflow runner (interval: ${intervalMs / 1000 / 3600}h). The first cycle waits for the interval.`);
 
     // Periodic repeating interval
     this.timer = setInterval(() => {

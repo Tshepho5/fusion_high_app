@@ -1,5 +1,6 @@
 const db = require('../../../db/db');
 const { assertChildAccess } = require('../services/familyAccess');
+const { percentageFromMark, finiteNumber } = require('../../../lib/academicEvidence');
 
 exports.getLearnerProgress = async (req, res) => {
     try {
@@ -134,16 +135,16 @@ exports.getCapsReportCardData = async (req, res) => {
                     full_name: `${child.full_name} ${child.surname}`.trim(),
                     learner_number: child.learner_number || '',
                     grade: child.grade,
-                    stream: child.stream || 'General',
-                    class_name: child.class_name || `${child.grade}A`
+                    stream: child.stream || null,
+                    class_name: child.class_name || null
                 },
                 school: {
-                    name: child.school_name || 'FUSION HIGH COMPREHENSIVE SCHOOL',
-                    province: child.province || 'Gauteng Province',
-                    circuit: child.circuit || 'Central Circuit 01',
-                    district: child.district || 'Johannesburg North District',
-                    emis_number: child.emis_number || '700400192',
-                    principal_name: child.principal_name || 'Dr. T. Makola'
+                    name: child.school_name || null,
+                    province: child.province || null,
+                    circuit: child.circuit || null,
+                    district: child.district || null,
+                    emis_number: child.emis_number || null,
+                    principal_name: child.principal_name || null
                 }
             });
         }
@@ -201,21 +202,21 @@ exports.getCapsReportCardData = async (req, res) => {
                     ? new Date(compiledCard.published_at).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })
                     : new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
                 school: {
-                    name: child.school_name || 'FUSION HIGH COMPREHENSIVE SCHOOL',
-                    province: child.province || 'Gauteng Province',
-                    circuit: child.circuit || 'Central Circuit 01',
-                    district: child.district || 'Johannesburg North District',
-                    emis_number: child.emis_number || '700400192',
-                    exam_centre_no: '820194',
-                    principal_name: child.principal_name || 'Dr. T. Makola'
+                    name: child.school_name || null,
+                    province: child.province || null,
+                    circuit: child.circuit || null,
+                    district: child.district || null,
+                    emis_number: child.emis_number || null,
+                    exam_centre_no: null,
+                    principal_name: child.principal_name || null
                 },
                 learner: {
                     id: child.id,
                     full_name: `${child.full_name} ${child.surname}`.trim(),
-                    learner_number: child.learner_number || `2026-FHS-${String(child.id).padStart(3, '0')}`,
+                    learner_number: child.learner_number || null,
                     grade: child.grade,
                     stream: compiledCard.stream || child.stream || 'Science',
-                    class_name: compiledCard.class_name || child.class_name || `${child.grade}A`,
+                    class_name: compiledCard.class_name || child.class_name || null,
                     parent_name: child.parent_name || 'Guardian'
                 },
                 subjects: formattedSubjects,
@@ -224,13 +225,13 @@ exports.getCapsReportCardData = async (req, res) => {
                 promotion_status: compiledCard.promotion_status || (avgNum !== null ? (avgNum >= 50 ? "PROMOTED — PASS WITH BACHELOR'S DEGREE ADMISSION (CAPS REG. 3(1))" : 'PROMOTED — DIPLOMA PASS') : 'PENDING MARKS'),
                 attendance: {
                     total_days: compiledCard.total_days || 0,
-                    days_present: compiledCard.days_present || 0,
-                    days_absent: compiledCard.days_absent || 0,
+                    days_present: compiledCard.days_present ?? null,
+                    days_absent: compiledCard.days_absent ?? null,
                     attendance_percentage: compiledCard.attendance_percentage !== null && compiledCard.attendance_percentage !== undefined ? `${compiledCard.attendance_percentage}%` : '-'
                 },
-                teacher_comment: compiledCard.teacher_comment || (avgNum !== null ? 'Consistently maintains good academic focus and discipline.' : 'Awaiting marks upload.'),
-                principal_comment: compiledCard.principal_comment || (avgNum !== null ? 'Satisfactory academic progress. Promotion criteria fulfilled.' : 'Official term marks pending publishing.'),
-                principal_name: child.principal_name || 'Dr. T. Makola'
+                teacher_comment: compiledCard.teacher_comment || null,
+                principal_comment: compiledCard.principal_comment || null,
+                principal_name: child.principal_name || null
             });
         }
 
@@ -256,7 +257,7 @@ exports.getCapsReportCardData = async (req, res) => {
 
         const subjectsList = Array.isArray(child.subjects) && child.subjects.length > 0
             ? child.subjects
-            : ['Mathematics', 'Physical Sciences', 'Life Sciences', 'English FAL', 'Home Language', 'Life Orientation', 'Geography'];
+            : [...new Set(marksRes.rows.map((row) => row.subject).filter(Boolean))];
         
         let totalAvgSum = 0;
         let validSubjectsCount = 0;
@@ -268,16 +269,15 @@ exports.getCapsReportCardData = async (req, res) => {
             const matchingProg = progressRes.rows.filter(r => (r.subject || '').toLowerCase().trim() === subjLower);
 
             let mark = null;
-            let teacherName = 'Subject Educator';
+            let teacherName = null;
 
             if (matchingMarks.length > 0) {
                 const markItem = matchingMarks[0];
-                mark = markItem.percentage !== null && markItem.percentage !== undefined
-                    ? Math.round(Number(markItem.percentage))
-                    : Math.round((Number(markItem.score || 0) / Number(markItem.max_score || 100)) * 100);
+                const percentage = percentageFromMark(markItem);
+                mark = percentage === null ? null : Math.round(percentage);
             } else if (matchingProg.length > 0) {
-                const sum = matchingProg.reduce((acc, curr) => acc + parseFloat(curr.grade || 0), 0);
-                mark = Math.round(sum / matchingProg.length);
+                const recorded = matchingProg.map((row) => finiteNumber(row.grade)).filter((value) => value !== null);
+                mark = recorded.length ? Math.round(recorded.reduce((sum, value) => sum + value, 0) / recorded.length) : null;
                 const withTeacher = matchingProg.find(r => r.teacher_name && r.teacher_name.trim());
                 if (withTeacher) teacherName = withTeacher.teacher_name;
             }
@@ -298,9 +298,7 @@ exports.getCapsReportCardData = async (req, res) => {
                 mark: mark,
                 level_code: caps.level,
                 level_descriptor: caps.descriptor,
-                comment: mark !== null
-                    ? (mark >= 70 ? 'Consistently shows high analytical aptitude and mastery of curriculum.' : 'Steady effort and positive progress shown.')
-                    : 'Pending Teacher Marks Upload',
+                comment: null,
                 assessment_count: matchingMarks.length + matchingProg.length
             });
         }
@@ -318,17 +316,12 @@ exports.getCapsReportCardData = async (req, res) => {
         );
 
         const totalDays = parseInt(attRes.rows[0]?.total_days || '0', 10);
-        const daysAttended = parseInt(attRes.rows[0]?.days_attended || '0', 10);
-        const daysAbsent = parseInt(attRes.rows[0]?.days_absent || '0', 10);
-        const attPct = totalDays > 0 ? `${Math.round((daysAttended / totalDays) * 100)}%` : '-';
+        const daysAttended = totalDays > 0 ? parseInt(attRes.rows[0]?.days_attended || '0', 10) : null;
+        const daysAbsent = totalDays > 0 ? parseInt(attRes.rows[0]?.days_absent || '0', 10) : null;
+        const attPct = totalDays > 0 ? `${Math.round((daysAttended / totalDays) * 100)}%` : null;
 
-        let recommendation = overallAvg !== null
-            ? (overallAvg >= 50 ? "PROMOTED — PASS WITH BACHELOR'S DEGREE ADMISSION (CAPS REG. 3(1))" : 'PROMOTED — DIPLOMA PASS')
-            : 'PENDING TEACHER MARKS';
-
-        let principalRemark = overallAvg !== null
-            ? (overallAvg >= 75 ? 'Commendable scholastic performance and dedication to excellence.' : 'Satisfactory achievement. Encouraged to aim higher next term.')
-            : 'Awaiting official mark compilation and publication by administration.';
+        const recommendation = null;
+        const principalRemark = null;
 
         res.json({
             success: true,
@@ -336,22 +329,22 @@ exports.getCapsReportCardData = async (req, res) => {
             term: termParam,
             date_issued: new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }),
             school: {
-                name: child.school_name || 'FUSION HIGH COMPREHENSIVE SCHOOL',
-                province: child.province || 'Gauteng Province',
-                circuit: child.circuit || 'Central Circuit 01',
-                district: child.district || 'Johannesburg North District',
-                emis_number: child.emis_number || '700400192',
-                exam_centre_no: '820194',
-                principal_name: child.principal_name || 'Dr. T. Makola'
+                name: child.school_name || null,
+                province: child.province || null,
+                circuit: child.circuit || null,
+                district: child.district || null,
+                emis_number: child.emis_number || null,
+                exam_centre_no: null,
+                principal_name: child.principal_name || null
             },
             learner: {
                 id: child.id,
                 full_name: `${child.full_name} ${child.surname}`.trim(),
-                learner_number: child.learner_number || `2026-FHS-${String(child.id).padStart(3, '0')}`,
+                learner_number: child.learner_number || null,
                 grade: child.grade,
-                stream: child.stream || 'Science',
-                class_name: child.class_name || `${child.grade}A`,
-                parent_name: child.parent_name || 'N/A'
+                stream: child.stream || null,
+                class_name: child.class_name || null,
+                parent_name: child.parent_name || null
             },
             subjects: subjectRows,
             overall_average: overallAvg,
@@ -363,9 +356,9 @@ exports.getCapsReportCardData = async (req, res) => {
                 days_absent: daysAbsent,
                 attendance_percentage: attPct
             },
-            teacher_comment: overallAvg !== null ? 'Maintains positive attitude and diligent study habits.' : 'Awaiting marks upload.',
+            teacher_comment: null,
             principal_comment: principalRemark,
-            principal_name: child.principal_name || 'Dr. T. Makola'
+            principal_name: child.principal_name || null
         });
     } catch (err) {
         console.error('Error generating CAPS report card data:', err);

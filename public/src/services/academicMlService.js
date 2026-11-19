@@ -56,11 +56,12 @@ class AcademicMlService {
 
     // 1. Numerical scaling
     const rawNum = [
-      parseFloat(student.age) || 16,
-      parseFloat(student.study_hours_per_week) || 15,
-      parseFloat(student.attendance_rate) || 75.0,
-      parseFloat(student.previous_score) || 50.0
+      Number(student.age),
+      Number(student.study_hours_per_week),
+      Number(student.attendance_rate),
+      Number(student.previous_score)
     ];
+    if (rawNum.some((value) => !Number.isFinite(value))) return null;
 
     const scaledNum = rawNum.map((val, idx) => (val - scaler.mean[idx]) / scaler.scale[idx]);
 
@@ -99,10 +100,18 @@ class AcademicMlService {
    * Predict single student risk and final mark
    */
   predictStudent(studentData) {
+    const previous = studentData && studentData.previous_score;
+    const attendance = studentData && studentData.attendance_rate;
+    const studyHours = studentData && studentData.study_hours_per_week;
+    const hasPrevious = previous !== null && previous !== undefined && previous !== '' && Number.isFinite(Number(previous));
+    const hasAttendance = attendance !== null && attendance !== undefined && attendance !== '' && Number.isFinite(Number(attendance));
+    const hasStudy = studyHours !== null && studyHours !== undefined && studyHours !== '' && Number.isFinite(Number(studyHours));
+    if (!hasPrevious || !hasAttendance || !hasStudy) return null;
     if (!this.modelData) this.loadModel();
     if (!this.modelData) throw new Error('Model artifacts not available');
 
     const featureVector = this.extractFeatureVector(studentData);
+    if (!featureVector) return null;
     const { logistic_regression, linear_regressor, feature_names } = this.modelData;
 
     // 1. Calculate Classification Logit -> Probability
@@ -142,25 +151,25 @@ class AcademicMlService {
     }
 
     // 4. Compute Key Drivers & Interventions
-    const attendance = parseFloat(studentData.attendance_rate) || 75;
-    const studyHours = parseFloat(studentData.study_hours_per_week) || 15;
-    const prevScore = parseFloat(studentData.previous_score) || 50;
+    const recordedAttendance = Number(studentData.attendance_rate);
+    const recordedStudyHours = Number(studentData.study_hours_per_week);
+    const prevScore = Number(studentData.previous_score);
 
     const drivers = [];
     const interventions = [];
 
-    if (studyHours < 12) {
-      drivers.push({ factor: 'Weekly Study Hours', impact: 'Negative', detail: `Only logging ${studyHours} hrs/week (benchmark is 18+ hrs)` });
-      interventions.push('Increase weekly structured revision & homework to at least 18 hours.');
+    if (recordedStudyHours < 12) {
+      drivers.push({ factor: 'Weekly Study Hours', impact: 'Negative', detail: `Recorded study time is ${recordedStudyHours} hours a week.` });
+      interventions.push('Review the recorded study time with the teacher before setting extra revision.');
     } else {
-      drivers.push({ factor: 'Study Discipline', impact: 'Positive', detail: `${studyHours} hrs/week active study time` });
+      drivers.push({ factor: 'Study Discipline', impact: 'Positive', detail: `${recordedStudyHours} recorded hours a week.` });
     }
 
-    if (attendance < 75) {
-      drivers.push({ factor: 'Class Attendance', impact: 'Negative', detail: `${attendance}% attendance creates critical content gaps` });
-      interventions.push('Compulsory attendance recovery plan & parent notification alert.');
-    } else if (attendance >= 90) {
-      drivers.push({ factor: 'Class Attendance', impact: 'Positive', detail: `Excellent attendance rate (${attendance}%)` });
+    if (recordedAttendance < 75) {
+      drivers.push({ factor: 'Class Attendance', impact: 'Negative', detail: `Recorded attendance is ${recordedAttendance}%.` });
+      interventions.push('Review the attendance record before contacting a parent.');
+    } else if (recordedAttendance >= 90) {
+      drivers.push({ factor: 'Class Attendance', impact: 'Positive', detail: `Recorded attendance is ${recordedAttendance}%.` });
     }
 
     if (prevScore < 40) {
