@@ -67,6 +67,9 @@ exports.getAllSchools = async (req, res) => {
     const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
     await ensureDatabaseSchema().catch(() => {});
     await ensureSchoolModuleColumns();
+    const viewer = await viewerFromRequest(req);
+    const ownSchoolId = parseInt(viewer && viewer.school_id, 10);
+    const limitToOwnSchool = Boolean(viewer) && viewer.is_superadmin !== true && Number.isInteger(ownSchoolId) && ownSchoolId > 0;
     const query = `
       SELECT 
         s.id, s.name, s.slug, s.domain, s.emis_number, s.circuit, s.district, s.province,
@@ -82,9 +85,10 @@ exports.getAllSchools = async (req, res) => {
         COALESCE((SELECT COUNT(*)::int FROM users u WHERE u.school_id::text = s.id::text AND u.role_id::text = '2'), 0) AS parents_count
       FROM schools s
       WHERE s.is_active = TRUE
+        AND ($1::int IS NULL OR s.id = $1::int)
       ORDER BY s.id ASC;
     `;
-    const result = await db.query(query);
+    const result = await db.query(query, [limitToOwnSchool ? ownSchoolId : null]);
     return res.json((result.rows || []).map(hideBankNumbers));
   } catch (err) {
     console.error('Error fetching schools:', err.message);
@@ -100,10 +104,14 @@ exports.getCurrentSchool = async (req, res) => {
   try {
     await ensureSchoolModuleColumns();
     const viewer = await viewerFromRequest(req);
-    const requestedSlug = req.query.slug || req.headers['x-school-slug'];
+    let requestedSlug = req.query.slug || req.headers['x-school-slug'];
     let requestedId = req.query.school_id || req.headers['x-school-id'];
-    if (viewer && !viewer.is_superadmin) requestedId = viewer.school_id;
-    else if (viewer && viewer.is_superadmin && !requestedId) requestedId = viewer.school_id;
+    if (viewer && viewer.is_superadmin !== true) {
+      requestedSlug = null;
+      requestedId = viewer.school_id;
+    } else if (viewer && viewer.is_superadmin === true && !requestedId && !requestedSlug) {
+      requestedId = viewer.school_id;
+    }
 
     let query = `
       SELECT 

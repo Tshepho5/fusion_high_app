@@ -154,7 +154,7 @@ const CAPS_SUBJECT_GROUPS = [
 ];
 
 export const MultiSchoolCommandCenter: React.FC<MultiSchoolCommandCenterProps> = ({ onNavigateTab }) => {
-  const { currentSchool, setSchoolBySlug } = useSchool();
+  const { currentSchool, enterRegisteredSchool } = useSchool();
   const [macroTotals, setMacroTotals] = useState<MacroTotals | null>(null);
   const [schools, setSchools] = useState<SchoolStat[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -212,7 +212,6 @@ export const MultiSchoolCommandCenter: React.FC<MultiSchoolCommandCenterProps> =
   };
 
   const handleOpenManageSchool = (sch: SchoolStat) => {
-    setSchoolBySlug(sch.slug);
     setSelectedSchoolForManage(sch);
     setManageActiveTab('overview');
     setManageSubjectsList(parseSchoolSubjects(sch));
@@ -1313,7 +1312,15 @@ export const MultiSchoolCommandCenter: React.FC<MultiSchoolCommandCenterProps> =
                     <button
                       type="button"
                       onClick={() => {
-                        setSchoolBySlug(selectedSchoolForManage.slug);
+                        const opened = enterRegisteredSchool({
+                          ...selectedSchoolForManage,
+                          registry: true,
+                          is_active: true,
+                          primary_color: selectedSchoolForManage.primary_color || '#4f46e5',
+                          secondary_color: selectedSchoolForManage.secondary_color || '#06b6d4',
+                          accent_color: '#f59e0b'
+                        });
+                        if (!opened) return;
                         setSelectedSchoolForManage(null);
                         onNavigateTab?.('overview');
                       }}

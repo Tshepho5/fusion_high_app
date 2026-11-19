@@ -2889,6 +2889,9 @@ exports.sendSundayParentDigest = async (req, res) => {
  */
 exports.getMultiSchoolCommandCenterStats = async (req, res) => {
     try {
+        if (!req.user || req.user.is_superadmin !== true) {
+            return res.status(403).json({ error: 'Only the Geleza SA superadmin can open another school dashboard.' });
+        }
         const query = `
             SELECT 
                 s.id,

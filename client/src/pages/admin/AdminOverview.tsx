@@ -250,8 +250,15 @@ interface AdminOverviewProps {
 
 export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
-  const { currentSchool, schoolsList, setSchoolById, refreshSchools } = useSchool();
+  const { currentSchool, schoolsList, refreshSchools, workspaceSchoolId, enterRegisteredSchool, leaveRegisteredSchool } = useSchool();
   const isSuperAdmin = Boolean(user?.is_superadmin || (user as any)?.role_name === 'superadmin');
+  const viewingSchool = Boolean(
+    isSuperAdmin
+    && workspaceSchoolId
+    && Number(currentSchool?.id) === Number(workspaceSchoolId)
+    && currentSchool?.registry
+  );
+  const showPlatformDirectory = isSuperAdmin && !viewingSchool;
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const metricsCarouselRef = useRef<HTMLDivElement>(null);
@@ -686,7 +693,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       <HomeGreeting />
 
       {/* Pending School Admissions Alert Banner */}
-      {pendingSchoolApps.length > 0 && (
+      {showPlatformDirectory && pendingSchoolApps.length > 0 && (
         <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
           <div className="flex items-start sm:items-center gap-3.5">
             <div className="p-2.5 rounded-2xl bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
@@ -720,7 +727,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       {/* ========================================================================= */}
       {/* 1. GELEZA SA SUPERADMIN vs SCHOOL ADMIN OVERVIEW SPACE                     */}
       {/* ========================================================================= */}
-      {isSuperAdmin ? (
+      {showPlatformDirectory ? (
         /* ========================================================================= */
         /* GELEZA SA PLATFORM ADMIN: REGISTERED PARTNER SCHOOLS DIRECTORY            */
         /* (In place of flat subjects: Only registered schools, with subjects inside)*/
@@ -1130,14 +1137,13 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                           <button
                             type="button"
                             onClick={() => {
-                              setSchoolById(school.id);
-                              onNavigateTab('users');
+                              if (enterRegisteredSchool(school)) onNavigateTab('overview');
                             }}
                             className="py-2 px-3 rounded-xl bg-white dark:bg-surface-dark hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-300 dark:border-white/15 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all flex items-center gap-1 cursor-pointer"
-                            title="Manage School Roster & Users"
+                            title="Open this school's dashboard"
                           >
                             <Users className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Roster</span>
+                            <span className="hidden sm:inline">Open</span>
                           </button>
                         </div>
                       </div>
@@ -1327,12 +1333,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                             <button
                               type="button"
                               onClick={() => {
-                                setSchoolById(school.id);
-                                onNavigateTab('users');
+                                if (enterRegisteredSchool(school)) onNavigateTab('overview');
                               }}
                               className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
                             >
-                              Roster
+                              Open
                             </button>
                           </div>
                         </div>
@@ -1350,7 +1355,22 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
         /* (Preserved view: school admin sees their own school's curriculum subjects)*/
         /* ========================================================================= */
         <section className="space-y-4 rounded-3xl bg-slate-100 dark:bg-surface-darker border border-slate-300 dark:border-white/10 p-5 sm:p-6 shadow-sm relative overflow-hidden transition-colors">
-        
+        {viewingSchool && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-[#168BFF]/30 bg-[#168BFF]/10 px-4 py-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#168BFF]">Geleza SA school access</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">{currentSchool.name}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => leaveRegisteredSchool()}
+              className="px-3.5 py-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold text-xs cursor-pointer"
+            >
+              Return to Geleza SA
+            </button>
+          </div>
+        )}
+
         {/* Section Top Header with Title and View Mode Switcher */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -1878,7 +1898,7 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     )}
 
       {/* Campus Active Modules for School Admin */}
-      {!isSuperAdmin && currentSchool?.id > 0 && (
+      {!showPlatformDirectory && currentSchool?.id > 0 && (
         <div className="space-y-4">
           <SchoolModulePreferences
             school={currentSchool}
@@ -2547,9 +2567,9 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
                     <button
                       type="button"
                       onClick={() => {
-                        setSchoolById(school.id);
+                        if (!enterRegisteredSchool(school)) return;
                         setSelectedSchoolForCurriculum(null);
-                        onNavigateTab('users');
+                        onNavigateTab('overview');
                       }}
                       className="px-3.5 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
                     >

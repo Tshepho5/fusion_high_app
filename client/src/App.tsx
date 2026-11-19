@@ -104,8 +104,8 @@ const SmartCatchAll: React.FC = () => {
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <SchoolProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <SchoolProvider>
           <Router>
             {/* Global Mandatory Terms & Conditions Agreement Gate (Requires acceptance before using app) */}
             <TermsAgreementModal isMandatoryGate={true} />
@@ -172,8 +172,8 @@ export const App: React.FC = () => {
           </Suspense>
           <PwaInstallPrompt />
         </Router>
+        </SchoolProvider>
       </AuthProvider>
-    </SchoolProvider>
   </ThemeProvider>
   );
 };
