@@ -9,7 +9,8 @@ const {
   subjectsForDisplay,
   planSubjectCorrection,
   subjectsAfterCorrection,
-  subjectsToAdd
+  subjectsToAdd,
+  isSubjectListIncomplete
 } = require('../lib/learnerSubjectAllocation');
 
 const sciencePackage = [
@@ -105,6 +106,16 @@ test('a reviewed correction removes only subjects that have no marks', () => {
     approved: [],
     subjectsWithMarks: []
   })).ok, false);
+});
+
+test('a learner with fewer than a full subject list is shown for the school admin to complete', () => {
+  assert.equal(isSubjectListIncomplete({ grade: 10, enrolled: ['Mathematics', 'Accounting'], missingFromPackage: [] }), true);
+  assert.equal(isSubjectListIncomplete({ grade: 10, enrolled: [], missingFromPackage: [] }), true);
+  assert.equal(isSubjectListIncomplete({
+    grade: 11,
+    enrolled: ['Sepedi Home Language', 'English First Additional Language', 'Mathematics', 'Life Orientation', 'Physical Sciences', 'Life Sciences', 'Geography'],
+    missingFromPackage: []
+  }), false);
 });
 
 test('a school admin can add a subject the school offers without removing the rest', () => {

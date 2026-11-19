@@ -201,8 +201,6 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
         </div>
       )}
 
-      <IncompleteLearnerSubjects />
-
       {/* Top Banner Header */}
       <div className="relative overflow-hidden rounded-3xl bg-[var(--card-background)] border border-blue-500/20 p-6 shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -243,6 +241,8 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           </div>
         </div>
       </div>
+
+      <IncompleteLearnerSubjects />
 
       {loadError && (
         <div className="p-4 rounded-2xl border border-rose-500 bg-rose-50 text-rose-950 dark:bg-rose-950/40 dark:text-rose-50 flex items-center justify-between gap-3">

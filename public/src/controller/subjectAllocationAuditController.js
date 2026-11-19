@@ -2,7 +2,7 @@
 
 const db = require('../../../db/db');
 const { resolveSchoolId } = require('../services/schoolScope');
-const { planSubjectCorrection, subjectsAfterCorrection, subjectsToAdd, uniqueSubjects } = require('../../../lib/learnerSubjectAllocation');
+const { planSubjectCorrection, subjectsAfterCorrection, subjectsToAdd, uniqueSubjects, isSubjectListIncomplete } = require('../../../lib/learnerSubjectAllocation');
 
 async function offeredNamesForGrade(schoolId, grade) {
   const names = [];
@@ -123,7 +123,11 @@ exports.auditSubjectAllocation = async (req, res) => {
       totals[learner.status] = (totals[learner.status] || 0) + 1;
       return totals;
     }, {});
-    const incomplete = learners.filter((learner) => learner.missing_from_package.length > 0 || learner.stored_subjects.length === 0);
+    const incomplete = learners.filter((learner) => isSubjectListIncomplete({
+      grade: learner.grade,
+      enrolled: learner.stored_subjects,
+      missingFromPackage: learner.missing_from_package
+    }));
     const grades = [...new Set(incomplete.map((learner) => Number(learner.grade)))];
     const offerings = {};
     for (const grade of grades) {

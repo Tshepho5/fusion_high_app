@@ -21,7 +21,11 @@ export const IncompleteLearnerSubjects: React.FC = () => {
     setError('');
     try {
       const review = await adminService.getSubjectAllocationAudit();
-      setLearners(review.incomplete || []);
+      const fromServer = Array.isArray(review.incomplete) ? review.incomplete : [];
+      const fromReview = (review.learners || []).filter((learner: IncompleteLearner) =>
+        (learner.missing_from_package || []).length > 0 || (learner.stored_subjects || []).length < 7
+      );
+      setLearners(fromServer.length ? fromServer : fromReview);
       setOfferings(review.offerings || {});
     } catch (err: any) {
       setError(err?.response?.data?.error || 'The incomplete subject list could not be loaded.');
@@ -71,15 +75,16 @@ export const IncompleteLearnerSubjects: React.FC = () => {
     }
   };
 
-  if (!learners.length && !error) return null;
-
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-[#111821]">
-      <h3 className="text-base font-semibold text-[#101820] dark:text-white">Learners with incomplete subjects</h3>
-      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Add a subject this school offers. Subjects already on the learner stay in place.</p>
+    <section className="rounded-3xl border border-[var(--border-color)] bg-[var(--card-background)] p-5">
+      <h3 className="text-lg font-black text-[var(--text-primary)]">Add subjects for a learner</h3>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">These learners do not yet have a full subject list. Add a subject this school offers. Subjects already on the learner stay in place.</p>
       {error && <p className="mt-3 text-sm text-rose-700">{error}</p>}
       {message && <p className="mt-3 text-sm text-emerald-700">{message}</p>}
       <div className="mt-4 space-y-4">
+        {learners.length === 0 && !error && (
+          <p className="text-sm text-[var(--text-secondary)]">Every learner in this school already has a full subject list.</p>
+        )}
         {learners.map((learner) => {
           const choices = choicesFor(learner);
           return (
