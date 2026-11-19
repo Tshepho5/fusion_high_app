@@ -539,7 +539,7 @@ export const adminService = {
   publishTimetable: (payload: { timetable_id?: number; timetable_data?: any; generation_details?: any; name?: string; [key: string]: any }) => 
     api.post('/api/admin/publish-to-teachers', payload).then(res => res.data),
   deleteTimetable: (id: string | number) => api.delete(`/api/admin/timetables/${id}`).then(res => res.data),
-  updateTeacherSubjects: (id: string | number, payload: { subjects: string[]; grades_taught?: number[] }) => 
+  updateTeacherSubjects: (id: string | number, payload: { subjects: string[]; grades_taught?: number[]; classes_taught?: string[] }) => 
     api.put(`/api/admin/teachers/${id}/subjects`, payload).then(res => res.data),
   generateTermFeeInvoices: (payload?: any) => api.post('/api/admin/fees/generate-term-invoices', payload).then(res => res.data),
   sendFeeReminders: () => api.post('/api/admin/fees/send-reminders').then(res => res.data),
@@ -948,7 +948,7 @@ export const academicStreamService = {
 // Dynamic Class & Staff Invitation API
 export const classStaffService = {
   getClasses: () => api.get('/api/admin/classes').then(res => res.data),
-  createClass: (data: { name: string; grade: number; stream?: string; homeroom_teacher_id?: number | null; room_number?: string }) =>
+  createClass: (data: { name?: string; section?: string; grade: number; stream?: string; homeroom_teacher_id?: number | null; room_number?: string }) =>
     api.post('/api/admin/classes', data).then(res => res.data),
   updateClass: (id: number | string, data: any) =>
     api.put(`/api/admin/classes/${id}`, data).then(res => res.data),

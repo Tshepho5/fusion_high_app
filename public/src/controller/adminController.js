@@ -3524,6 +3524,31 @@ exports.updateTeacherSubjects = async (req, res) => {
             oldSubjects = curEmp.rows[0].subjects;
         }
 
+        const teacherSchool = await db.query('SELECT school_id FROM users WHERE id = $1', [teacherUser.id]);
+        const teacherSchoolId = teacherSchool.rows[0] ? teacherSchool.rows[0].school_id : null;
+        const schoolId = getTargetSchoolId(req);
+        if (!schoolId || !teacherSchoolId || Number(teacherSchoolId) !== Number(schoolId)) {
+            await db.query('ROLLBACK');
+            return res.status(403).json({ error: 'You can only change subjects and classes for teachers in the school you have open.' });
+        }
+
+        const schoolClasses = await db.query(
+            'SELECT name, grade FROM classes WHERE school_id = $1',
+            [schoolId]
+        );
+        const classByName = new Map(schoolClasses.rows.map((row) => [String(row.name).toLowerCase(), row]));
+        const unknownClass = classesArray.find((name) => !classByName.has(String(name).toLowerCase()));
+        if (unknownClass) {
+            await db.query('ROLLBACK');
+            return res.status(400).json({ error: `Add ${unknownClass} as a school class before allocating it. Use a section such as 10-A.` });
+        }
+        const canonicalClasses = classesArray.map((name) => classByName.get(String(name).toLowerCase()).name);
+        const gradesFromClasses = [...new Set(canonicalClasses.map((name) => {
+            const row = classByName.get(String(name).toLowerCase());
+            return row ? Number(row.grade) : extractGradeFromClass(name);
+        }).filter((grade) => Number.isInteger(grade)))];
+        const gradesToSave = gradesArray.length > 0 ? gradesArray : gradesFromClasses;
+
         const newlyAddedSubjects = subsArray.filter(s => !oldSubjects.includes(s));
         const subjectCodes = subsArray.map(s => (s.replace(/[^A-Za-z0-9]/g, '').slice(0, 4) + '10').toUpperCase());
 
@@ -3535,13 +3560,15 @@ exports.updateTeacherSubjects = async (req, res) => {
                     grades_taught = $3,
                     classes_taught = $4
                 WHERE user_id = $5
-            `, [subsArray, subjectCodes, gradesArray, classesArray, teacherUser.id]);
+            `, [subsArray, subjectCodes, gradesToSave, canonicalClasses, teacherUser.id]);
         } else {
             await db.query(`
                 INSERT INTO employees (user_id, full_name, surname, email, subjects, subject_codes, grades_taught, classes_taught)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            `, [teacherUser.id, teacherUser.full_name, teacherUser.surname, teacherUser.email, subsArray, subjectCodes, gradesArray, classesArray]);
+            `, [teacherUser.id, teacherUser.full_name, teacherUser.surname, teacherUser.email, subsArray, subjectCodes, gradesToSave, canonicalClasses]);
         }
+
+        await syncTeacherAssignments(teacherUser.id, schoolId, subsArray, gradesToSave, canonicalClasses);
 
         if (newlyAddedSubjects.length > 0) {
             const workloadNotice = `Official CAPS Workload Update: You have been assigned the following subject(s): ${newlyAddedSubjects.join(', ')}. Your Teacher Dashboard and Class Registers have been updated accordingly.`;
@@ -3562,8 +3589,8 @@ exports.updateTeacherSubjects = async (req, res) => {
                     teacherName: `${teacherUser.full_name} ${teacherUser.surname}`,
                     newSubjects: newlyAddedSubjects,
                     allSubjects: subsArray,
-                    gradesTaught: gradesArray,
-                    classesTaught: classesArray,
+                    gradesTaught: gradesToSave,
+                    classesTaught: canonicalClasses,
                     to: teacherUser.email
                 }).catch(mErr => console.error('[EMAIL ERROR] Failed to send subject assignment email:', mErr.message));
             }
@@ -3942,7 +3969,7 @@ exports.getClasses = async (req, res) => {
       FROM classes c
       LEFT JOIN users u ON u.id = c.homeroom_teacher_id
       LEFT JOIN children ch ON ch.class_id = c.id
-      WHERE c.school_id = $1 OR c.school_id IS NULL
+      WHERE c.school_id = $1
       GROUP BY c.id, c.name, c.grade, c.stream, c.room_number, c.school_id, c.homeroom_teacher_id, u.full_name, u.surname, u.email
       ORDER BY c.grade ASC, c.name ASC;
     `;
@@ -3960,21 +3987,24 @@ exports.getClasses = async (req, res) => {
 exports.createClass = async (req, res) => {
   try {
     const schoolId = getTargetSchoolId(req);
-    const { name, grade, stream = 'General', homeroom_teacher_id, room_number } = req.body;
-    if (!name || !grade) {
-      return res.status(400).json({ error: 'Class name (e.g. 10A) and grade are required.' });
+    if (!schoolId) {
+      return res.status(403).json({ error: 'Open the school before adding a class.' });
     }
-    const cleanName = name.trim().toUpperCase();
-    const existing = await db.query('SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL)', [cleanName, schoolId]);
+    const { name, section, grade, stream = 'General', homeroom_teacher_id, room_number } = req.body;
+    const normalized = normalizeSchoolClassName(grade, section || name);
+    if (normalized.error) {
+      return res.status(400).json({ error: normalized.error });
+    }
+    const existing = await db.query('SELECT id FROM classes WHERE LOWER(name) = LOWER($1) AND school_id = $2', [normalized.name, schoolId]);
     if (existing.rows.length > 0) {
-      return res.status(409).json({ error: `Class ${cleanName} already exists in this school.` });
+      return res.status(409).json({ error: `Class ${normalized.name} already exists in this school.` });
     }
     const result = await db.query(`
       INSERT INTO classes (name, grade, stream, homeroom_teacher_id, school_id, room_number)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *;
-    `, [cleanName, parseInt(grade, 10), stream, homeroom_teacher_id ? parseInt(homeroom_teacher_id, 10) : null, schoolId, room_number || null]);
-    res.status(201).json({ success: true, class: result.rows[0], message: `Class ${cleanName} created successfully.` });
+    `, [normalized.name, normalized.grade, stream, homeroom_teacher_id ? parseInt(homeroom_teacher_id, 10) : null, schoolId, room_number || null]);
+    res.status(201).json({ success: true, class: result.rows[0], message: `Class ${normalized.name} created for grade ${normalized.grade}.` });
   } catch (err) {
     console.error('Error creating class:', err);
     res.status(500).json({ error: 'Failed to create dynamic class.' });
@@ -3987,21 +4017,52 @@ exports.createClass = async (req, res) => {
 exports.updateClass = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, grade, stream, homeroom_teacher_id, room_number } = req.body;
+    const schoolId = getTargetSchoolId(req);
+    const current = await db.query('SELECT id, name, grade, school_id FROM classes WHERE id = $1', [id]);
+    if (!current.rows.length || !schoolId || Number(current.rows[0].school_id) !== Number(schoolId)) {
+      return res.status(404).json({ error: 'Class not found in this school.' });
+    }
+    const { name, section, grade, stream, homeroom_teacher_id, room_number } = req.body;
+    const nextGrade = grade || current.rows[0].grade;
+    const normalized = (section || name)
+      ? normalizeSchoolClassName(nextGrade, section || name)
+      : { name: current.rows[0].name, grade: current.rows[0].grade };
+    if (normalized.error) {
+      return res.status(400).json({ error: normalized.error });
+    }
+    const duplicate = await db.query(
+      'SELECT id FROM classes WHERE LOWER(name) = LOWER($1) AND school_id = $2 AND id <> $3',
+      [normalized.name, schoolId, id]
+    );
+    if (duplicate.rows.length > 0) {
+      return res.status(409).json({ error: `Class ${normalized.name} already exists for this grade.` });
+    }
     const result = await db.query(`
       UPDATE classes
-      SET name = COALESCE($1, name),
-          grade = COALESCE($2, grade),
+      SET name = $1,
+          grade = $2,
           stream = COALESCE($3, stream),
           homeroom_teacher_id = $4,
           room_number = COALESCE($5, room_number)
-      WHERE id = $6
+      WHERE id = $6 AND school_id = $7
       RETURNING *;
-    `, [name ? name.trim().toUpperCase() : null, grade ? parseInt(grade, 10) : null, stream, homeroom_teacher_id !== undefined ? (homeroom_teacher_id ? parseInt(homeroom_teacher_id, 10) : null) : null, room_number, id]);
+    `, [normalized.name, normalized.grade, stream, homeroom_teacher_id !== undefined ? (homeroom_teacher_id ? parseInt(homeroom_teacher_id, 10) : null) : null, room_number, id, schoolId]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Class not found.' });
     }
-    res.json({ success: true, class: result.rows[0], message: 'Class updated successfully.' });
+    if (current.rows[0].name !== normalized.name) {
+      await db.query(
+        `UPDATE employees
+         SET classes_taught = array_replace(classes_taught, $1, $2)
+         WHERE user_id IN (SELECT id FROM users WHERE school_id = $3)`,
+        [current.rows[0].name, normalized.name, schoolId]
+      );
+      await db.query(
+        'UPDATE teacher_assignments SET class_name = $1 WHERE class_id = $2 OR class_name = $3',
+        [normalized.name, id, current.rows[0].name]
+      );
+    }
+    res.json({ success: true, class: result.rows[0], message: `Class ${normalized.name} updated for grade ${normalized.grade}.` });
   } catch (err) {
     console.error('Error updating class:', err);
     res.status(500).json({ error: 'Failed to update class.' });
@@ -4014,12 +4075,26 @@ exports.updateClass = async (req, res) => {
 exports.deleteClass = async (req, res) => {
   try {
     const { id } = req.params;
+    const schoolId = getTargetSchoolId(req);
+    const current = await db.query('SELECT id, name, grade, school_id FROM classes WHERE id = $1', [id]);
+    if (!current.rows.length || !schoolId || Number(current.rows[0].school_id) !== Number(schoolId)) {
+      return res.status(404).json({ error: 'Class not found in this school.' });
+    }
     const learnersInClass = await db.query('SELECT COUNT(*)::int as count FROM children WHERE class_id = $1', [id]);
     if (learnersInClass.rows[0]?.count > 0) {
-      return res.status(400).json({ error: `Cannot remove class. ${learnersInClass.rows[0].count} learners are currently enrolled in this class.` });
+      return res.status(400).json({
+        error: `Class ${current.rows[0].name} still has ${learnersInClass.rows[0].count} learner(s). Move them into another class for grade ${current.rows[0].grade} before removing it.`
+      });
     }
-    await db.query('DELETE FROM classes WHERE id = $1', [id]);
-    res.json({ success: true, message: 'Class removed successfully.' });
+    await db.query(
+      `UPDATE employees
+       SET classes_taught = array_remove(classes_taught, $1)
+       WHERE user_id IN (SELECT id FROM users WHERE school_id = $2)`,
+      [current.rows[0].name, schoolId]
+    );
+    await db.query('DELETE FROM teacher_assignments WHERE class_id = $1 OR class_name = $2', [id, current.rows[0].name]);
+    await db.query('DELETE FROM classes WHERE id = $1 AND school_id = $2', [id, schoolId]);
+    res.json({ success: true, message: `Class ${current.rows[0].name} was removed from grade ${current.rows[0].grade}.` });
   } catch (err) {
     console.error('Error deleting class:', err);
     res.status(500).json({ error: 'Failed to remove class.' });
@@ -4164,6 +4239,28 @@ function extractGradeFromClass(clsStr) {
 /**
  * Normalizes class strings, stripping multi-tenant / metadata suffixes like "• School 13".
  */
+function normalizeSchoolClassName(grade, sectionOrName) {
+    const gradeNumber = parseInt(grade, 10);
+    if (!Number.isInteger(gradeNumber) || gradeNumber < 8 || gradeNumber > 12) {
+        return { error: 'Choose a grade from 8 to 12.' };
+    }
+    let section = String(sectionOrName || '').trim();
+    const labelled = section.match(/^(?:class\s*)?(\d{1,2})\s*[- ]\s*([A-Za-z]{1,2})$/i);
+    if (labelled) {
+        if (parseInt(labelled[1], 10) !== gradeNumber) {
+            return { error: 'The section must belong to the grade you selected.' };
+        }
+        section = labelled[2];
+    }
+    if (/grade/i.test(section) || /^\d+$/.test(section)) {
+        return { error: 'Add a section such as A or B. A class is saved as 10-A, not Grade 10 or Grade1213.' };
+    }
+    if (!/^[A-Za-z]{1,2}$/.test(section)) {
+        return { error: 'The section must be one or two letters, such as A or B.' };
+    }
+    return { name: `${gradeNumber}-${section.toUpperCase()}`, grade: gradeNumber };
+}
+
 function cleanClassName(clsStr, grade) {
   if (!clsStr) return `${grade || 10}A`;
   let s = String(clsStr).trim();
@@ -4206,11 +4303,12 @@ function cleanClassName(clsStr, grade) {
  * Helper to synchronize teacher_assignments table whenever an educator's subjects/classes are created or updated.
  */
 async function syncTeacherAssignments(userId, schoolId, subjects, grades, classesList) {
-  if (!userId || !Array.isArray(subjects) || subjects.length === 0) return;
+  if (!userId || !Array.isArray(subjects)) return;
   try {
     await db.query('DELETE FROM teacher_assignments WHERE teacher_id = $1', [userId]);
+    if (subjects.length === 0) return;
     const activeGrades = (Array.isArray(grades) && grades.length > 0) ? grades : [10];
-    const rawClasses = (Array.isArray(classesList) && classesList.length > 0) ? classesList : [];
+    const rawClasses = Array.isArray(classesList) ? classesList : [];
 
     for (const subj of subjects) {
       for (const grade of activeGrades) {
@@ -4218,11 +4316,20 @@ async function syncTeacherAssignments(userId, schoolId, subjects, grades, classe
           const g = extractGradeFromClass(c);
           return g === null || isNaN(g) || g === grade;
         }).map(c => cleanClassName(c, grade));
-        const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [`${grade}A`];
+        const classesToAssign = matchingClasses.length > 0 ? matchingClasses : [];
+        if (classesToAssign.length === 0) {
+          await db.query(`
+            INSERT INTO teacher_assignments (teacher_id, subject_name, grade_level, class_name, class_id)
+            VALUES ($1, $2, $3, NULL, NULL)
+            ON CONFLICT (teacher_id, subject_name, grade_level, class_name)
+            DO NOTHING;
+          `, [userId, subj, grade]).catch(e => console.warn('Teacher assignment insert note:', e.message));
+          continue;
+        }
 
         for (const clsName of classesToAssign) {
           const classLookup = await db.query(
-            'SELECT id FROM classes WHERE name = $1 AND (school_id = $2 OR school_id IS NULL) LIMIT 1',
+            'SELECT id FROM classes WHERE name = $1 AND school_id = $2 LIMIT 1',
             [clsName, schoolId]
           ).catch(() => ({ rows: [] }));
           const classId = classLookup.rows[0]?.id || null;

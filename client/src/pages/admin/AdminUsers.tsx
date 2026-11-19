@@ -313,6 +313,15 @@ export const AdminUsers: React.FC = () => {
   };
 
   // Employee Form State
+  const [schoolClasses, setSchoolClasses] = useState<Array<{ id: number; name: string; grade: number; stream?: string; learner_count?: number }>>([]);
+  const [classGrade, setClassGrade] = useState(10);
+  const [classSection, setClassSection] = useState('A');
+  const [classStream, setClassStream] = useState('General');
+  const [savingClass, setSavingClass] = useState(false);
+  const [allocationTeacher, setAllocationTeacher] = useState<EmployeeRecord | null>(null);
+  const [allocationSubjects, setAllocationSubjects] = useState<string[]>([]);
+  const [allocationClasses, setAllocationClasses] = useState<string[]>([]);
+  const [savingAllocation, setSavingAllocation] = useState(false);
   const [employeeForm, setEmployeeForm] = useState({
     full_name: '',
     surname: '',
@@ -325,7 +334,7 @@ export const AdminUsers: React.FC = () => {
     employee_role_id: '1',
     subjects: [] as string[],
     grades_taught: [10, 11] as number[],
-    classes_taught: ['10A'] as string[],
+    classes_taught: [] as string[],
     hired_date: new Date().toISOString().split('T')[0],
     password: '',
   });
@@ -383,9 +392,10 @@ export const AdminUsers: React.FC = () => {
         setParentApplications([]);
         setStaffInvites([]);
         setRecycleBinItems([]);
+        setSchoolClasses([]);
         return;
       }
-      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData, staffInvitesData, recycleBinData] = await Promise.allSettled([
+      const [usersData, empData, lrnData, metaData, admData, parentsData, adminsData, parentAppsData, staffInvitesData, recycleBinData, classData] = await Promise.allSettled([
         adminService.getUsers(),
         adminService.getEmployees(),
         adminService.getLearners(),
@@ -395,7 +405,8 @@ export const AdminUsers: React.FC = () => {
         isSuperAdmin ? adminService.getSchoolAdmins() : Promise.resolve({ admins: [] }),
         parentApplicationService.getAll(),
         classStaffService.getStaffInvites(),
-        adminService.getRecycleBin()
+        adminService.getRecycleBin(),
+        classStaffService.getClasses()
       ]);
 
       if (usersData.status === 'fulfilled') setUsers(Array.isArray(usersData.value) ? usersData.value : []);
@@ -414,6 +425,9 @@ export const AdminUsers: React.FC = () => {
       if (parentAppsData.status === 'fulfilled') {
         const paList = parentAppsData.value?.applications || (Array.isArray(parentAppsData.value) ? parentAppsData.value : []);
         setParentApplications(paList);
+      }
+      if (classData.status === 'fulfilled') {
+        setSchoolClasses(Array.isArray(classData.value) ? classData.value : []);
       }
       if (staffInvitesData.status === 'fulfilled') {
         setStaffInvites(Array.isArray(staffInvitesData.value) ? staffInvitesData.value : []);
@@ -561,7 +575,7 @@ export const AdminUsers: React.FC = () => {
         employee_role_id: '1',
         subjects: [],
         grades_taught: [10, 11],
-        classes_taught: ['10A'],
+        classes_taught: [],
         hired_date: new Date().toISOString().split('T')[0],
         password: '',
       });
@@ -1074,6 +1088,76 @@ export const AdminUsers: React.FC = () => {
     });
   };
 
+  const openTeacherAllocation = (teacher: EmployeeRecord) => {
+    setAllocationTeacher(teacher);
+    setAllocationSubjects([...(teacher.subjects || [])]);
+    setAllocationClasses([...(teacher.classes_taught || [])]);
+  };
+
+  const handleCreateSchoolClass = async () => {
+    const section = classSection.trim().toUpperCase();
+    if (!/^[A-Z]{1,2}$/.test(section)) {
+      setError('Enter a section letter such as A or B. The class is saved as 10-A.');
+      return;
+    }
+    setSavingClass(true);
+    setError(null);
+    try {
+      await classStaffService.createClass({ section, grade: classGrade, stream: classStream });
+      setActionSuccess(`Class ${classGrade}-${section} was added for grade ${classGrade}.`);
+      setClassSection('A');
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'The class could not be added.');
+    } finally {
+      setSavingClass(false);
+    }
+  };
+
+  const handleDeleteSchoolClass = async (schoolClass: { id: number; name: string; grade: number; learner_count?: number }) => {
+    if ((schoolClass.learner_count || 0) > 0) {
+      setError(`Move the learners out of ${schoolClass.name} before removing that class.`);
+      return;
+    }
+    if (!window.confirm(`Remove class ${schoolClass.name} from grade ${schoolClass.grade}?`)) return;
+    setError(null);
+    try {
+      await classStaffService.deleteClass(schoolClass.id);
+      setActionSuccess(`Class ${schoolClass.name} was removed from grade ${schoolClass.grade}.`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'The class could not be removed.');
+    }
+  };
+
+  const handleSaveTeacherAllocation = async () => {
+    if (!allocationTeacher) return;
+    setSavingAllocation(true);
+    setError(null);
+    try {
+      const grades = Array.from(new Set(allocationClasses.map((name) => {
+        const row = schoolClasses.find((item) => item.name.toLowerCase() === name.toLowerCase());
+        return row?.grade;
+      }).filter((grade): grade is number => Number.isInteger(grade))));
+      const classesForSchool = allocationClasses.filter((name) => schoolClasses.some((item) => item.name.toLowerCase() === name.toLowerCase()));
+      await adminService.updateTeacherSubjects(allocationTeacher.user_id, {
+        subjects: allocationSubjects,
+        grades_taught: grades,
+        classes_taught: classesForSchool
+      });
+      setActionSuccess(`Subjects and classes were updated for ${allocationTeacher.full_name} ${allocationTeacher.surname}.`);
+      setAllocationTeacher(null);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'The teacher allocation could not be saved.');
+    } finally {
+      setSavingAllocation(false);
+    }
+  };
+
   const toggleClassForEmployee = (cls: string) => {
     setEmployeeForm(prev => {
       const exists = prev.classes_taught.includes(cls);
@@ -1549,6 +1633,87 @@ export const AdminUsers: React.FC = () => {
               </div>
             )}
 
+            <div className="mb-4 p-4 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] space-y-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#101820] dark:text-white">School classes</h3>
+                <p className="text-[11px] text-[#526071] dark:text-[#AAB5C2]">
+                  Add a section for one grade, such as 10-A or 12-B. A class can be removed only after its learners have another class.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="text-[11px] font-bold text-[#526071] dark:text-[#AAB5C2]">
+                  Grade
+                  <select
+                    value={classGrade}
+                    onChange={(event) => setClassGrade(parseInt(event.target.value, 10))}
+                    className="mt-1 block rounded-xl border border-[#C7D1DC] dark:border-[#2C3948] bg-white dark:bg-[#171F29] px-3 py-2 text-sm text-[#101820] dark:text-white"
+                  >
+                    {[8, 9, 10, 11, 12].map((grade) => (
+                      <option key={grade} value={grade}>Grade {grade}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-[11px] font-bold text-[#526071] dark:text-[#AAB5C2]">
+                  Section
+                  <input
+                    value={classSection}
+                    maxLength={2}
+                    onChange={(event) => setClassSection(event.target.value.replace(/[^A-Za-z]/g, '').toUpperCase())}
+                    className="mt-1 block w-16 rounded-xl border border-[#C7D1DC] dark:border-[#2C3948] bg-white dark:bg-[#171F29] px-3 py-2 text-sm text-[#101820] dark:text-white"
+                    placeholder="A"
+                  />
+                </label>
+                <label className="text-[11px] font-bold text-[#526071] dark:text-[#AAB5C2]">
+                  Stream
+                  <select
+                    value={classStream}
+                    onChange={(event) => setClassStream(event.target.value)}
+                    className="mt-1 block rounded-xl border border-[#C7D1DC] dark:border-[#2C3948] bg-white dark:bg-[#171F29] px-3 py-2 text-sm text-[#101820] dark:text-white"
+                  >
+                    {['General', 'Science', 'Commerce', 'Tourism'].map((stream) => (
+                      <option key={stream} value={stream}>{stream}</option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  disabled={savingClass}
+                  onClick={handleCreateSchoolClass}
+                  className="px-3 py-2 rounded-xl bg-[#168BFF] text-white text-xs font-bold disabled:opacity-50"
+                >
+                  {savingClass ? 'Adding...' : `Add ${classGrade}-${classSection || 'A'}`}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {schoolClasses.length === 0 && (
+                  <p className="text-[11px] text-[#526071] dark:text-[#AAB5C2]">No classes yet. Add 10-A to start grade 10.</p>
+                )}
+                {[8, 9, 10, 11, 12].map((grade) => {
+                  const gradeClasses = schoolClasses.filter((item) => Number(item.grade) === grade);
+                  if (gradeClasses.length === 0) return null;
+                  return (
+                    <div key={grade} className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-[#526071] dark:text-[#AAB5C2]">Grade {grade}</span>
+                      {gradeClasses.map((item) => (
+                        <span key={item.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#F4F6F8] dark:bg-[#171F29] border border-[#C7D1DC] dark:border-[#2C3948] text-[11px] font-bold text-[#101820] dark:text-white">
+                          {classChipLabel(item.name)}
+                          <span className="font-medium text-[#526071] dark:text-[#AAB5C2]">{item.learner_count || 0}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSchoolClass(item)}
+                            className="text-rose-500"
+                            title={(item.learner_count || 0) > 0 ? 'Move learners to another class before removing this one' : `Remove ${item.name}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Active Employees Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -1617,6 +1782,13 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openTeacherAllocation(e)}
+                        className="px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold"
+                      >
+                        Subjects & classes
+                      </button>
                       {insideSchool && (
                         <button
                           type="button"
@@ -2765,10 +2937,7 @@ export const AdminUsers: React.FC = () => {
           <div className="space-y-1.5">
             <label className="block text-slate-300 font-bold">Assigned Classes (Click to Toggle)</label>
             <div className="flex flex-wrap gap-2">
-              {(metadata.classes.length > 0
-                ? metadata.classes.map(c => c.name)
-                : ['8A', '8B', '9A', '9B', '10A', '10B', '11A', '11B', '12A', '12B']
-              ).map(cls => {
+              {(schoolClasses.length > 0 ? schoolClasses.map(c => c.name) : []).map(cls => {
                 const isSelected = employeeForm.classes_taught.includes(cls);
                 return (
                   <button
@@ -2785,6 +2954,9 @@ export const AdminUsers: React.FC = () => {
                   </button>
                 );
               })}
+              {schoolClasses.length === 0 && (
+                <p className="text-[11px] text-slate-400">Add a class such as 10-A before assigning it to this teacher.</p>
+              )}
             </div>
           </div>
 
@@ -2845,6 +3017,72 @@ export const AdminUsers: React.FC = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(allocationTeacher)}
+        onClose={() => setAllocationTeacher(null)}
+        title={allocationTeacher ? `Subjects and classes for ${allocationTeacher.full_name} ${allocationTeacher.surname}` : 'Subjects and classes'}
+        maxWidth="2xl"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="space-y-1.5">
+            <p className="font-bold text-[#101820] dark:text-white">Subjects</p>
+            <div className="flex flex-wrap gap-1.5">
+              {staffSubjectOptions(metadata.subjects).map((subject) => {
+                const selected = allocationSubjects.includes(subject);
+                return (
+                  <button
+                    type="button"
+                    key={subject}
+                    onClick={() => setAllocationSubjects((current) => selected ? current.filter((item) => item !== subject) : [...current, subject])}
+                    className={`px-2.5 py-1 rounded-lg font-semibold ${selected ? 'bg-[#168BFF] text-white' : 'bg-[#F4F6F8] dark:bg-[#171F29] text-[#526071] dark:text-[#AAB5C2] border border-[#C7D1DC] dark:border-[#2C3948]'}`}
+                  >
+                    {selected ? subject : `+ ${subject}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="font-bold text-[#101820] dark:text-white">Classes</p>
+            {schoolClasses.length === 0 && (
+              <p className="text-[#526071] dark:text-[#AAB5C2]">Add a class such as 10-A in School classes before allocating it.</p>
+            )}
+            {[8, 9, 10, 11, 12].map((grade) => {
+              const gradeClasses = schoolClasses.filter((item) => Number(item.grade) === grade);
+              if (gradeClasses.length === 0) return null;
+              return (
+                <div key={grade} className="flex flex-wrap items-center gap-1.5">
+                  <span className="w-16 font-bold text-[#526071] dark:text-[#AAB5C2]">Grade {grade}</span>
+                  {gradeClasses.map((item) => {
+                    const selected = allocationClasses.some((name) => name.toLowerCase() === item.name.toLowerCase());
+                    return (
+                      <button
+                        type="button"
+                        key={item.id}
+                        onClick={() => setAllocationClasses((current) => selected
+                          ? current.filter((name) => name.toLowerCase() !== item.name.toLowerCase())
+                          : [...current, item.name])}
+                        className={`px-2.5 py-1 rounded-lg font-semibold ${selected ? 'bg-emerald-600 text-white' : 'bg-[#F4F6F8] dark:bg-[#171F29] text-[#526071] dark:text-[#AAB5C2] border border-[#C7D1DC] dark:border-[#2C3948]'}`}
+                      >
+                        {classChipLabel(item.name)}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={() => setAllocationTeacher(null)} className="px-4 py-2 rounded-xl border border-[#C7D1DC] dark:border-[#2C3948] text-[#526071] dark:text-[#AAB5C2] font-bold">
+              Cancel
+            </button>
+            <button type="button" disabled={savingAllocation} onClick={handleSaveTeacherAllocation} className="px-4 py-2 rounded-xl bg-[#168BFF] text-white font-bold disabled:opacity-50">
+              {savingAllocation ? 'Saving...' : 'Save allocation'}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* ========================================================================= */}

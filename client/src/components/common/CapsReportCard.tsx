@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { buildTextPdf, isPdfBlob, savePdfBlob } from '../../utils/reportPdf';
 import { reportService, adminService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from './LoadingSpinner';
@@ -34,6 +35,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   const [loading, setLoading] = useState<boolean>(!previewLearner);
   const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const reportFileRef = useRef<{ filename: string; lines: string[]; childId?: string | number; termNumber: number; year: number } | null>(null);
 
   useEffect(() => {
     if (previewLearner) {
@@ -58,29 +60,31 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   };
 
   const handleDownloadPDF = async () => {
-    const targetId = childId || previewLearner?.child_id || previewLearner?.id || data?.learner?.id;
-    if (!targetId) {
-      window.print();
+    const file = reportFileRef.current;
+    if (!file) {
+      setError('The report is still loading. Wait a moment, then download it again.');
       return;
     }
-
     setDownloadingPdf(true);
+    setError(null);
     try {
-      const termNum = parseInt(term.replace(/[^0-9]/g, ''), 10) || 3;
-      const res = await adminService.downloadLearnerReportPdf(targetId, { term: termNum, academicYear: 2026 });
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      const safeName = (learner.full_name || 'Learner').replace(/[^a-zA-Z0-9_-]/g, '_');
-      link.download = `GelezaSA_Report_2026_Grade${learner.grade}_Class${learner.class_name}_${safeName}_Term${termNum}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      let blob: Blob | null = null;
+      if (file.childId) {
+        try {
+          const res = await adminService.downloadLearnerReportPdf(file.childId, {
+            term: file.termNumber,
+            academicYear: file.year
+          });
+          const serverBlob = new Blob([res.data], { type: 'application/pdf' });
+          if (await isPdfBlob(serverBlob)) blob = serverBlob;
+        } catch (err) {
+          console.warn('Report PDF service did not return a file. Saving the report from this page.', err);
+        }
+      }
+      savePdfBlob(blob || buildTextPdf(file.lines), file.filename);
     } catch (err) {
-      console.warn('Backend PDF download error, falling back to browser print:', err);
-      window.print();
+      console.error('Report PDF download failed:', err);
+      setError('The report PDF could not be downloaded.');
     } finally {
       setDownloadingPdf(false);
     }
@@ -259,6 +263,47 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
     parent_name: 'Parent / Guardian'
   };
 
+  const termNumber = parseInt(term.replace(/[^0-9]/g, ''), 10) || 3;
+  const reportYear = Number(meta.academic_year) || 2026;
+  const safeName = String(learner.full_name || 'Learner').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const markText = (entry: { mark?: number | null; level?: string | number | null } | null) => {
+    if (!entry || entry.mark === null || entry.mark === undefined || Number.isNaN(Number(entry.mark))) return '-';
+    return `${entry.mark}% (L${entry.level || '-'})`;
+  };
+  reportFileRef.current = {
+    childId: childId || previewLearner?.child_id || previewLearner?.id || data?.learner?.id,
+    termNumber,
+    year: reportYear,
+    filename: `GelezaSA_Report_${reportYear}_Grade${learner.grade}_Class${String(learner.class_name).replace(/[^a-zA-Z0-9_-]/g, '_')}_${safeName}_Term${termNumber}.pdf`,
+    lines: [
+      'Official South African CAPS Report Card',
+      school.name || 'Registered school',
+      [school.physical_address, school.contact_phone, school.contact_email].filter(Boolean).join(' | '),
+      '',
+      `Learner: ${learner.full_name}`,
+      `Admission No: ${learner.admission_number}`,
+      `Grade: ${learner.grade}    Class: ${learner.class_name}`,
+      `School year: ${reportYear}    Term: ${termNumber}`,
+      '',
+      'Subject                         Term 1        Term 2        Term 3        Final',
+      ...subjects.map((subject: any) => {
+        const name = String(subject.subject || subject.name || 'Subject').slice(0, 28).padEnd(28, ' ');
+        return `${name} ${markText(subject.term1).padEnd(13, ' ')} ${markText(subject.term2).padEnd(13, ' ')} ${markText(subject.term3).padEnd(13, ' ')} ${markText(subject.final)}`;
+      }),
+      '',
+      `Learner average: ${summary.averages?.final ?? summary.averages?.term3 ?? '-'}`,
+      `Days absent: ${summary.attendance?.total_absent ?? summary.attendance?.term3_absent ?? '-'}`,
+      '',
+      `Remarks: ${remarks.teacher_comment || ''}`,
+      `Principal: ${remarks.principal_comment || ''}`,
+      '',
+      `Class educator: ${signatures.educator_name}`,
+      `HOD: ${signatures.hod_name}`,
+      `Principal: ${signatures.principal_name}`,
+      `Parent / guardian: ${signatures.parent_name}`
+    ]
+  };
+
   return (
     <div className="space-y-4">
       {/* Print stylesheet for genuine A4 portrait fidelity */}
@@ -333,7 +378,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
               title="Download official South African report card PDF"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{downloadingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
+              <span>{downloadingPdf ? 'Downloading...' : 'Download PDF'}</span>
             </button>
 
             <button

@@ -463,17 +463,18 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
       <HomeGreeting />
 
       {/* GELEZA AI EDUCATOR COPILOT QUICK LAUNCHER */}
-      <section className="p-4 md:p-5 rounded-2xl bg-[#111821] border border-[#2C3948] shadow-lg relative overflow-hidden backdrop-blur-sm">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3.5">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white tracking-tight">Geleza AI Teacher Copilot</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#168BFF]/15 text-[#168BFF] border border-[#168BFF]/30">
-                  CAPS & Bloom's
-                </span>
-              </div>
+      <section className="p-4 md:p-5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] shadow-sm">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-bold text-[#101820] dark:text-white tracking-tight">Geleza AI Teacher Copilot</h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#168BFF]/15 text-[#168BFF] border border-[#168BFF]/30">
+                CAPS & Bloom's
+              </span>
             </div>
+            <p className="mt-1 text-[11px] text-[#526071] dark:text-[#AAB5C2]">
+              Open a lesson plan, a test and memo, a class risk briefing, or your own children's records.
+            </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
             <button
@@ -517,7 +518,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base md:text-lg xl:text-2xl font-bold font-display text-white tracking-tight">
+              <h2 className="text-base md:text-lg xl:text-2xl font-bold font-display text-[#101820] dark:text-white tracking-tight">
                 My Assigned Teaching Classes
               </h2>
             </div>
@@ -739,7 +740,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
                       <button
                         onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
-                        className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
+                        className="text-[11px] font-semibold text-slate-500 hover:text-[#168BFF] dark:text-slate-400 dark:hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
                         title="View all modules & tools for this subject"
                       >
                         <Eye className="w-3 h-3 text-slate-400" />
@@ -871,7 +872,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
 
                       <button
                         onClick={() => setViewAllSubject({ ...card, class_name: cleanClass })}
-                        className="text-[11px] font-semibold text-slate-400 hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
+                        className="text-[11px] font-semibold text-slate-500 hover:text-[#168BFF] dark:text-slate-400 dark:hover:text-white flex items-center gap-1 hover:underline pl-1 shrink-0 transition-colors cursor-pointer"
                         title="View all modules & tools for this subject"
                       >
                         <Eye className="w-3 h-3 text-slate-400" />
@@ -1270,7 +1271,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                             className={`px-2.5 py-1.5 sm:py-1 rounded-lg text-xs font-bold text-center transition-all ${
                               learner.status === 'present'
                                 ? 'bg-emerald-600 text-white shadow-glow-emerald'
-                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                : 'bg-slate-100 text-slate-700 hover:text-[#101820] hover:bg-slate-200 dark:bg-white/5 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10'
                             }`}
                           >
                             Present
@@ -1281,7 +1282,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                             className={`px-2.5 py-1.5 sm:py-1 rounded-lg text-xs font-bold text-center transition-all ${
                               learner.status === 'late'
                                 ? 'bg-amber-600 text-white shadow-md'
-                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                : 'bg-slate-100 text-slate-700 hover:text-[#101820] hover:bg-slate-200 dark:bg-white/5 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10'
                             }`}
                           >
                             Late
@@ -1292,7 +1293,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
                             className={`px-2.5 py-1.5 sm:py-1 rounded-lg text-xs font-bold text-center transition-all ${
                               learner.status === 'absent'
                                 ? 'bg-rose-600 text-white shadow-glow-rose'
-                                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                                : 'bg-slate-100 text-slate-700 hover:text-[#101820] hover:bg-slate-200 dark:bg-white/5 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10'
                             }`}
                           >
                             Absent

@@ -176,26 +176,26 @@ export const DynamicClassesManager: React.FC<DynamicClassesManagerProps> = ({ in
   // Save Class (Create or Update)
   const handleSaveClass = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!classForm.name.trim()) {
-      setError('Please provide a class name (e.g. 10A).');
+    const section = classForm.name.trim().toUpperCase();
+    if (!/^[A-Z]{1,2}$/.test(section)) {
+      setError('Enter a section letter such as A or B. The class is saved as 10-A.');
       return;
     }
     setError(null);
+    const payload = {
+      section,
+      grade: parseInt(classForm.grade.toString(), 10),
+      stream: classForm.stream,
+      homeroom_teacher_id: classForm.homeroom_teacher_id ? parseInt(classForm.homeroom_teacher_id, 10) : null,
+      room_number: classForm.room_number
+    };
     try {
       if (editingClassId) {
-        await classStaffService.updateClass(editingClassId, {
-          ...classForm,
-          grade: parseInt(classForm.grade.toString(), 10),
-          homeroom_teacher_id: classForm.homeroom_teacher_id ? parseInt(classForm.homeroom_teacher_id, 10) : null
-        });
-        setSuccess(`Class ${classForm.name.toUpperCase()} updated successfully.`);
+        await classStaffService.updateClass(editingClassId, payload);
+        setSuccess(`Class ${payload.grade}-${section} updated successfully.`);
       } else {
-        await classStaffService.createClass({
-          ...classForm,
-          grade: parseInt(classForm.grade.toString(), 10),
-          homeroom_teacher_id: classForm.homeroom_teacher_id ? parseInt(classForm.homeroom_teacher_id, 10) : null
-        });
-        setSuccess(`Class ${classForm.name.toUpperCase()} provisioned successfully.`);
+        await classStaffService.createClass(payload);
+        setSuccess(`Class ${payload.grade}-${section} added for grade ${payload.grade}.`);
       }
       setIsClassModalOpen(false);
       setEditingClassId(null);
@@ -410,7 +410,7 @@ export const DynamicClassesManager: React.FC<DynamicClassesManagerProps> = ({ in
                         onClick={() => {
                           setEditingClassId(cls.id);
                           setClassForm({
-                            name: cls.name,
+                            name: (String(cls.name).match(/([A-Za-z]{1,2})$/) || ['', 'A'])[1].toUpperCase(),
                             grade: cls.grade,
                             stream: cls.stream,
                             homeroom_teacher_id: cls.homeroom_teacher_id ? cls.homeroom_teacher_id.toString() : '',
@@ -635,14 +635,16 @@ export const DynamicClassesManager: React.FC<DynamicClassesManagerProps> = ({ in
 
             <form onSubmit={handleSaveClass} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-300">Class Name (e.g. 10A, 11B-Science) *</label>
+                <label className="font-bold text-slate-700 dark:text-slate-300">Section for this grade (A, B, C)</label>
                 <input
                   type="text"
-                  placeholder="e.g. 10A"
+                  maxLength={2}
+                  placeholder="A"
                   value={classForm.name}
-                  onChange={(e) => setClassForm({ ...classForm, name: e.target.value.toUpperCase() })}
+                  onChange={(e) => setClassForm({ ...classForm, name: e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase() })}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm outline-hidden focus:border-cyan-500"
                 />
+                <p className="text-[11px] text-slate-500">This class will be saved as {classForm.grade}-{classForm.name || 'A'}.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
