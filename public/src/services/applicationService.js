@@ -3,16 +3,11 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { refuseExternalService } = require('../../../lib/testSafety');
 const { compareExtractedDocument } = require('../../../lib/admissionDocumentCheck');
 const { validateSAID } = require('../controller/saIDvalidations');
 
 const SCHOOL_MAX_CAPACITY = 500;
 const CLASS_MAX_CAPACITY = 30;
-
-const rawKey = (process.env.GEMINI_API_KEY || '').replace(/^["']|["']$/g, '').trim();
-const genAI = rawKey ? new GoogleGenerativeAI(rawKey) : null;
 
 /**
  * Generate Unique Application Reference Number with School Prefix
@@ -350,7 +345,7 @@ async function verifyApplicationWithAI(applicationData, uploadedDocs = []) {
     overallScore -= 15;
   }
 
-  // 4. Content Verification with Gemini AI (if available) or PDF Text Analysis
+  // 4. Local text comparison. Documents are not sent to a model.
   for (const doc of uploadedDocs) {
     const extractedText = await extractDocumentText(doc.file_path, doc.mime_type);
     

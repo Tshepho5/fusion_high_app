@@ -238,12 +238,12 @@ describe('external-service isolation', () => {
     assert.throws(() => fetch('https://example.invalid/phase16'), TestSafetyError);
   });
 
-  test('document verification refuses Gemini before a model call', () => {
+  test('document verification does not call a model', () => {
     const source = fs.readFileSync(path.join(root, 'public/src/services/applicationService.js'), 'utf8');
-    const refusal = source.indexOf("refuseExternalService('ai')");
-    const call = source.indexOf('getGenerativeModel(');
-    assert.ok(refusal > 0);
-    assert.ok(call > refusal);
+    assert.doesNotMatch(source, /getGenerativeModel\s*\(/);
+    assert.doesNotMatch(source, /new GoogleGenerativeAI/);
+    assert.match(source, /compareExtractedDocument/);
+    assert.match(source, /model_called:\s*false/);
   });
 
   test('the live Gemini script exits before calling a model', () => {
