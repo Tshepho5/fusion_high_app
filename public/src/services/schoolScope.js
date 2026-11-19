@@ -47,4 +47,18 @@ function directoryScope(req) {
   return { mode: 'executives', schoolId: null };
 }
 
-module.exports = { resolveSchoolId, canDecideApplication, directoryScope };
+const DASHBOARD_ROLES = new Set(['admin', 'teacher', 'parent', 'learner']);
+
+function canOpenRegisteredSchoolDashboard({ executive, target, schoolActive, schoolId }) {
+  if (!executive || executive.is_superadmin !== true) return false;
+  if (!schoolActive) return false;
+  if (!target || target.is_superadmin === true) return false;
+  const targetSchool = parseInt(target.school_id, 10);
+  const openedSchool = parseInt(schoolId, 10);
+  if (!Number.isInteger(targetSchool) || targetSchool <= 0) return false;
+  if (targetSchool !== openedSchool) return false;
+  if (Number(target.id) === Number(executive.id)) return false;
+  return DASHBOARD_ROLES.has(String(target.role || '').toLowerCase());
+}
+
+module.exports = { resolveSchoolId, canDecideApplication, directoryScope, canOpenRegisteredSchoolDashboard };

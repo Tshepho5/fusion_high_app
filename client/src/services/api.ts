@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { clearAuthSession, readAuthValue } from '../utils/authStorage';
+import { readDashboardView } from '../utils/dashboardView';
 import { acceptAuthResponse, InvalidAuthResponseError } from './authResponse';
 
 const PRODUCTION_API_URL = 'https://fusion-high-backend.onrender.com';
@@ -51,6 +52,12 @@ api.interceptors.request.use((config) => {
     if (signedIn && signedIn.is_superadmin) {
       const workspace = sessionStorage.getItem('geleza_school_workspace');
       config.headers['x-geleza-directory'] = workspace ? 'school' : 'platform';
+      const method = String(config.method || 'get').toLowerCase();
+      const view = readDashboardView();
+      if ((method === 'get' || method === 'head') && view && workspace && Number(view.schoolId) === Number(workspace)) {
+        config.headers['x-view-user-id'] = String(view.id);
+        config.headers['x-school-id'] = String(view.schoolId);
+      }
     }
   } catch (_) {}
   // When sending FormData, delete Content-Type so Axios/browser sets multipart boundary correctly
@@ -511,6 +518,7 @@ export const adminService = {
   getLearners: () => api.get('/api/admin/learners').then(res => res.data),
   createLearner: (payload: any) => api.post('/api/admin/learners', payload).then(res => res.data),
   deleteLearner: (id: number | string) => api.delete(`/api/admin/learners/${id}`).then(res => res.data),
+  deleteAdmission: (id: number | string) => api.delete(`/api/admin/admissions/${id}`).then(res => res.data),
   getRecycleBin: () => api.get('/api/admin/recycle-bin').then(res => res.data),
   restoreFromRecycleBin: (id: number | string) => api.post(`/api/admin/recycle-bin/${id}/restore`).then(res => res.data),
   permanentDeleteFromRecycleBin: (id: number | string) => api.delete(`/api/admin/recycle-bin/${id}`).then(res => res.data),

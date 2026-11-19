@@ -141,7 +141,8 @@ function rememberSchool(profile: SchoolProfile | null) {
 }
 
 export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { account, user: sessionUser } = useAuth();
+  const user = account || sessionUser;
   const isSuperAdmin = Boolean(user?.is_superadmin);
   const [workspaceSchoolId, setWorkspaceSchoolId] = useState<number | null>(readWorkspaceId);
   const [schoolsList, setSchoolsList] = useState<SchoolProfile[]>(() => {

@@ -1034,6 +1034,7 @@ exports.getAllEmployees = async (req, res) => {
                 u.profile_edit_unlocked,
                 d.name AS department_name,
                 er.name AS employee_role,
+                LOWER(COALESCE(r.name, 'teacher')) AS account_role,
                 e.subjects, 
                 e.grades_taught, 
                 e.classes_taught, 
@@ -1043,6 +1044,7 @@ exports.getAllEmployees = async (req, res) => {
             JOIN users u ON e.user_id = u.id
             LEFT JOIN departments d ON e.department_id = d.id
             LEFT JOIN employee_roles er ON e.employee_role_id = er.id
+            LEFT JOIN roles r ON u.role_id::text = r.id::text
             WHERE u.school_id = $1
               AND COALESCE(u.is_superadmin, FALSE) = FALSE
             ORDER BY u.surname, u.full_name;
@@ -1421,23 +1423,23 @@ exports.deleteLearner = async (req, res) => {
 exports.getRecycleBin = async (req, res) => {
     try {
         await ensureDatabaseSchema().catch(() => {});
-        const schoolId = req.user?.school_id;
-        const isMaster = req.user?.role === 'superadmin' || req.user?.role === 'system_admin' || !schoolId;
+        const scope = directoryScope(req);
+        if (scope.mode !== 'school' || !scope.schoolId) {
+            return res.json({ success: true, items: [], totalCount: 0 });
+        }
 
-        let query = `
+        const query = `
             SELECT id, record_type, original_id, school_id, name, identifier, role_name, deleted_by, deleted_by_name, deleted_at,
                    (data->'child'->>'grade') AS learner_grade,
                    (data->'child'->>'stream') AS learner_stream,
                    (data->'user'->>'email') AS user_email,
                    (data->'user'->>'phone') AS user_phone
             FROM recycle_bin
+            WHERE school_id = $1 OR (school_id IS NULL AND $1 = 1)
+            ORDER BY deleted_at DESC
+            LIMIT 500;
         `;
-        const params = [];
-        if (!isMaster) {
-            query += ` WHERE (school_id = $1 OR school_id IS NULL)`;
-            params.push(schoolId);
-        }
-        query += ` ORDER BY deleted_at DESC LIMIT 500;`;
+        const params = [scope.schoolId];
 
         const result = await db.query(query, params);
         res.json({
@@ -1468,6 +1470,49 @@ exports.restoreFromRecycleBin = async (req, res) => {
 
         const item = binRes.rows[0];
         const { record_type, data } = item;
+        const scope = directoryScope(req);
+        if (scope.mode !== 'school' || !scope.schoolId) {
+            return res.status(403).json({ error: 'Open the school before restoring this record.' });
+        }
+        if (item.school_id && Number(item.school_id) !== Number(scope.schoolId)) {
+            return res.status(403).json({ error: 'This record belongs to another school.' });
+        }
+        if (!item.school_id && Number(scope.schoolId) !== 1) {
+            return res.status(403).json({ error: 'This record belongs to another school.' });
+        }
+
+        if (record_type === 'admission') {
+            const application = data && (data.application || data);
+            const documents = data && Array.isArray(data.documents) ? data.documents : [];
+            const payments = data && Array.isArray(data.payments) ? data.payments : [];
+            const paymentGrants = data && Array.isArray(data.paymentGrants) ? data.paymentGrants : [];
+            if (!application || !application.application_number) {
+                return res.status(400).json({ error: 'This admission snapshot cannot be restored.' });
+            }
+            const existing = await db.query(
+                'SELECT id FROM applications WHERE id = $1 OR application_number = $2',
+                [application.id, application.application_number]
+            );
+            if (existing.rows.length > 0) {
+                await db.query('DELETE FROM recycle_bin WHERE id = $1', [item.id]);
+                return res.json({ success: true, message: `Admission ${item.name} is already active.` });
+            }
+            await insertSnapshotRow('applications', application);
+            for (const document of documents) {
+                await insertSnapshotRow('application_documents', document).catch(() => {});
+            }
+            for (const payment of payments) {
+                await insertSnapshotRow('application_payments', payment).catch(() => {});
+            }
+            for (const grant of paymentGrants) {
+                await insertSnapshotRow('application_payment_grants', grant).catch(() => {});
+            }
+            await db.query('DELETE FROM recycle_bin WHERE id = $1', [item.id]);
+            return res.json({
+                success: true,
+                message: `Admission ${item.name} has been brought back.`
+            });
+        }
 
         if (record_type === 'learner') {
             const { child, linkedUser, parentLinks } = data;
@@ -1697,7 +1742,22 @@ exports.restoreFromRecycleBin = async (req, res) => {
 exports.permanentDeleteFromRecycleBin = async (req, res) => {
     const { id } = req.params;
     try {
-        await db.query('DELETE FROM recycle_bin WHERE id = $1', [parseInt(id, 10)]);
+        const scope = directoryScope(req);
+        const binId = parseInt(id, 10);
+        const existing = await db.query('SELECT school_id FROM recycle_bin WHERE id = $1', [binId]);
+        if (!existing.rows.length) {
+            return res.status(404).json({ error: 'Item not found in recycle bin.' });
+        }
+        if (scope.mode !== 'school' || !scope.schoolId) {
+            return res.status(403).json({ error: 'Open the school before deleting this record.' });
+        }
+        if (existing.rows[0].school_id && Number(existing.rows[0].school_id) !== Number(scope.schoolId)) {
+            return res.status(403).json({ error: 'This record belongs to another school.' });
+        }
+        if (!existing.rows[0].school_id && Number(scope.schoolId) !== 1) {
+            return res.status(403).json({ error: 'This record belongs to another school.' });
+        }
+        await db.query('DELETE FROM recycle_bin WHERE id = $1', [binId]);
         res.json({ success: true, message: 'Item permanently deleted from Recycle Bin.' });
     } catch (err) {
         console.error('Error permanently deleting from recycle bin:', err);
@@ -1710,14 +1770,14 @@ exports.permanentDeleteFromRecycleBin = async (req, res) => {
  */
 exports.emptyRecycleBin = async (req, res) => {
     try {
-        const schoolId = req.user?.school_id;
-        const isMaster = req.user?.role === 'superadmin' || req.user?.role === 'system_admin' || !schoolId;
-
-        if (isMaster) {
-            await db.query('DELETE FROM recycle_bin');
-        } else {
-            await db.query('DELETE FROM recycle_bin WHERE school_id = $1', [schoolId]);
+        const scope = directoryScope(req);
+        if (scope.mode !== 'school' || !scope.schoolId) {
+            return res.status(403).json({ error: 'Open the school before emptying its recycle bin.' });
         }
+        await db.query(
+            'DELETE FROM recycle_bin WHERE school_id = $1 OR (school_id IS NULL AND $1 = 1)',
+            [scope.schoolId]
+        );
         res.json({ success: true, message: 'Recycle bin successfully emptied.' });
     } catch (err) {
         console.error('Error emptying recycle bin:', err);
@@ -2173,6 +2233,109 @@ exports.getAllAdmissions = async (req, res) => {
     } catch (err) {
         console.error('Error fetching admissions list:', err);
         res.status(500).json({ error: 'Failed to retrieve admission applications.' });
+    }
+};
+
+const ADMISSION_SNAPSHOT_TABLES = new Set([
+    'applications',
+    'application_documents',
+    'application_payments',
+    'application_payment_grants'
+]);
+
+async function insertSnapshotRow(table, row) {
+    if (!ADMISSION_SNAPSHOT_TABLES.has(table)) {
+        throw new Error('This record cannot be restored.');
+    }
+    const columns = await db.query(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = $1 AND is_generated = 'NEVER'`,
+        [table]
+    );
+    const allowed = new Set(columns.rows.map((column) => column.column_name));
+    const entries = Object.entries(row || {}).filter(([key, value]) => (
+        allowed.has(key) && /^[a-z_][a-z0-9_]*$/i.test(key) && value !== undefined
+    ));
+    if (!entries.length) return;
+    const names = entries.map(([key]) => key);
+    const values = entries.map(([, value]) => value);
+    const placeholders = names.map((_, index) => `$${index + 1}`);
+    const conflict = names.includes('id') ? ' ON CONFLICT (id) DO NOTHING' : '';
+    await db.query(
+        `INSERT INTO ${table} (${names.join(', ')}) VALUES (${placeholders.join(', ')})${conflict}`,
+        values
+    );
+}
+
+exports.deleteAdmission = async (req, res) => {
+    const admissionId = parseInt(req.params.id, 10);
+    if (!Number.isInteger(admissionId) || admissionId <= 0) {
+        return res.status(400).json({ error: 'A valid admission is required.' });
+    }
+    try {
+        const schoolId = getTargetSchoolId(req);
+        const appRes = await db.query('SELECT * FROM applications WHERE id = $1', [admissionId]);
+        if (!appRes.rows.length) {
+            return res.status(404).json({ error: 'Admission not found.' });
+        }
+        const application = appRes.rows[0];
+        if (!schoolId) {
+            return res.status(403).json({ error: 'Open this school before removing its admission.' });
+        }
+        if (application.school_id && Number(application.school_id) !== Number(schoolId)) {
+            return res.status(403).json({ error: 'You can only remove admissions for the school you have open.' });
+        }
+        if (!application.school_id && Number(schoolId) !== 1) {
+            return res.status(403).json({ error: 'You can only remove admissions for the school you have open.' });
+        }
+        if (!canDecideApplication(req.user, application.school_id || schoolId)) {
+            return res.status(403).json({ error: 'You can only remove admissions for your own school.' });
+        }
+        const documents = await db.query(
+            'SELECT * FROM application_documents WHERE application_id = $1',
+            [admissionId]
+        ).then((result) => result.rows).catch(() => []);
+        const payments = await db.query(
+            'SELECT * FROM application_payments WHERE application_id = $1',
+            [admissionId]
+        ).then((result) => result.rows).catch(() => []);
+        const paymentGrants = await db.query(
+            'SELECT * FROM application_payment_grants WHERE application_id = $1',
+            [admissionId]
+        ).then((result) => result.rows).catch(() => []);
+        const fullName = `${application.first_name || ''} ${application.surname || ''}`.trim() || `Admission #${admissionId}`;
+        const deletedByName = req.user
+            ? `${req.user.full_name || ''} ${req.user.surname || ''}`.trim() || req.user.email
+            : 'Admin';
+        const snapshot = await db.query(`
+            INSERT INTO recycle_bin (record_type, original_id, school_id, name, identifier, role_name, data, deleted_by, deleted_by_name, deleted_at)
+            VALUES ('admission', $1, $2, $3, $4, 'Admission', $5, $6, $7, CURRENT_TIMESTAMP)
+            RETURNING id
+        `, [
+            admissionId,
+            application.school_id || schoolId || null,
+            fullName,
+            application.application_number || application.provisional_learner_number || `ID-${admissionId}`,
+            JSON.stringify({ application, documents, payments, paymentGrants }),
+            req.user?.id || null,
+            deletedByName
+        ]);
+        try {
+            await db.query('DELETE FROM application_documents WHERE application_id = $1', [admissionId]).catch(() => {});
+            await db.query('DELETE FROM application_payments WHERE application_id = $1', [admissionId]).catch(() => {});
+            await db.query('DELETE FROM application_payment_grants WHERE application_id = $1', [admissionId]).catch(() => {});
+            await db.query('DELETE FROM applications WHERE id = $1', [admissionId]);
+        } catch (deleteErr) {
+            await db.query('DELETE FROM recycle_bin WHERE id = $1', [snapshot.rows[0].id]).catch(() => {});
+            throw deleteErr;
+        }
+        res.json({
+            success: true,
+            message: `${fullName} was moved to the Recycle Bin. You can bring the admission back or delete it permanently there.`
+        });
+    } catch (err) {
+        console.error('Error deleting admission:', err);
+        res.status(500).json({ error: 'The admission could not be moved to the Recycle Bin.' });
     }
 };
 

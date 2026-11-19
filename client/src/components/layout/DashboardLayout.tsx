@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { stopDashboardView } from '../../utils/dashboardView';
 import { Navbar } from './Navbar';
 import { CommandPalette } from '../common/CommandPalette';
 import { BottomNavigationDock } from './BottomNavigationDock';
@@ -24,7 +26,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   customBottomDock,
   hideBottomDock = false,
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, account, viewedDashboard } = useAuth();
+  const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Tab transition state to display the shimmer skeleton whenever user switches tabs
@@ -122,6 +125,24 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           onNavigateHome={() => onSelectTab('overview')}
           onSelectTab={onSelectTab}
         />
+
+        {viewedDashboard && account?.is_superadmin && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#168BFF]/30 bg-[#168BFF]/10 px-4 py-2.5">
+            <p className="text-xs font-bold text-slate-900 dark:text-white">
+              Geleza SA is viewing {viewedDashboard.full_name} {viewedDashboard.surname || ''}'s {viewedDashboard.role} dashboard
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                stopDashboardView();
+                navigate('/dashboard/admin?tab=users');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-bold cursor-pointer"
+            >
+              Return to school directory
+            </button>
+          </div>
+        )}
 
         <main
           ref={mainRef}

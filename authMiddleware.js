@@ -6,6 +6,7 @@ const {
     hasDatabaseSuperadmin,
     loadAuthoritativeAccount
 } = require('./lib/authoritativeAccess');
+const { canOpenRegisteredSchoolDashboard } = require('./public/src/services/schoolScope');
 
 const SESSION_COOKIE = 'geleza_session';
 
@@ -109,6 +110,7 @@ const auth = (req, res, next) => {
                 sid: user.sid,
                 authoritative: true
             };
+            await openRegisteredSchoolDashboard(req);
             attachSessionCookie(res, token);
             next();
         } catch (sessionErr) {
@@ -117,6 +119,44 @@ const auth = (req, res, next) => {
         }
     });
 };
+
+async function openRegisteredSchoolDashboard(req) {
+    if (!['GET', 'HEAD'].includes(String(req.method || '').toUpperCase())) return;
+    const path = String(req.originalUrl || req.url || '');
+    if (path.startsWith('/api/profile') || path.startsWith('/api/auth') || path.includes('heartbeat') || path.includes('logout')) return;
+    const viewId = parseInt(req.headers['x-view-user-id'], 10);
+    const schoolId = parseInt(req.headers['x-school-id'], 10);
+    if (!Number.isInteger(viewId) || viewId <= 0) return;
+    if (String(req.headers['x-geleza-directory'] || '').toLowerCase() !== 'school') return;
+    const school = await db.query('SELECT id FROM schools WHERE id = $1 AND is_active = TRUE', [schoolId]);
+    if (!school.rows.length) return;
+    const loaded = await loadAuthoritativeAccount(db.query, viewId);
+    if (loaded.state !== 'active' || !loaded.account) return;
+    const target = {
+        id: loaded.account.id,
+        school_id: loaded.account.school_id,
+        role: loaded.account.role,
+        is_superadmin: loaded.account.is_superadmin === true
+    };
+    if (!canOpenRegisteredSchoolDashboard({
+        executive: req.user,
+        target,
+        schoolActive: true,
+        schoolId
+    })) return;
+    req.executive = { ...req.user };
+    req.user = {
+        id: loaded.account.id,
+        role: String(loaded.account.role || '').toLowerCase(),
+        email: loaded.account.email,
+        full_name: req.user.full_name,
+        school_id: loaded.account.school_id,
+        is_superadmin: false,
+        sid: req.user.sid,
+        authoritative: true,
+        viewing: true
+    };
+}
 
 /**
  * Middleware factory to ensure the user has one of the specified roles.

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { authService, userService } from '../services/api';
 import { clearAuthSession, readAuthValue, storeHoldingToken, writeAuthSession } from '../utils/authStorage';
 import { canEnterDashboard, InvalidAuthResponseError, isSessionToken } from '../services/authResponse';
+import { DASHBOARD_VIEW_EVENT, readDashboardView, stopDashboardView, DashboardView } from '../utils/dashboardView';
 
 export type UserRole = 'learner' | 'teacher' | 'admin' | 'parent' | null;
 
@@ -20,6 +21,8 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
+  account: User | null;
+  viewedDashboard: DashboardView | null;
   token: string | null;
   role: UserRole;
   isAuthenticated: boolean;
@@ -59,11 +62,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   const [user, setUserState] = useState<User | null>(readStoredUser);
+  const [viewedDashboard, setViewedDashboard] = useState<DashboardView | null>(() => readDashboardView());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sessionPrompt, setSessionPrompt] = useState<null | 'idle' | 'logout'>(null);
   const [tabBlocked, setTabBlocked] = useState(false);
   const promptKind = useRef<null | 'idle' | 'logout'>(null);
   const resetIdleTimer = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    const syncView = () => setViewedDashboard(readDashboardView());
+    window.addEventListener(DASHBOARD_VIEW_EVENT, syncView);
+    return () => window.removeEventListener(DASHBOARD_VIEW_EVENT, syncView);
+  }, []);
 
   const refreshUser = async () => {
     if (!token) {
@@ -280,6 +290,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setToken(null);
     setRole(null);
     setUserState(null);
+    stopDashboardView();
     clearAuthSession([localStorage, sessionStorage]);
     sessionStorage.clear();
     localStorage.removeItem('remember_me');
@@ -305,12 +316,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('user', JSON.stringify(newUserData));
   };
 
+  const activeView = user?.is_superadmin ? viewedDashboard : null;
+  const dashboardUser = activeView
+    ? {
+        ...user,
+        id: activeView.id,
+        role: activeView.role,
+        full_name: activeView.full_name,
+        surname: activeView.surname,
+        email: activeView.email,
+        school_id: activeView.schoolId,
+        is_superadmin: false
+      }
+    : user;
+  const dashboardRole = (activeView ? activeView.role : role) as UserRole;
+
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: dashboardUser,
+        account: user,
+        viewedDashboard: activeView,
         token,
-        role,
+        role: dashboardRole,
         isAuthenticated: !!token,
         isLoading,
         login,

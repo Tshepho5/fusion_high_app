@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminService, parentApplicationService, classStaffService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
+import { dashboardRole, startDashboardView } from '../../utils/dashboardView';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
@@ -193,7 +194,7 @@ export const AdminUsers: React.FC = () => {
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
   const [parents, setParents] = useState<ParentRecord[]>([]);
   const [recycleBinItems, setRecycleBinItems] = useState<RecycleBinItem[]>([]);
-  const [recycleBinRoleFilter, setRecycleBinRoleFilter] = useState<'all' | 'learner' | 'teacher' | 'parent' | 'staff' | 'admin'>('all');
+  const [recycleBinRoleFilter, setRecycleBinRoleFilter] = useState<'all' | 'learner' | 'teacher' | 'parent' | 'staff' | 'admin' | 'admission'>('all');
   const [restoringItemId, setRestoringItemId] = useState<number | null>(null);
   const [emptyingBin, setEmptyingBin] = useState(false);
   const [parentApplications, setParentApplications] = useState<any[]>([]);
@@ -428,6 +429,21 @@ export const AdminUsers: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openUserDashboard = (person: { id?: number; role?: string; full_name?: string; surname?: string; email?: string }) => {
+    const role = dashboardRole(person.role);
+    const id = Number(person.id);
+    if (!insideSchool || !currentSchool?.id || !role || !Number.isInteger(id) || id <= 0) return;
+    startDashboardView({
+      id,
+      role,
+      schoolId: Number(currentSchool.id),
+      full_name: person.full_name || 'School user',
+      surname: person.surname || '',
+      email: person.email || ''
+    });
+    window.location.assign(`/dashboard/${role}`);
   };
 
   const directoryMode = useRef(platformDirectory);
@@ -788,6 +804,25 @@ export const AdminUsers: React.FC = () => {
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to delete user.');
+    }
+  };
+
+  const handleDeleteAdmission = async (admissionId: number, name: string) => {
+    if (!admissionId) {
+      setError('Cannot delete this admission because it has no record number.');
+      return;
+    }
+    if (!window.confirm(`Move admission "${name}" to the Recycle Bin? You can bring it back or delete it permanently from the bin.`)) {
+      return;
+    }
+    setError(null);
+    try {
+      await adminService.deleteAdmission(admissionId);
+      setActionSuccess(`${name} was moved to the Recycle Bin.`);
+      fetchData();
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'The admission could not be moved to the Recycle Bin.');
     }
   };
 
@@ -1581,6 +1616,16 @@ export const AdminUsers: React.FC = () => {
                       {e.phone || '-'}
                     </td>
                     <td className="py-3.5 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                      {insideSchool && (
+                        <button
+                          type="button"
+                          onClick={() => openUserDashboard({ id: e.user_id, role: (e as any).account_role || e.employee_role || 'teacher', full_name: e.full_name, surname: e.surname, email: e.email })}
+                          className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
+                        >
+                          Open dashboard
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteUser(e.user_id, e.email)}
                         className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
@@ -1588,6 +1633,7 @@ export const AdminUsers: React.FC = () => {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1660,6 +1706,16 @@ export const AdminUsers: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                      {insideSchool && (
+                        <button
+                          type="button"
+                          onClick={() => openUserDashboard({ id: p.id, role: 'parent', full_name: p.full_name, surname: p.surname, email: p.email })}
+                          className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
+                        >
+                          Open dashboard
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteUser(p.id, p.email)}
                         className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
@@ -1667,6 +1723,7 @@ export const AdminUsers: React.FC = () => {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1737,6 +1794,16 @@ export const AdminUsers: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                      {insideSchool && l.user_id && (
+                        <button
+                          type="button"
+                          onClick={() => openUserDashboard({ id: l.user_id, role: 'learner', full_name: l.full_name, surname: l.surname, email: l.email })}
+                          className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
+                        >
+                          Open dashboard
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteLearner((l.learner_id || l.child_id || l.id || 0) as number, `${l.full_name} ${l.surname}`)}
                         className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
@@ -1744,6 +1811,7 @@ export const AdminUsers: React.FC = () => {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1841,6 +1909,14 @@ export const AdminUsers: React.FC = () => {
                         >
                           <Scan className="w-3.5 h-3.5" />
                           <span>Inspect OCR</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAdmission(adm.id, `${adm.first_name || ''} ${adm.surname || ''}`.trim())}
+                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                          title="Move this admission to the Recycle Bin"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -2035,6 +2111,16 @@ export const AdminUsers: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       {!adm.is_superadmin && (
+                        <div className="flex items-center justify-end gap-1.5">
+                        {insideSchool && (
+                          <button
+                            type="button"
+                            onClick={() => openUserDashboard({ id: adm.id, role: 'admin', full_name: adm.full_name, surname: adm.surname, email: adm.email })}
+                            className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
+                          >
+                            Open dashboard
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteUser(adm.id, adm.email)}
                           className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
@@ -2042,6 +2128,7 @@ export const AdminUsers: React.FC = () => {
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -2115,6 +2202,16 @@ export const AdminUsers: React.FC = () => {
                       {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'Active'}
                     </td>
                     <td className="py-3.5 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                      {insideSchool && (
+                        <button
+                          type="button"
+                          onClick={() => openUserDashboard({ id: u.id, role: u.role, full_name: u.full_name, surname: u.surname, email: u.email })}
+                          className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
+                        >
+                          Open dashboard
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeleteUser(u.id, u.email)}
                         className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
@@ -2122,6 +2219,7 @@ export const AdminUsers: React.FC = () => {
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2145,7 +2243,7 @@ export const AdminUsers: React.FC = () => {
                     </span>
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Deleted people (learners, teachers, parents, staff) can be restored and brought back here with 1 click.
+                    Deleted admissions, learners, teachers, parents, and staff can be brought back or removed permanently.
                   </p>
                 </div>
               </div>
@@ -2153,7 +2251,7 @@ export const AdminUsers: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 {/* Role Filters */}
                 <div className="flex items-center gap-1 bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-white/10 text-[11px]">
-                  {(['all', 'learner', 'teacher', 'parent', 'staff', 'admin'] as const).map(role => (
+                  {(['all', 'admission', 'learner', 'teacher', 'parent', 'staff', 'admin'] as const).map(role => (
                     <button
                       key={role}
                       type="button"
@@ -2164,7 +2262,7 @@ export const AdminUsers: React.FC = () => {
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      {role === 'all' ? 'All Roles' : `${role}s`}
+                      {role === 'all' ? 'All' : role === 'admission' ? 'Admissions' : `${role}s`}
                     </button>
                   ))}
                 </div>
@@ -2241,7 +2339,7 @@ export const AdminUsers: React.FC = () => {
                             disabled={restoringItemId === item.id}
                             onClick={() => handleRestoreItem(item.id, item.name)}
                             className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                            title="Bring this person back into the active system"
+                            title="Bring this record back"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-white" />
                             <span>{restoringItemId === item.id ? 'Restoring...' : 'Bring Back'}</span>

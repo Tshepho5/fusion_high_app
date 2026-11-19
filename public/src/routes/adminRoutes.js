@@ -96,6 +96,7 @@ router.get('/academics/subject-learners', auth, isAdmin, adminController.getSubj
 
 // Admissions Management
 router.get('/admissions', auth, isAdmin, adminController.getAllAdmissions);
+router.delete('/admissions/:id', auth, isAdmin, adminController.deleteAdmission);
 router.get('/admissions/:id', auth, isAdmin, adminController.getAdmissionById);
 router.post('/admissions/:id/ocr-inspect', auth, isAdmin, adminController.inspectAdmissionDocOCR);
 router.patch('/admissions/:id', auth, isAdmin, adminController.updateAdmissionStatus);
