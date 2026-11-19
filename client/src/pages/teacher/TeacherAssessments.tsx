@@ -718,9 +718,9 @@ export const TeacherAssessments: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
       {/* Header Banner - Cool Monochromatic Teal Theme */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-3xl bg-gradient-to-r from-slate-900/95 via-[#0A1D27]/85 to-slate-900/95 border border-[#168BFF]/25 shadow-xl">
+      <div data-theme-preserve="true" className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-3xl bg-gradient-to-r from-slate-900/95 via-[#0A1D27]/85 to-slate-900/95 border border-[#168BFF]/25 shadow-xl">
         <div>
-          <h2 className="text-xl md:text-2xl font-extrabold font-display text-white tracking-tight flex items-center gap-2.5">
+          <h2 className="text-xl md:text-2xl font-extrabold font-display text-white text-always-white tracking-tight flex items-center gap-2.5">
             <FileSpreadsheet className="w-6 h-6 text-[#168BFF]" />
             <span>Learner Assessment & Performance Matrix</span>
           </h2>
@@ -987,7 +987,7 @@ export const TeacherAssessments: React.FC = () => {
                   <Award className="w-5 h-5 text-[#168BFF]" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-bold text-[#101820] dark:text-white flex items-center gap-2 flex-wrap">
                     <span>CAPS Formal Assessment Schedule — {activeSubjectDisplay} ({activeClassDisplay})</span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#168BFF]/15 text-[#168BFF] border border-[#168BFF]/30 font-bold">
                       {term}
@@ -1207,7 +1207,7 @@ export const TeacherAssessments: React.FC = () => {
           )}
 
           {/* REQUIREMENT 1: Number of formal assessments available & list of formal assessments available */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#071922] via-[#0B2533] to-[#071922] border border-[#168BFF]/25 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div data-theme-preserve="true" className="p-4 rounded-2xl bg-gradient-to-r from-[#071922] via-[#0B2533] to-[#071922] border border-[#168BFF]/25 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5">
               <span className="font-bold text-white flex items-center gap-1.5">
                 <Award className="w-4 h-4 text-[#168BFF]" />
@@ -1231,7 +1231,7 @@ export const TeacherAssessments: React.FC = () => {
                   </span>
                 ))
               ) : (
-                <span className="text-slate-400 italic text-[11px] font-mono">
+                <span className="text-slate-200 italic text-[11px] font-mono">
                   None available for {term}
                 </span>
               )}
@@ -1239,7 +1239,7 @@ export const TeacherAssessments: React.FC = () => {
           </div>
 
           {/* CAPS Assessment Weighting & Calculation Formula Explainer */}
-          <div className="p-3.5 rounded-2xl bg-[#091E28]/60 border border-[#168BFF]/20 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div data-theme-preserve="true" className="p-3.5 rounded-2xl bg-[#091E28]/60 border border-[#168BFF]/20 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-cyan-300 font-semibold">
               <span className="w-2 h-2 rounded-full bg-[#168BFF] animate-pulse" />
               <span>CAPS Formula: Final Mark = SBA (40%) + Exam (60%) [or 100% SBA if no examination is scheduled]</span>
