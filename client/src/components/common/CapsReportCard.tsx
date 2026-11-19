@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { buildTextPdf, isPdfBlob, savePdfBlob } from '../../utils/reportPdf';
-import { reportService, adminService } from '../../services/api';
+import { reportService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
@@ -35,7 +34,8 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   const [loading, setLoading] = useState<boolean>(!previewLearner);
   const [downloadingPdf, setDownloadingPdf] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const reportFileRef = useRef<{ filename: string; lines: string[]; childId?: string | number; termNumber: number; year: number } | null>(null);
+  const reportFileRef = useRef<{ filename: string } | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (previewLearner) {
@@ -60,28 +60,55 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
   };
 
   const handleDownloadPDF = async () => {
+    const sheet = sheetRef.current;
     const file = reportFileRef.current;
-    if (!file) {
+    if (!sheet || !file) {
       setError('The report is still loading. Wait a moment, then download it again.');
       return;
     }
     setDownloadingPdf(true);
     setError(null);
     try {
-      let blob: Blob | null = null;
-      if (file.childId) {
-        try {
-          const res = await adminService.downloadLearnerReportPdf(file.childId, {
-            term: file.termNumber,
-            academicYear: file.year
+      const { default: html2canvas } = await import('html2canvas');
+      const { jsPDF } = await import('jspdf');
+      const canvas = await html2canvas(sheet, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        onclone: (_document, clonedSheet) => {
+          const sourceCells = sheet.querySelectorAll('th, td');
+          const clonedCells = clonedSheet.querySelectorAll('th, td');
+          sourceCells.forEach((cell, index) => {
+            const target = clonedCells[index] as HTMLElement | undefined;
+            if (!target) return;
+            const style = window.getComputedStyle(cell);
+            target.style.borderTop = `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`;
+            target.style.borderRight = `${style.borderRightWidth} ${style.borderRightStyle} ${style.borderRightColor}`;
+            target.style.borderBottom = `${style.borderBottomWidth} ${style.borderBottomStyle} ${style.borderBottomColor}`;
+            target.style.borderLeft = `${style.borderLeftWidth} ${style.borderLeftStyle} ${style.borderLeftColor}`;
+            target.style.backgroundColor = style.backgroundColor;
+            target.style.color = style.color;
           });
-          const serverBlob = new Blob([res.data], { type: 'application/pdf' });
-          if (await isPdfBlob(serverBlob)) blob = serverBlob;
-        } catch (err) {
-          console.warn('Report PDF service did not return a file. Saving the report from this page.', err);
         }
+      });
+      const image = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const maxWidth = pageWidth - margin * 2;
+      const maxHeight = pageHeight - margin * 2;
+      const imageRatio = canvas.width / canvas.height;
+      let drawWidth = maxWidth;
+      let drawHeight = drawWidth / imageRatio;
+      if (drawHeight > maxHeight) {
+        drawHeight = maxHeight;
+        drawWidth = drawHeight * imageRatio;
       }
-      savePdfBlob(blob || buildTextPdf(file.lines), file.filename);
+      const x = (pageWidth - drawWidth) / 2;
+      pdf.addImage(image, 'PNG', x, margin, drawWidth, drawHeight);
+      pdf.save(file.filename);
     } catch (err) {
       console.error('Report PDF download failed:', err);
       setError('The report PDF could not be downloaded.');
@@ -263,45 +290,12 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
     parent_name: 'Parent / Guardian'
   };
 
-  const termNumber = parseInt(term.replace(/[^0-9]/g, ''), 10) || 3;
+  const termMatch = String(term).match(/term\s*(\d+)/i);
+  const termNumber = termMatch ? parseInt(termMatch[1], 10) : 3;
   const reportYear = Number(meta.academic_year) || 2026;
   const safeName = String(learner.full_name || 'Learner').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const markText = (entry: { mark?: number | null; level?: string | number | null } | null) => {
-    if (!entry || entry.mark === null || entry.mark === undefined || Number.isNaN(Number(entry.mark))) return '-';
-    return `${entry.mark}% (L${entry.level || '-'})`;
-  };
   reportFileRef.current = {
-    childId: childId || previewLearner?.child_id || previewLearner?.id || data?.learner?.id,
-    termNumber,
-    year: reportYear,
-    filename: `GelezaSA_Report_${reportYear}_Grade${learner.grade}_Class${String(learner.class_name).replace(/[^a-zA-Z0-9_-]/g, '_')}_${safeName}_Term${termNumber}.pdf`,
-    lines: [
-      'Official South African CAPS Report Card',
-      school.name || 'Registered school',
-      [school.physical_address, school.contact_phone, school.contact_email].filter(Boolean).join(' | '),
-      '',
-      `Learner: ${learner.full_name}`,
-      `Admission No: ${learner.admission_number}`,
-      `Grade: ${learner.grade}    Class: ${learner.class_name}`,
-      `School year: ${reportYear}    Term: ${termNumber}`,
-      '',
-      'Subject                         Term 1        Term 2        Term 3        Final',
-      ...subjects.map((subject: any) => {
-        const name = String(subject.subject || subject.name || 'Subject').slice(0, 28).padEnd(28, ' ');
-        return `${name} ${markText(subject.term1).padEnd(13, ' ')} ${markText(subject.term2).padEnd(13, ' ')} ${markText(subject.term3).padEnd(13, ' ')} ${markText(subject.final)}`;
-      }),
-      '',
-      `Learner average: ${summary.averages?.final ?? summary.averages?.term3 ?? '-'}`,
-      `Days absent: ${summary.attendance?.total_absent ?? summary.attendance?.term3_absent ?? '-'}`,
-      '',
-      `Remarks: ${remarks.teacher_comment || ''}`,
-      `Principal: ${remarks.principal_comment || ''}`,
-      '',
-      `Class educator: ${signatures.educator_name}`,
-      `HOD: ${signatures.hod_name}`,
-      `Principal: ${signatures.principal_name}`,
-      `Parent / guardian: ${signatures.parent_name}`
-    ]
+    filename: `GelezaSA_Report_${reportYear}_Grade${learner.grade}_${safeName}_Term${termNumber}.pdf`
   };
 
   return (
@@ -404,7 +398,7 @@ export const CapsReportCard: React.FC<CapsReportCardProps> = ({
       {/* OFFICIAL SOUTH AFRICAN SCHOOL LEARNER REPORT CARD SHEET  */}
       {/* A4 PORTRAIT FORMAL LAYOUT MATCHING DBE BENCHMARK         */}
       {/* ======================================================== */}
-      <div className="south-african-report-sheet relative bg-white text-slate-900 border-2 border-slate-900 p-5 sm:p-7 shadow-2xl font-sans rounded-xl max-w-4xl mx-auto space-y-3 print:p-0 print:border-0 print:shadow-none print:max-w-none">
+      <div ref={sheetRef} className="south-african-report-sheet relative bg-white text-slate-900 border-2 border-slate-900 p-5 sm:p-7 shadow-2xl font-sans rounded-xl max-w-4xl mx-auto space-y-3 print:p-0 print:border-0 print:shadow-none print:max-w-none">
         
         {/* 1. Official School Header */}
         <div className="border-b-2 border-slate-900 pb-3 flex items-start justify-between gap-4">
