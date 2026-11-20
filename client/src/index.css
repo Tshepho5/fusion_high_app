@@ -2121,5 +2121,23 @@ html.theme-dark .geleza-glass-sidebar {
   }
 }
 
+.geleza-glass-sidebar--admin {
+  background-color: rgba(255, 255, 255, 0.82);
+  color: #101820;
+  border: 1px solid rgba(199, 209, 220, 0.85);
+  box-shadow: 0 14px 36px rgba(16, 24, 32, 0.10);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+html.dark .geleza-glass-sidebar--admin,
+html.theme-dark .geleza-glass-sidebar--admin {
+  background-color: rgba(11, 18, 28, 0.86);
+  color: #f5f7fa;
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+}
+
+
 
 

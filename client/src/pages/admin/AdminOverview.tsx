@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { adminService, schoolRegistrationService } from '../../services/api';
+import { adminService, notificationService, schoolRegistrationService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { AdminOverviewSkeleton } from '../../components/admin/AdminOverviewSkeleton';
 import { Modal } from '../../components/common/Modal';
@@ -7,6 +7,16 @@ import { FavoriteModulesSection } from '../../components/common/FavoriteModulesS
 import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolModulePreferences } from '../../components/admin/SchoolModulePreferences';
+import { SchoolAdminWelcomeBanner } from '../../components/admin/SchoolAdminWelcomeBanner';
+import { SchoolAdminQuickAccess } from '../../components/admin/SchoolAdminQuickAccess';
+import {
+  SchoolAdminActivityPanels,
+  SchoolAdminStatsRow,
+} from '../../components/admin/SchoolAdminHomePanels';
+import {
+  type AdminHomeNotification,
+  filterSchoolAdminNotifications,
+} from './schoolAdminHomeModel';
 import {
   readModuleList,
   TEACHER_MODULES,
@@ -324,6 +334,8 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
   // Raw API subjects state
   const [apiSubjects, setApiSubjects] = useState<any[]>([]);
   const [pendingSchoolApps, setPendingSchoolApps] = useState<any[]>([]);
+  const [recentNotifications, setRecentNotifications] = useState<AdminHomeNotification[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState<number>(0);
 
   const handleRefreshSchools = async () => {
     setIsRefreshingSchools(true);
@@ -348,28 +360,39 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     Promise.allSettled([
       adminService.getOverviewStats(),
       adminService.getSubjectsSummary(),
-      schoolRegistrationService.getAllApplications().catch(() => [])
+      isSuperAdmin
+        ? schoolRegistrationService.getAllApplications().catch(() => [])
+        : Promise.resolve([]),
+      !isSuperAdmin
+        ? notificationService.getNotifications(10).catch(() => null)
+        : Promise.resolve(null),
     ])
-      .then(([statsRes, subjectsRes, appsRes]) => {
+      .then(([statsRes, subjectsRes, appsRes, notifsRes]) => {
         if (statsRes.status === 'fulfilled') {
           setStats(statsRes.value);
         }
         if (subjectsRes.status === 'fulfilled' && subjectsRes.value?.subjects) {
           setApiSubjects(subjectsRes.value.subjects);
         }
-        if (appsRes.status === 'fulfilled') {
+        if (isSuperAdmin && appsRes.status === 'fulfilled') {
           const rows = Array.isArray(appsRes.value) ? appsRes.value : (appsRes.value?.applications || []);
           setPendingSchoolApps(rows.filter((a: any) => {
             const s = (a.status || '').toLowerCase();
             return s === 'pending' || s === 'pending_review' || s === 'under_review' || s === 'awaiting_review';
           }));
         }
+        if (!isSuperAdmin && notifsRes.status === 'fulfilled' && notifsRes.value) {
+          const payload = notifsRes.value as any;
+          const filtered = filterSchoolAdminNotifications(payload.notifications, 4);
+          setRecentNotifications(filtered);
+          setUnreadNotifications(typeof payload.unreadCount === 'number' ? payload.unreadCount : filtered.filter((n) => !n.is_read).length);
+        }
       })
       .catch((err) => {
         console.error('Failed to load admin overview data:', err);
       })
       .finally(() => setLoading(false));
-  }, [currentSchool?.id]);
+  }, [currentSchool?.id, isSuperAdmin]);
 
   // Master Comprehensive CAPS School Subjects Registry (Grades 8 - 12)
   const masterSubjects: SchoolSubjectItem[] = useMemo(() => {
@@ -688,9 +711,25 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
 
 
 
+  const isSchoolAdminHome = !isSuperAdmin;
+
   return (
-    <div className="space-y-8 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
-      <HomeGreeting />
+    <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-16">
+      {isSchoolAdminHome ? (
+        <>
+          <SchoolAdminWelcomeBanner onNavigateTab={onNavigateTab} />
+          <SchoolAdminStatsRow stats={stats} onNavigateTab={onNavigateTab} />
+          <SchoolAdminQuickAccess onNavigateTab={onNavigateTab} />
+          <SchoolAdminActivityPanels
+            stats={stats}
+            notifications={recentNotifications}
+            unreadNotifications={unreadNotifications}
+            onNavigateTab={onNavigateTab}
+          />
+        </>
+      ) : (
+        <HomeGreeting />
+      )}
 
       {/* Pending School Admissions Alert Banner */}
       {showPlatformDirectory && pendingSchoolApps.length > 0 && (
@@ -1908,9 +1947,11 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
       )}
 
       {/* ========================================================================= */}
-      {/* 3. FAVORITE MODULES SECTION (QUICK ACCESS FOR ADMIN)                     */}
+      {/* 3. FAVORITE MODULES SECTION (SUPERADMIN ONLY; SCHOOL ADMIN USES QUICK ACCESS) */}
       {/* ========================================================================= */}
-      <FavoriteModulesSection role="admin" onNavigateTab={onNavigateTab} />
+      {!isSchoolAdminHome && (
+        <FavoriteModulesSection role="admin" onNavigateTab={onNavigateTab} />
+      )}
 
 
 

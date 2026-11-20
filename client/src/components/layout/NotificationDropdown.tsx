@@ -363,18 +363,19 @@ export const NotificationDropdown: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       {/* Bell Button Trigger (Strictly for Official School Announcements & Circulars) */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative p-2 rounded-xl transition-all ${
+        className={`relative p-2 rounded-xl transition-all cursor-pointer ${
           isOpen
-            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-glow-amber'
-            : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+            ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40 shadow-glow-amber'
+            : 'text-slate-600 hover:text-slate-950 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/10 border border-transparent'
         }`}
         title="Official School Announcements & Circulars"
         aria-label="Announcements & Notices"
       >
-        <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'text-amber-400 animate-bounce' : ''}`} />
+        <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'text-amber-500 dark:text-amber-400 animate-bounce' : ''}`} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-amber-500 text-[9px] font-extrabold text-slate-950 ring-2 ring-surface-darker shadow-sm animate-pulse">
+          <span className="absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-amber-500 text-[9px] font-extrabold text-slate-950 ring-2 ring-white dark:ring-surface-darker shadow-sm animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

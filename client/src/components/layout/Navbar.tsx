@@ -9,7 +9,8 @@ import {
   LogOut,
   Sun,
   Moon,
-  MessageSquare
+  MessageSquare,
+  Search
 } from 'lucide-react';
 
 import { useTheme } from '../../context/ThemeContext';
@@ -22,9 +23,16 @@ interface NavbarProps {
   title?: string;
   onNavigateHome?: () => void;
   onSelectTab?: (tabId: string) => void;
+  schoolAdminRefined?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, title, onSelectTab }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onToggleSidebar,
+  onOpenCommandPalette,
+  title,
+  onSelectTab,
+  schoolAdminRefined = false,
+}) => {
   const { user, role, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
@@ -79,25 +87,95 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, title, onSelect
   }, [showProfileMenu, user?.id]);
 
   return (
-    <header className="geleza-glass-header sticky top-0 z-30 flex h-16 min-w-0 shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white/95 px-3 backdrop-blur-md transition-colors dark:border-[#1B2E3D] dark:bg-[#09131F]/95 sm:px-4 md:px-6">
-      <div className="flex min-w-0 items-center gap-2">
+    <header
+      className={`geleza-glass-header sticky top-0 z-30 flex h-16 min-w-0 shrink-0 items-center justify-between gap-3 border-b transition-colors sm:px-4 md:px-6 ${
+        schoolAdminRefined
+          ? 'border-[#C7D1DC]/70 bg-white/75 px-3 backdrop-blur-xl dark:border-white/10 dark:bg-[#0B121C]/75'
+          : 'border-slate-200/80 bg-white/95 px-3 backdrop-blur-md dark:border-[#1B2E3D] dark:bg-[#09131F]/95'
+      }`}
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 md:hidden dark:border-white/10 dark:text-slate-200"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-slate-700 transition-colors hover:border-[#168BFF]/50 md:hidden dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
           aria-label="Open navigation"
         >
           <Menu className="h-5 w-5" />
         </button>
-        {title && (
-          <h1 className="truncate text-sm font-bold tracking-tight text-slate-800 dark:text-white">
-            {title}
-          </h1>
+
+        {schoolAdminRefined ? (
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            {onOpenCommandPalette && (
+              <button
+                type="button"
+                onClick={onOpenCommandPalette}
+                className="group flex w-full max-w-md items-center justify-between gap-2 rounded-2xl border border-[#C7D1DC] bg-white/85 px-3.5 py-2 text-left text-xs text-[#526071] shadow-xs transition-all hover:border-[#168BFF]/60 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#168BFF] dark:border-white/12 dark:bg-[#111A26]/85 dark:text-[#AAB5C2] dark:hover:border-[#168BFF]/55 dark:hover:bg-[#152030]"
+                aria-label="Search modules and quick actions"
+              >
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <Search className="h-4 w-4 shrink-0 text-[#697586] transition-colors group-hover:text-[#168BFF] dark:text-[#8794A5]" />
+                  <span className="truncate">Search modules or quick actions...</span>
+                </span>
+                <kbd className="hidden shrink-0 rounded-lg border border-[#C7D1DC] bg-[#F4F6F8] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[#526071] sm:inline-block dark:border-white/10 dark:bg-white/5 dark:text-[#8794A5]">
+                  Ctrl K
+                </kbd>
+              </button>
+            )}
+            {title && (
+              <span className="hidden truncate text-xs font-semibold text-[#526071] xl:inline dark:text-[#AAB5C2]">
+                {title}
+              </span>
+            )}
+          </div>
+        ) : (
+          title && (
+            <h1 className="truncate text-sm font-bold tracking-tight text-slate-800 dark:text-white">
+              {title}
+            </h1>
+          )
         )}
       </div>
 
-      {/* Right: Notification Bell and User Profile Avatar at top corner */}
-      <div className="flex items-center gap-3">
+      {/* Right: Theme Toggle (School Admin), Notification Bell and User Profile Avatar */}
+      <div className="flex shrink-0 items-center gap-2.5 sm:gap-3">
+        {schoolAdminRefined && (
+          <div
+            role="group"
+            aria-label="Theme mode"
+            className="inline-flex items-center rounded-full border border-[#C7D1DC] bg-[#F4F6F8] p-0.5 dark:border-white/12 dark:bg-[#111A26]"
+          >
+            <button
+              type="button"
+              onClick={() => setTheme('light')}
+              aria-pressed={theme === 'light'}
+              title="Switch to Light Mode"
+              aria-label="Light Mode"
+              className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-all cursor-pointer ${
+                theme === 'light'
+                  ? 'bg-white text-amber-500 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              <Sun className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme('dark')}
+              aria-pressed={theme === 'dark'}
+              title="Switch to Dark Mode"
+              aria-label="Dark Mode"
+              className={`inline-flex h-7 w-7 items-center justify-center rounded-full transition-all cursor-pointer ${
+                theme === 'dark'
+                  ? 'bg-[#168BFF] text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              <Moon className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Notification Bell Dropdown */}
         <NotificationDropdown />
 
@@ -106,13 +184,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, title, onSelect
           <button
             type="button"
             onClick={() => setShowProfileMenu(prev => !prev)}
-            className="flex items-center gap-2 pl-2 border-l border-slate-200/80 dark:border-white/10 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-lg p-1"
+            className={`flex items-center gap-2 cursor-pointer hover:opacity-95 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[#168BFF] ${
+              schoolAdminRefined
+                ? 'rounded-full border border-[#C7D1DC] bg-white/80 p-1 pr-2 dark:border-white/12 dark:bg-[#111A26]'
+                : 'pl-2 border-l border-slate-200/80 dark:border-white/10 rounded-lg p-1'
+            }`}
             title="Profile & Session Menu"
           >
             {/* User Profile Avatar with Message Hub Notification Badge */}
             <div className="relative">
-              <div className="w-8 h-8 rounded-full bg-[#0080FF] flex items-center justify-center text-white font-bold text-xs shadow-xs overflow-hidden shrink-0 border border-sky-400/40 relative">
-                <span className="select-none">
+              <div
+                data-theme-preserve="true"
+                className="w-8 h-8 rounded-full bg-[#168BFF] flex items-center justify-center text-white text-always-white font-bold text-xs shadow-xs overflow-hidden shrink-0 border border-sky-400/40 relative"
+              >
+                <span className="select-none text-white text-always-white">
                   {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
                 </span>
                 {(user?.profile_picture || user?.profile_picture_path) && (
@@ -134,19 +219,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, title, onSelect
                 </span>
               )}
             </div>
-            <div className="hidden sm:flex flex-col text-left">
-              <span className="text-xs font-bold text-slate-900 dark:text-white leading-none truncate max-w-[130px]">
-                {user?.full_name || 'My Profile'}
-              </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize mt-0.5 flex items-center gap-1.5">
-                <span>{role === 'learner' ? `Grade ${user?.grade || user?.academic?.grade || '12'}` : (role || 'User')}</span>
-                <span className={`w-1.5 h-1.5 rounded-full ${deviceOnline ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                <span className={deviceOnline ? 'text-emerald-600 dark:text-emerald-400 normal-case' : 'normal-case'}>
-                  {deviceOnline ? 'Online' : 'Offline'}
+            {!schoolAdminRefined && (
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-bold text-slate-900 dark:text-white leading-none truncate max-w-[130px]">
+                  {user?.full_name || 'My Profile'}
                 </span>
-              </span>
-            </div>
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 hidden sm:block ml-0.5 transition-transform duration-200 ${showProfileMenu ? 'rotate-180 text-cyan-500' : ''}`} />
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium capitalize mt-0.5 flex items-center gap-1.5">
+                  <span>{role === 'learner' ? `Grade ${user?.grade || user?.academic?.grade || '12'}` : (role || 'User')}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${deviceOnline ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  <span className={deviceOnline ? 'text-emerald-600 dark:text-emerald-400 normal-case' : 'normal-case'}>
+                    {deviceOnline ? 'Online' : 'Offline'}
+                  </span>
+                </span>
+              </div>
+            )}
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ${schoolAdminRefined ? 'block' : 'hidden sm:block ml-0.5'} transition-transform duration-200 ${showProfileMenu ? 'rotate-180 text-[#168BFF]' : ''}`} />
           </button>
 
           {/* Profile Dropdown Menu */}

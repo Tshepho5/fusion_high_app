@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
+  categoryLabel,
+  visibleDirectoryModules,
+} from '../../pages/admin/adminDirectoryModel';
+import {
   Search,
   Sparkles,
   BookOpen,
@@ -12,6 +16,7 @@ import {
   Award,
   User,
   LayoutDashboard,
+  LayoutGrid,
   ShieldCheck,
   Briefcase,
   GraduationCap,
@@ -40,12 +45,14 @@ interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigateTab: (tabId: string) => void;
+  schoolAdminRefined?: boolean;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
   onNavigateTab,
+  schoolAdminRefined = false,
 }) => {
   const { role } = useAuth();
   const { toggleTheme, setTheme } = useTheme();
@@ -256,6 +263,66 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           keywords: ['chat', 'teacher', 'message', 'talk']
         }
       );
+    } else if (role === 'admin' && schoolAdminRefined) {
+      list.push(
+        {
+          id: 'tab-overview',
+          title: 'Dashboard Home',
+          subtitle: 'School Admin home overview and Quick Access',
+          category: 'Pages & Portals',
+          icon: Home,
+          iconColor: 'text-[#168BFF]',
+          action: () => onNavigateTab('overview'),
+          keywords: ['home', 'dashboard', 'overview', 'school'],
+        },
+        {
+          id: 'tab-more',
+          title: 'All Modules Directory',
+          subtitle: 'Browse all authorized school administrative modules',
+          category: 'Pages & Portals',
+          icon: LayoutGrid,
+          iconColor: 'text-[#168BFF]',
+          action: () => onNavigateTab('more'),
+          keywords: ['all', 'modules', 'menu', 'directory', 'view all'],
+        },
+        {
+          id: 'tab-profile',
+          title: 'My Profile',
+          subtitle: 'Profile details, avatar, and account settings',
+          category: 'Pages & Portals',
+          icon: User,
+          iconColor: 'text-sky-400',
+          action: () => onNavigateTab('profile'),
+          keywords: ['profile', 'avatar', 'account', 'photo'],
+        }
+      );
+
+      visibleDirectoryModules(false).forEach((module) => {
+        const catLabel = categoryLabel(module.categoryId);
+        list.push({
+          id: `admin-mod-${module.id}`,
+          title: module.title,
+          subtitle: module.badge ? `${catLabel} • ${module.badge}` : catLabel,
+          category: 'Pages & Portals',
+          icon: LayoutDashboard,
+          iconColor: 'text-[#168BFF]',
+          action: () => onNavigateTab(module.id),
+          keywords: [module.id, module.title, catLabel, module.badge || ''],
+        });
+      });
+
+      list.push({
+        id: 'act-toggle-theme',
+        title: 'Toggle Dark / Light Mode',
+        subtitle: 'Switch between Dark and Light workspace',
+        category: 'Quick Actions',
+        icon: Moon,
+        iconColor: 'text-amber-400',
+        action: () => toggleTheme(),
+        keywords: ['theme', 'dark', 'light', 'mode', 'color'],
+      });
+
+      return list;
     } else if (role === 'admin') {
       list.push(
         {

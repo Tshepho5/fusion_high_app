@@ -14,6 +14,7 @@ interface DashboardLayoutProps {
   activeTab: string;
   onSelectTab: (tabId: string, params?: any) => void;
   title?: string;
+  schoolAdminRefined?: boolean;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -21,6 +22,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   onSelectTab,
   title,
+  schoolAdminRefined = false,
 }) => {
   const { isAuthenticated, user, account, viewedDashboard } = useAuth();
   const navigate = useNavigate();
@@ -70,38 +72,43 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   return (
     <div className="relative flex h-dvh overflow-hidden bg-[#E5EBF1] text-[#101820] transition-colors duration-300 selection:bg-[#168BFF] selection:text-white dark:bg-[#080B10] dark:text-[#F5F7FA]">
-      {/* SVG Fluid Waves Backdrop Layer */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-90 dark:opacity-80" aria-hidden="true">
-        <svg className="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="reactWaveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#168BFF" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="#0878E8" stopOpacity="0.06" />
-            </linearGradient>
-            <linearGradient id="reactWaveGradMid" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#168BFF" stopOpacity="0.12" />
-              <stop offset="100%" stopColor="#0878E8" stopOpacity="0.04" />
-            </linearGradient>
-            <linearGradient id="reactWaveGradBottom" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#168BFF" stopOpacity="0.14" />
-              <stop offset="100%" stopColor="transparent" />
-            </linearGradient>
-          </defs>
-          <path d="M0,0 C360,110 520,30 840,85 C1180,140 1320,35 1440,65 L1440,0 Z" fill="url(#reactWaveGradTop)" />
-          <path d="M0,230 C380,320 660,150 1020,270 C1240,340 1380,250 1440,290 L1440,560 C1320,490 1060,570 740,490 C420,410 180,520 0,470 Z" fill="url(#reactWaveGradMid)" />
-          <path d="M0,640 C200,620 360,720 520,800 C680,880 850,890 1100,900 L0,900 Z" fill="url(#reactWaveGradBottom)" />
-        </svg>
-      </div>
+      {!schoolAdminRefined && (
+        <>
+          {/* SVG Fluid Waves Backdrop Layer */}
+          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-90 dark:opacity-80" aria-hidden="true">
+            <svg className="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="reactWaveGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#168BFF" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#0878E8" stopOpacity="0.06" />
+                </linearGradient>
+                <linearGradient id="reactWaveGradMid" x1="100%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#168BFF" stopOpacity="0.12" />
+                  <stop offset="100%" stopColor="#0878E8" stopOpacity="0.04" />
+                </linearGradient>
+                <linearGradient id="reactWaveGradBottom" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#168BFF" stopOpacity="0.14" />
+                  <stop offset="100%" stopColor="transparent" />
+                </linearGradient>
+              </defs>
+              <path d="M0,0 C360,110 520,30 840,85 C1180,140 1320,35 1440,65 L1440,0 Z" fill="url(#reactWaveGradTop)" />
+              <path d="M0,230 C380,320 660,150 1020,270 C1240,340 1380,250 1440,290 L1440,560 C1320,490 1060,570 740,490 C420,410 180,520 0,470 Z" fill="url(#reactWaveGradMid)" />
+              <path d="M0,640 C200,620 360,720 520,800 C680,880 850,890 1100,900 L0,900 Z" fill="url(#reactWaveGradBottom)" />
+            </svg>
+          </div>
 
-      {/* Background Ambient Neon Glow Orbs */}
-      <div className="fixed top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-[#168BFF]/10 blur-[130px] pointer-events-none animate-orb-float" />
-      <div className="fixed bottom-[-10%] right-[10%] w-[450px] h-[450px] rounded-full bg-[#0878E8]/10 blur-[120px] pointer-events-none animate-orb-float" style={{ animationDelay: '-5s' }} />
+          {/* Background Ambient Neon Glow Orbs */}
+          <div className="fixed top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-[#168BFF]/10 blur-[130px] pointer-events-none animate-orb-float" />
+          <div className="fixed bottom-[-10%] right-[10%] w-[450px] h-[450px] rounded-full bg-[#0878E8]/10 blur-[120px] pointer-events-none animate-orb-float" style={{ animationDelay: '-5s' }} />
+        </>
+      )}
 
       {/* Global Command Palette / Quick Search Modal */}
       <CommandPalette
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         onNavigateTab={onSelectTab}
+        schoolAdminRefined={schoolAdminRefined}
       />
 
       <div className="geleza-app-shell relative z-10 flex min-h-0 min-w-0 flex-1">
@@ -110,6 +117,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onSelectTab={onSelectTab}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
+        schoolAdminRefined={schoolAdminRefined}
       />
 
       {/* Main Content Column with Fixed Top Header and Isolated Scroll Container */}
@@ -125,6 +133,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           title={title}
           onNavigateHome={() => onSelectTab('overview')}
           onSelectTab={onSelectTab}
+          schoolAdminRefined={schoolAdminRefined}
         />
 
         {viewedDashboard && account?.is_superadmin && (
