@@ -32,6 +32,22 @@ import {
   Clock
 } from 'lucide-react';
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const transientFailure = (err: any) => (
+  !err?.response || err?.code === 'ERR_NETWORK' || err?.code === 'ECONNABORTED' || err?.message === 'Network Error'
+);
+
+const loadOnce = async <T,>(request: () => Promise<T>): Promise<T> => {
+  try {
+    return await request();
+  } catch (err) {
+    if (!transientFailure(err)) throw err;
+    await wait(2000);
+    return request();
+  }
+};
+
 interface ReportCardSubject {
   name: string;
   code?: string;
@@ -127,7 +143,7 @@ export const ReportCardStudio: React.FC = () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await adminService.getGradeTemplateMarks({
+      const res = await loadOnce(() => adminService.getGradeTemplateMarks({
         grade: selectedGrade,
         stream: selectedStream,
         className: selectedClass !== 'All' ? selectedClass : undefined,
@@ -204,7 +220,7 @@ export const ReportCardStudio: React.FC = () => {
 
   const fetchSubmissionsOverview = async () => {
     try {
-      const res = await adminService.getTeacherSubmissions({
+      const res = await loadOnce(() => adminService.getTeacherSubmissions({
         grade: selectedGrade,
         className: selectedClass !== 'All' ? selectedClass : undefined,
         term: selectedTerm,

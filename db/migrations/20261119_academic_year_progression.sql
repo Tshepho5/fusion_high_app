@@ -4,6 +4,8 @@
 
 ALTER TABLE marks ADD COLUMN IF NOT EXISTS academic_year INTEGER;
 
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS academic_year INTEGER;
+
 UPDATE marks
 SET academic_year = SUBSTRING(term::text FROM '(20[0-9]{2})')::INTEGER
 WHERE academic_year IS NULL

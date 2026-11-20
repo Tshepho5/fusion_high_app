@@ -14,6 +14,12 @@ type LearnerRow = {
 
 type Incoming = { id: number; first_name: string; surname: string; grade_applied: number; status: string };
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const transientFailure = (err: any) => (
+  !err?.response || err?.code === 'ERR_NETWORK' || err?.code === 'ECONNABORTED' || err?.message === 'Network Error'
+);
+
 const decisions = [
   { id: 'promote', label: 'Promote' },
   { id: 'repeat', label: 'Repeat' },
@@ -32,17 +38,30 @@ export const YearEndReview: React.FC = () => {
 
   const load = async () => {
     setError('');
+    let review;
     try {
-      const [review, classData] = await Promise.all([
-        adminService.getProgression(year),
-        classStaffService.getClasses()
-      ]);
-      setLearners(review.learners || []);
-      setIncoming(review.incoming || []);
+      review = await adminService.getProgression(year);
+    } catch (err: any) {
+      if (!transientFailure(err)) {
+        setError(err?.response?.data?.error || 'The year-end review could not be loaded.');
+        return;
+      }
+      await wait(2000);
+      try {
+        review = await adminService.getProgression(year);
+      } catch (retryErr: any) {
+        setError(retryErr?.response?.data?.error || 'The year-end review could not be loaded.');
+        return;
+      }
+    }
+    setLearners(review.learners || []);
+    setIncoming(review.incoming || []);
+    try {
+      const classData = await classStaffService.getClasses();
       const rows = Array.isArray(classData) ? classData : (classData.classes || classData.data || []);
       setClasses(rows);
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'The year-end review could not be loaded.');
+    } catch {
+      setClasses([]);
     }
   };
 

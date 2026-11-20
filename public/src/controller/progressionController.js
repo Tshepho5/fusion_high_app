@@ -29,6 +29,7 @@ async function listProgression(req, res) {
   if (!schoolId) return res.status(403).json({ error: 'This account is not linked to a school.' });
   if (!Number.isInteger(year) || year < 2000) return res.status(400).json({ error: 'Choose an academic year.' });
 
+  try {
   const learners = await db.query(
     `SELECT id, full_name, surname, grade, learner_number
      FROM children
@@ -104,6 +105,10 @@ async function listProgression(req, res) {
     }),
     incoming: incoming.rows
   });
+  } catch (err) {
+    console.error('Year-end review failed:', err.message);
+    res.status(500).json({ error: 'The year-end review could not be loaded.' });
+  }
 }
 
 async function recordDecision(req, res) {
