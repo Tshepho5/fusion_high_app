@@ -149,7 +149,7 @@ export const ReportCardStudio: React.FC = () => {
         className: selectedClass !== 'All' ? selectedClass : undefined,
         term: selectedTerm,
         academicYear: academicYear
-      });
+      }));
 
       const formattedLearners: TemplateLearner[] = (res.learners || []).map((l: any) => {
         const subjectsDict: Record<string, number | null> = {};
@@ -225,7 +225,7 @@ export const ReportCardStudio: React.FC = () => {
         className: selectedClass !== 'All' ? selectedClass : undefined,
         term: selectedTerm,
         stream: selectedStream
-      });
+      }));
       setSubmissionsOverview(res);
       setSubmissionsError(null);
     } catch (err: any) {
