@@ -20,17 +20,23 @@ let storage: FirebaseStorage | null = null;
 let auth: Auth | null = null;
 
 const runtimeMode = String(env.MODE || env.NODE_ENV || '');
+const isStagingMode = runtimeMode === 'staging' || String(env.VITE_STAGING_MODE || '') === 'true';
+
 if (runtimeMode === 'test' && firebaseConfig.projectId === 'fusion-high-app' && env.VITE_FIREBASE_EMULATOR !== 'true') {
   throw new Error('Refusing to initialise the production Firebase project fusion-high-app during tests.');
 }
 
-try {
-  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  db = getFirestore(app);
-  storage = getStorage(app);
-  auth = getAuth(app);
-} catch (err: any) {
-  console.warn('[FIREBASE CLIENT INIT NOTICE]:', err?.message || err);
+if (isStagingMode && env.VITE_FIREBASE_EMULATOR !== 'true' && (!firebaseConfig.projectId || firebaseConfig.projectId === 'fusion-high-app' || firebaseConfig.projectId === 'geleza-staging-disabled')) {
+  console.info('[FIREBASE STAGING GUARD] Production Firebase project fusion-high-app is disabled in staging mode.');
+} else {
+  try {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    db = getFirestore(app);
+    storage = getStorage(app);
+    auth = getAuth(app);
+  } catch (err: any) {
+    console.warn('[FIREBASE CLIENT INIT NOTICE]:', err?.message || err);
+  }
 }
 
 export { db, storage, auth };

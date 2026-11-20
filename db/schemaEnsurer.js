@@ -10,22 +10,45 @@ const path = require('path');
 const db = require('./db');
 const { ensureLessonPlanningSchema } = require('./migrate_lesson_planning');
 const { ensureTesterSchema } = require('../lib/testerProgramme');
+const {
+  STAGING_DEFAULT_DATABASE,
+  isApprovedHost,
+  isStagingProcess,
+  isStagingReadOnly
+} = require('../lib/testSafety');
 
 let isEnsured = false;
 
 async function assertIsolatedStagingDatabase() {
-  if (process.env.GELEZA_STAGING !== '1') return;
-  const result = await db.query('SELECT current_database() AS name');
-  const name = result.rows[0] && result.rows[0].name;
-  if (name !== 'geleza_phase_g2') {
-    console.error('STAGING_STOPPED The process is not connected to geleza_phase_g2.');
+  if (!isStagingProcess()) return;
+  const expected = String(process.env.GELEZA_STAGING_DATABASE || STAGING_DEFAULT_DATABASE).trim();
+  const result = await db.query(
+    "SELECT current_database() AS name, COALESCE(inet_server_addr()::text, '127.0.0.1') AS addr, current_setting('default_transaction_read_only') AS ro"
+  );
+  const row = result.rows[0] || {};
+  const name = row.name;
+  const addr = String(row.addr || '').replace(/\/\d+$/, '');
+  if (name !== expected) {
+    console.error(`STAGING_STOPPED The process is connected to "${name || '(unknown)'}", expected "${expected}".`);
     process.exit(1);
   }
-  console.log('Staging database identity confirmed: geleza_phase_g2');
+  if (addr && !isApprovedHost(addr)) {
+    console.error(`STAGING_STOPPED Refusing non-loopback staging database address "${addr}".`);
+    process.exit(1);
+  }
+  if (isStagingReadOnly() && row.ro !== 'on') {
+    console.error('STAGING_STOPPED Read-only staging mode requested, but default_transaction_read_only is not on.');
+    process.exit(1);
+  }
+  console.log(`Staging database identity confirmed: ${name} (${addr || 'local'}, read_only=${row.ro})`);
 }
 
 async function ensureDatabaseSchema() {
   await assertIsolatedStagingDatabase();
+  if (isStagingProcess() && (isStagingReadOnly() || process.env.GELEZA_STAGING_ALLOW_MIGRATIONS !== '1')) {
+    console.log('[STAGING GUARD] Skipping startup schema DDL (ensureDatabaseSchema).');
+    return;
+  }
   try {
     // 1. Recycle Bin Table (Prevents "relation recycle_bin does not exist" errors)
     await db.query(`

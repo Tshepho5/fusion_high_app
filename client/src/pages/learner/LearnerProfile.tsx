@@ -38,17 +38,18 @@ type DetailRowProps = {
 };
 
 const DetailRow: React.FC<DetailRowProps> = ({ icon, label, value }) => (
-  <div className="flex items-center gap-3 py-3.5 border-b border-white/5 last:border-b-0">
-    <span className="w-9 h-9 rounded-xl bg-surface-darker border border-white/10 flex items-center justify-center shrink-0 text-slate-400">
+  <div className="flex items-center gap-3 py-3.5 border-b border-slate-200/80 dark:border-white/5 last:border-b-0">
+    <span className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-surface-darker border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400">
       {icon}
     </span>
-    <span className="flex-1 text-sm text-slate-400">{label}</span>
-    <span className="text-sm font-semibold text-white text-right max-w-[55%] break-words">{value || '—'}</span>
+    <span className="flex-1 text-sm text-slate-600 dark:text-slate-400">{label}</span>
+    <span className="text-sm font-semibold text-slate-900 dark:text-white text-right max-w-[55%] break-words">{value || '—'}</span>
   </div>
 );
 
 export const LearnerProfile: React.FC = () => {
-  const { user, updateUser, role } = useAuth();
+  const { user, account, viewedDashboard, updateUser, role } = useAuth();
+  const isExecutiveInspection = Boolean(viewedDashboard && account?.is_superadmin);
   const [profile, setProfile] = useState<any>(user || {});
   const [isEditing, setIsEditing] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -79,6 +80,10 @@ export const LearnerProfile: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
+    if (isExecutiveInspection) {
+      setProfile(user || {});
+      return;
+    }
     userService.getProfile()
       .then((res) => {
         const data = res.user || res;
@@ -89,9 +94,10 @@ export const LearnerProfile: React.FC = () => {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [isExecutiveInspection, user]);
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isExecutiveInspection) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -120,10 +126,11 @@ export const LearnerProfile: React.FC = () => {
     }
   };
 
-  const isProfileUnlocked = Boolean(profile.profile_edit_unlocked || user?.profile_edit_unlocked || role === 'admin');
+  const isProfileUnlocked = !isExecutiveInspection && Boolean(profile.profile_edit_unlocked || user?.profile_edit_unlocked || role === 'admin');
 
   const handleUpdatePersonalDetails = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isExecutiveInspection) return;
     setLoading(true);
     setStatusMsg(null);
 
@@ -155,6 +162,7 @@ export const LearnerProfile: React.FC = () => {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isExecutiveInspection) return;
     const curr = currentPassword.trim();
     const next = newPassword.trim();
     const conf = confirmPassword.trim();
@@ -192,7 +200,9 @@ export const LearnerProfile: React.FC = () => {
     }
   };
 
-  const pfp = getProfilePictureUrl(profile.profile_picture_path || user?.profile_picture_path);
+  const pfp = getProfilePictureUrl(
+    profile.profile_picture || profile.profile_picture_path || user?.profile_picture || user?.profile_picture_path
+  );
   const fullName = profile.full_name || profile.name || 'Learner';
   const surname = profile.surname || '';
   const displayName = `${fullName}${surname ? ` ${surname}` : ''}`.trim();
@@ -220,6 +230,15 @@ export const LearnerProfile: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-lg mx-auto w-full animate-fade-in pb-8">
+      {isExecutiveInspection && (
+        <div className="p-3.5 rounded-2xl border border-amber-400/35 bg-amber-500/10 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2.5">
+          <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-300" />
+          <span>
+            Viewing <strong>{displayName}</strong>&apos;s profile in read-only Superadmin inspection mode. Profile photo uploads, credential edits, and password changes are disabled.
+          </span>
+        </div>
+      )}
+
       {statusMsg && (
         <div
           className={`p-4 rounded-2xl border text-xs flex items-center gap-3 animate-fade-in ${
@@ -236,51 +255,58 @@ export const LearnerProfile: React.FC = () => {
       {/* Avatar + name + class */}
       <div className="flex flex-col items-center text-center pt-2 space-y-3">
         <div className="relative group">
-          <div className="w-28 h-28 rounded-full bg-gradient-to-tr from-brand-600 to-cyan-500 border-2 border-brand-400/50 shadow-glow-cyan flex items-center justify-center text-white font-extrabold text-3xl overflow-hidden relative">
-            <span className="select-none">{initial}</span>
+          <div
+            data-theme-preserve="true"
+            className="w-28 h-28 rounded-full bg-gradient-to-tr from-brand-600 to-cyan-500 border-2 border-brand-400/50 shadow-glow-cyan flex items-center justify-center text-white text-always-white font-extrabold text-3xl overflow-hidden relative"
+          >
+            <span className="select-none text-white text-always-white">{initial}</span>
             {pfp && (
               <img
                 src={pfp}
-                alt=""
+                alt={displayName}
                 className="absolute inset-0 w-full h-full object-cover"
                 onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
               />
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingPhoto}
-            className="absolute -bottom-1 -right-1 p-2.5 rounded-full bg-brand-600 hover:bg-brand-500 text-white shadow-lg border-2 border-surface-dark transition-transform hover:scale-110"
-            title="Upload Profile Picture"
-          >
-            {uploadingPhoto ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <Camera className="w-4 h-4" />
-            )}
-          </button>
+          {!isExecutiveInspection && (
+            <>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="absolute -bottom-1 -right-1 p-2.5 rounded-full bg-brand-600 hover:bg-brand-500 text-white shadow-lg border-2 border-white dark:border-surface-dark transition-transform hover:scale-110"
+                title="Upload Profile Picture"
+              >
+                {uploadingPhoto ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4" />
+                )}
+              </button>
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handlePhotoSelect}
-            accept="image/png, image/jpeg, image/jpg, image/webp"
-            className="hidden"
-          />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handlePhotoSelect}
+                accept="image/png, image/jpeg, image/jpg, image/webp"
+                className="hidden"
+              />
+            </>
+          )}
         </div>
 
         <div className="space-y-1">
-          <h3 className="text-xl font-bold font-display text-white tracking-tight">
+          <h3 className="text-xl font-bold font-display text-slate-900 dark:text-white tracking-tight">
             {displayName}
           </h3>
-          <p className="text-sm text-slate-400">{classLine}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{classLine}</p>
         </div>
       </div>
 
       {/* Detail rows */}
-      <div className="rounded-3xl bg-surface-dark border border-white/10 px-4 shadow-xl">
+      <div className="rounded-3xl bg-white dark:bg-surface-dark border border-slate-200/90 dark:border-white/10 px-4 shadow-sm dark:shadow-xl">
         {role === 'learner' ? (
           <>
             <DetailRow icon={<IdCard className="w-4 h-4" />} label="Student ID" value={String(learnerNumber)} />
@@ -304,16 +330,18 @@ export const LearnerProfile: React.FC = () => {
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setIsEditing((v) => !v)}
-        className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-sm shadow-glow-cyan transition-all active:scale-[0.99]"
-      >
-        {isEditing ? 'Close Edit Profile' : 'Edit Profile'}
-      </button>
+      {!isExecutiveInspection && (
+        <button
+          type="button"
+          onClick={() => setIsEditing((v) => !v)}
+          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-sm shadow-glow-cyan transition-all active:scale-[0.99]"
+        >
+          {isEditing ? 'Close Edit Profile' : 'Edit Profile'}
+        </button>
+      )}
 
       {/* Edit panels — same fields & colours, shown on demand */}
-      {isEditing && (
+      {!isExecutiveInspection && isEditing && (
         <div className="space-y-6 animate-fade-in">
           <div className="rounded-3xl bg-surface-dark border border-white/10 p-6 shadow-xl space-y-5">
             <div className="border-b border-white/10 pb-3 flex items-center justify-between gap-2">

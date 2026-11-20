@@ -1,4 +1,12 @@
 require('dotenv').config();
+const {
+  installStagingRuntimeGuard,
+  isStagingProcess,
+  isStagingReadOnly
+} = require('./lib/testSafety');
+if (isStagingProcess()) {
+  installStagingRuntimeGuard();
+}
 if (!process.env.JWT_SECRET || !String(process.env.JWT_SECRET).trim()) {
   console.error('[SERVER] JWT_SECRET is not set. Refusing to start.');
   process.exit(1);
@@ -38,10 +46,12 @@ const initApplicationTables = require('./db/init_applications');
 const { ensureDatabaseSchema, assertIsolatedStagingDatabase } = require('./db/schemaEnsurer');
 const NotificationService = require('./public/src/services/notificationService');
 
-// Run schema auto-sync immediately in background
-ensureDatabaseSchema().catch(err => {
-  console.warn('[DB SCHEMA ENSURER WARNING] Startup schema check:', err.message);
-});
+// Run schema auto-sync immediately in background (skipped automatically in staging unless explicitly authorized)
+if (!isStagingProcess()) {
+  ensureDatabaseSchema().catch(err => {
+    console.warn('[DB SCHEMA ENSURER WARNING] Startup schema check:', err.message);
+  });
+}
 
 const app = express();
 app.set('trust proxy', 1); // Enable proxy trust for Render / reverse proxies
@@ -81,6 +91,10 @@ if (!process.env.VERCEL) {
   (async () => {
     try {
       await assertIsolatedStagingDatabase();
+      if (isStagingProcess() && (isStagingReadOnly() || process.env.GELEZA_STAGING_ALLOW_MIGRATIONS !== '1')) {
+        console.log('[STAGING GUARD] Startup DDL, migrations, credential rotation, email verification, and background jobs are disabled in staging mode.');
+        return;
+      }
       await initializeAllDatabaseTables();
       await initApplicationTables();
       const { createParentApplicationsTable } = require('./db/create_parent_applications_table');
@@ -109,6 +123,10 @@ if (!process.env.VERCEL) {
       if (firestore) {
         console.log('[FIREBASE BOOTSTRAP] Firebase Cloud Firestore & Admin SDK initialized and active.');
       }
+      if (isStagingProcess()) {
+        console.log('[STAGING GUARD] Skipping email transport check and periodic background automation jobs in staging.');
+        return;
+      }
       // Pre-warm and verify email delivery transport in background
       emailService.verifyConnection().catch(() => {});
       // Start automated daily background risk audit for student performance
@@ -118,6 +136,10 @@ if (!process.env.VERCEL) {
       gelezaAutomationJob.startPeriodicAutomation();
     } catch (err) {
       console.error('[DB BOOTSTRAP] Initialization error:', err.message);
+      if (isStagingProcess()) {
+        console.error('[STAGING GUARD] Halting bootstrap on staging initialization error.');
+        process.exit(1);
+      }
       try {
         const { applyBatch0CredentialRotation } = require('./db/batch0_credential_rotation');
         await applyBatch0CredentialRotation();
@@ -126,7 +148,7 @@ if (!process.env.VERCEL) {
       }
     }
   })();
-} else {
+} else if (!isStagingProcess()) {
   const { applyBatch0CredentialRotation } = require('./db/batch0_credential_rotation');
   applyBatch0CredentialRotation().catch((rotateErr) => {
     console.error('[SECURITY] Batch 0 credential rotation did not complete:', rotateErr.message);
@@ -250,6 +272,18 @@ app.use('/api/register', authLimiter);
 // Limit only public support submissions (not admin inbox GETs)
 app.post('/api/support/tickets', supportLimiter);
 app.use('/api/', apiLimiter);
+
+if (isStagingReadOnly()) {
+  app.use('/api/', (req, res, next) => {
+    const method = String(req.method || '').toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+      return next();
+    }
+    return res.status(403).json({
+      error: 'Staging server is running in read-only verification mode. Write operations are disabled.'
+    });
+  });
+}
 
 // General Middleware
 const productionOrigins = [
@@ -621,14 +655,25 @@ app.get('/api/health', async (req, res) => {
     dbStatus = 'error: ' + e.message;
   }
   let emailRelay = false;
-  try {
-    emailRelay = await require('./public/src/services/emailService').relayReady();
-  } catch (_) {}
-  res.status(200).json({ status: 'healthy', database: dbStatus, emailRelay, uptime: process.uptime() });
+  if (!isStagingProcess()) {
+    try {
+      emailRelay = await require('./public/src/services/emailService').relayReady();
+    } catch (_) {}
+  }
+  const healthPayload = { status: 'healthy', database: dbStatus, emailRelay, uptime: process.uptime() };
+  if (isStagingProcess()) {
+    healthPayload.staging = true;
+    healthPayload.readOnly = isStagingReadOnly();
+    healthPayload.firebaseDisabled = !firestore;
+  }
+  res.status(200).json(healthPayload);
 });
 
 // Database schema auto-bootstrap endpoint (safe & idempotent)
 app.all('/api/init-db', async (req, res) => {
+  if (isStagingReadOnly()) {
+    return res.status(403).json({ success: false, error: 'Database initialization is disabled in read-only staging mode.' });
+  }
   if (!maintenanceAuthorized(req.get('x-maintenance-token'))) {
     return res.status(404).json({ success: false, error: 'Not found' });
   }

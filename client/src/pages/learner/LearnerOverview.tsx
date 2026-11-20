@@ -5,8 +5,9 @@ import { LearnerOverviewSkeleton } from '../../components/learner/LearnerOvervie
 import { FusionAIIcon } from '../../components/common/FusionAIIcon';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
-import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
+import { DashboardWelcomeBanner, type WelcomeMetaPill } from '../../components/layout/DashboardWelcomeBanner';
 import {
+  Building2,
   GraduationCap,
   BookOpen,
   CalendarCheck,
@@ -48,6 +49,7 @@ import {
   BrainCircuit
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSchool } from '../../context/SchoolContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { getSubjectMetadata } from '../../utils/subjectImages';
 import { Subject3DCoverFlow } from '../../components/subject/Subject3DCoverFlow';
@@ -77,7 +79,9 @@ const safeNumber = (val: any, fallback = 0): number => {
 };
 
 export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab }) => {
-  const { user } = useAuth();
+  const { user, account, viewedDashboard } = useAuth();
+  const { currentSchool } = useSchool();
+  const isExecutiveInspection = Boolean(viewedDashboard && account?.is_superadmin);
   const [profile, setProfile] = useState<any>(null);
   const [subjects, setSubjects] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -173,7 +177,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     const fetchData = async () => {
       try {
         const [profData, subjData, annData, assignData, gradesData] = await Promise.allSettled([
-          learnerService.getProfile(),
+          isExecutiveInspection ? Promise.resolve(user) : learnerService.getProfile(),
           learnerService.getMySubjectsOverview().catch(() => learnerService.getSubjects()),
           learnerService.getAnnouncements(),
           learnerService.getAssignments(),
@@ -183,7 +187,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         let currentClassName = user?.academic?.class_name || (user?.grade ? `${user.grade}A` : '10A');
         let currentClassTeacher = user?.academic?.class_teacher_name || user?.academic?.class_teacher || 'To Be Assigned';
 
-        if (profData.status === 'fulfilled') {
+        if (profData.status === 'fulfilled' && profData.value) {
           const pVal = profData.value;
           setProfile(pVal);
           if (pVal?.class_name || pVal?.academic?.class_name) {
@@ -239,7 +243,7 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
       }
     };
     fetchData();
-  }, []);
+  }, [user?.id, isExecutiveInspection]);
 
   // User subjects from database or stream
   const userStream = profile?.stream || user?.academic?.stream || 'Science';
@@ -304,36 +308,54 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
     return <LearnerOverviewSkeleton />;
   }
 
-  return (
-    <div className="space-y-6 animate-fade-in text-slate-100 pb-20">
-      <HomeGreeting />
+  const learnerMetaPills: WelcomeMetaPill[] = [
+    ...(currentSchool?.name ? [{ label: currentSchool.name, icon: Building2 }] : []),
+    ...(classInfo.className ? [{ label: `Class ${classInfo.className}`, icon: GraduationCap }] : []),
+    ...(classInfo.classTeacher && classInfo.classTeacher !== 'To Be Assigned'
+      ? [{ label: `Class Teacher: ${classInfo.classTeacher}`, icon: UserCheck }]
+      : []),
+    ...(subjects.length > 0
+      ? [{ label: `${subjects.length} enrolled subject${subjects.length === 1 ? '' : 's'}`, icon: BookOpen }]
+      : []),
+  ];
 
+  return (
+    <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-20">
+      <DashboardWelcomeBanner
+        roleLabel="Learner"
+        roleIcon={GraduationCap}
+        subtitle="Access your enrolled subjects, coursework, study resources, and academic tools."
+        metaPills={learnerMetaPills}
+        onOpenProfile={() => onNavigateTab('profile')}
+        onOpenAllModules={() => onNavigateTab('more')}
+        allModulesLabel="All Modules"
+      />
 
       {/* 1. ENROLLED SUBJECTS HUB - CUSTOMIZABLE PRESENTATION & PICTURES */}
       <section className="space-y-4">
         {/* Section Header with Title & View Mode Selectors */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-brand-500/15 border border-brand-500/30 text-brand-400 flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-2xl bg-brand-500/15 border border-brand-500/30 text-brand-500 dark:text-brand-400 flex items-center justify-center shadow-sm">
               <BookOpen className="w-5 h-5" />
             </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg md:text-xl xl:text-2xl font-bold font-display text-white tracking-tight">
+                  <h2 className="text-lg md:text-xl xl:text-2xl font-bold font-display text-[#101820] dark:text-white tracking-tight">
                     My Enrolled Subjects
                   </h2>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/15 text-brand-700 dark:text-brand-300 border border-brand-500/30">
                     {filteredSubjects.length} of {displaySubjects.length}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-300">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-medium">
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-600 dark:text-slate-300">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 border border-cyan-500/25 font-medium">
                     <span>Class:</span>
-                    <strong className="text-white font-bold">{classInfo.className}</strong>
+                    <strong className="text-slate-900 dark:text-white font-bold">{classInfo.className}</strong>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-white/10 font-medium">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 font-medium">
                     <span>Class Teacher:</span>
-                    <strong className="text-white font-bold">{classInfo.classTeacher}</strong>
+                    <strong className="text-slate-900 dark:text-white font-bold">{classInfo.classTeacher}</strong>
                   </span>
                 </div>
               </div>

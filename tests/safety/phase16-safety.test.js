@@ -13,6 +13,7 @@ const root = path.join(__dirname, '..', '..');
 const {
   TestSafetyError,
   assertFirebaseTestAllowed,
+  assertStagingDatabaseAllowed,
   assertTestDatabaseAllowed,
   refuseExternalService
 } = require('../../lib/testSafety');
@@ -425,5 +426,107 @@ describe('database-authoritative superadmin authorization', () => {
     assert.match(authSource, /loadAuthoritativeAccount/);
     assert.equal(/roleName === 'superadmin'/.test(authSource), false);
     assert.equal(/req\.user\?\.is_superadmin\) return next/.test(schoolSource), false);
+  });
+
+  test('executive dashboard viewing resolves target identity without leaking superadmin name or blocking profile lookup', async () => {
+    state.users = [
+      {
+        ...DESIGNATED_ADMIN,
+        id: 42,
+        full_name: 'Executive',
+        surname: 'Superadmin',
+        active_session_id: 'sid-exec'
+      },
+      {
+        id: 91,
+        email: 'principal@walters-high.co.za',
+        full_name: 'Bontle',
+        surname: 'Mothopeng',
+        role_name: 'admin',
+        is_superadmin: false,
+        active_session_id: 'sid-target',
+        school_id: 14
+      }
+    ];
+    const loadedTarget = await loadAuthoritativeAccount(
+      async (text, params) => {
+        if (/FROM users u/i.test(text)) {
+          const targetId = String(params?.[0] ?? '');
+          return { rows: state.users.filter((u) => String(u.id) === targetId) };
+        }
+        return { rows: rowsFor(text) };
+      },
+      91
+    );
+    assert.equal(loadedTarget.state, 'active');
+    assert.equal(loadedTarget.account.full_name, 'Bontle');
+    assert.equal(loadedTarget.account.surname, 'Mothopeng');
+    assert.match(authSource, /path\.startsWith\('\/api\/admin\/users\/profile\/'\)/);
+    assert.match(authSource, /full_name:\s*loaded\.account\.full_name \|\| ''/);
+    assert.match(authSource, /surname:\s*loaded\.account\.surname \|\| ''/);
+
+    const adminControllerSource = fs.readFileSync(
+      path.join(root, 'public', 'src', 'controller', 'adminController.js'),
+      'utf8'
+    );
+    assert.match(adminControllerSource, /COALESCE\(u\.profile_picture,\s*u\.profile_picture_path\) AS profile_picture/);
+    assert.match(adminControllerSource, /if \(!req\.user\.is_superadmin && Number\(user\.school_id\) !== Number\(req\.user\.school_id\)\)/);
+  });
+});
+
+describe('staging runtime isolation', () => {
+  test('staging database guard rejects production names, cloud hosts, and mismatched databases', () => {
+    const prevStaging = process.env.GELEZA_STAGING;
+    const prevStagingDb = process.env.GELEZA_STAGING_DATABASE;
+    try {
+      process.env.GELEZA_STAGING = '1';
+      delete process.env.GELEZA_STAGING_DATABASE;
+
+      assert.throws(
+        () => assertStagingDatabaseAllowed({ host: '127.0.0.1', database: 'FUSION_DB' }),
+        TestSafetyError
+      );
+      assert.throws(
+        () => assertStagingDatabaseAllowed({ host: 'db.example.supabase.co', database: 'geleza_phase_g2' }),
+        TestSafetyError
+      );
+      assert.throws(
+        () => assertStagingDatabaseAllowed({ host: '127.0.0.1', database: 'geleza_other_db' }),
+        TestSafetyError
+      );
+      const ok = assertStagingDatabaseAllowed({ host: '127.0.0.1', database: 'geleza_phase_g2' });
+      assert.equal(ok.database, 'geleza_phase_g2');
+      assert.equal(ok.host, '127.0.0.1');
+    } finally {
+      if (prevStaging === undefined) delete process.env.GELEZA_STAGING;
+      else process.env.GELEZA_STAGING = prevStaging;
+      if (prevStagingDb === undefined) delete process.env.GELEZA_STAGING_DATABASE;
+      else process.env.GELEZA_STAGING_DATABASE = prevStagingDb;
+    }
+  });
+
+  test('server.js and client staging guards enforce isolation without touching production', async () => {
+    const serverSource = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+    assert.match(serverSource, /installStagingRuntimeGuard\(\)/);
+    assert.match(serverSource, /isStagingReadOnly\(\)/);
+    assert.match(serverSource, /Startup DDL, migrations, credential rotation, email verification, and background jobs are disabled in staging mode/);
+
+    const clientFirebaseSource = fs.readFileSync(path.join(root, 'client', 'src', 'firebase.ts'), 'utf8');
+    assert.match(clientFirebaseSource, /FIREBASE STAGING GUARD/);
+
+    const { assertStagingApiConfig } = await import(
+      'file:///' + path.join(root, 'client', 'productionApiGuard.mjs').replace(/\\/g, '/')
+    );
+    assert.throws(
+      () => assertStagingApiConfig({ VITE_API_URL: 'https://fusion-high-backend.onrender.com', VITE_FIREBASE_PROJECT_ID: 'geleza-staging-disabled' }),
+      /Staging build\/dev rejected/
+    );
+    assert.throws(
+      () => assertStagingApiConfig({ VITE_API_URL: 'http://127.0.0.1:4000', VITE_FIREBASE_PROJECT_ID: 'fusion-high-app' }),
+      /fusion-high-app/
+    );
+    assert.doesNotThrow(
+      () => assertStagingApiConfig({ VITE_API_URL: 'http://127.0.0.1:4000', VITE_FIREBASE_PROJECT_ID: 'geleza-staging-disabled' })
+    );
   });
 });

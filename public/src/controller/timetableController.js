@@ -6,6 +6,7 @@ const { buildClassProposal } = require('../../../lib/timetableGeneration');
 const { selectPublishedClass, teacherCanPublish, parseTimetableData } = require('../../../lib/timetableAccess');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
+const { isIsolatedRuntime } = require('../../../lib/testSafety');
 
 const PERIODS_1_HOUR = [
     '08:00 - 09:00',
@@ -18,6 +19,7 @@ const PERIODS_1_HOUR = [
 
 // Ensure timetables table is initialized with grade, stream, status, and school_id columns
 async function ensureTimetablesTable() {
+    if (isIsolatedRuntime()) return;
     try {
         await db.query(`
             CREATE TABLE IF NOT EXISTS timetables (

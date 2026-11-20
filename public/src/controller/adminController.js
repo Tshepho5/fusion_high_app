@@ -781,6 +781,8 @@ exports.getAllSchoolAdmins = async (req, res) => {
                 u.surname,
                 u.phone,
                 u.school_id,
+                COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture,
+                u.profile_picture_path,
                 COALESCE(u.is_superadmin, FALSE) AS is_superadmin,
                 u.created_at,
                 s.name AS school_name,
@@ -829,6 +831,8 @@ exports.getAllParents = async (req, res) => {
                 u.id_number, 
                 u.gender, 
                 u.physical_address,
+                COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture,
+                u.profile_picture_path,
                 u.created_at,
                 COUNT(DISTINCT pc.child_id) as linked_children_count,
                 COALESCE(
@@ -1030,6 +1034,7 @@ exports.getAllEmployees = async (req, res) => {
                 u.surname, 
                 u.email, 
                 u.phone, 
+                COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture,
                 u.profile_picture_path,
                 u.profile_edit_unlocked,
                 d.name AS department_name,
@@ -1079,6 +1084,7 @@ exports.getAllLearners = async (req, res) => {
                 cl.name AS class_name, 
                 COALESCE(u.email, CONCAT(LOWER(REPLACE(c.full_name, ' ', '.')), '@fusionhigh.co.za')) AS email,
                 COALESCE(u.phone, '-') AS phone,
+                COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture,
                 u.profile_picture_path,
                 u.profile_edit_unlocked,
                 CONCAT(p.full_name, ' ', p.surname) AS parent_name,
@@ -1815,12 +1821,12 @@ exports.getAllUsers = async (req, res) => {
     try {
         const scope = directoryScope(req);
         const query = scope.mode === 'executives'
-            ? `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, COALESCE(r.name, 'admin') as role, u.created_at
+            ? `SELECT u.id, u.full_name, u.surname, u.email, u.phone, COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture, u.profile_picture_path, COALESCE(r.name, 'admin') as role, u.created_at
                FROM users u
                LEFT JOIN roles r ON u.role_id::text = r.id::text
                WHERE COALESCE(u.is_superadmin, FALSE) = TRUE
                ORDER BY u.surname, u.full_name`
-            : `SELECT u.id, u.full_name, u.surname, u.email, u.phone, u.profile_picture_path, r.name as role, u.created_at
+            : `SELECT u.id, u.full_name, u.surname, u.email, u.phone, COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture, u.profile_picture_path, r.name as role, u.created_at
                FROM users u
                JOIN roles r ON u.role_id::text = r.id::text
                WHERE u.school_id = $1
@@ -3232,7 +3238,9 @@ exports.getUserProfileDetails = async (req, res) => {
     try {
         const userRes = await db.query(`
             SELECT u.id, u.email, u.full_name, u.surname, u.phone, u.id_number, u.dob, u.gender, 
-                   u.physical_address, u.school_id, u.role_id, r.name as role, u.profile_picture_path, u.profile_edit_unlocked
+                   u.physical_address, u.school_id, u.role_id, r.name as role,
+                   u.profile_picture, u.profile_picture_path, u.profile_edit_unlocked,
+                   COALESCE(u.is_superadmin, FALSE) AS is_superadmin
             FROM users u
             LEFT JOIN roles r ON u.role_id = r.id
             WHERE u.id = $1
@@ -3242,6 +3250,10 @@ exports.getUserProfileDetails = async (req, res) => {
 
         if (userRes.rows.length > 0) {
             const user = userRes.rows[0];
+            if (!req.user.is_superadmin && Number(user.school_id) !== Number(req.user.school_id)) {
+                return res.status(403).json({ error: 'Forbidden: User belongs to a different school.' });
+            }
+            const resolvedPicture = user.profile_picture || user.profile_picture_path || null;
             profile = {
                 id: user.id,
                 email: user.email,
@@ -3255,7 +3267,9 @@ exports.getUserProfileDetails = async (req, res) => {
                 physical_address: user.physical_address,
                 role: user.role,
                 school_id: user.school_id,
-                profile_picture_path: user.profile_picture_path,
+                is_superadmin: user.is_superadmin === true,
+                profile_picture: resolvedPicture,
+                profile_picture_path: resolvedPicture,
                 profile_edit_unlocked: user.profile_edit_unlocked
             };
 

@@ -135,10 +135,40 @@ export const GlassSidebar: React.FC<GlassSidebarProps> = ({
     onCloseMobile();
   };
 
-  const schoolSubtitle =
+  const roleKey = String(role || '').toLowerCase();
+  const realSchoolName =
     currentSchool?.name && currentSchool.name !== 'Your school'
       ? currentSchool.name
-      : 'Geleza Smart';
+      : '';
+
+  const schoolSubtitle = isPlatformAdmin
+    ? 'Executive Governance'
+    : realSchoolName || 'Geleza Smart';
+
+  const homeLabel = isPlatformAdmin ? 'Platform Overview' : 'Dashboard';
+  const allModulesLabel = isPlatformAdmin ? 'Command Centre' : 'All Modules';
+
+  const footerPortalMeta = (() => {
+    if (isPlatformAdmin) {
+      return { title: 'Geleza SA Executive', sub: 'Platform Governance' };
+    }
+    if (roleKey === 'teacher' || roleKey === 'class_teacher') {
+      return { title: 'Educator Portal', sub: realSchoolName || 'Teaching Staff' };
+    }
+    if (roleKey === 'learner') {
+      return {
+        title: 'Learner Portal',
+        sub: user?.grade ? `Grade ${user.grade}` : (realSchoolName || 'CAPS Student'),
+      };
+    }
+    if (roleKey === 'parent') {
+      return { title: 'Family Portal', sub: realSchoolName || 'Guardian Access' };
+    }
+    return {
+      title: 'Geleza SA Portal',
+      sub: currentSchool?.emis_number ? `EMIS ${currentSchool.emis_number}` : 'School Admin',
+    };
+  })();
 
   return (
     <>
@@ -229,7 +259,7 @@ export const GlassSidebar: React.FC<GlassSidebarProps> = ({
           <NavButton
             collapsed={collapsed}
             icon={Home}
-            label={schoolAdminRefined ? 'Dashboard' : 'Home'}
+            label={schoolAdminRefined ? homeLabel : 'Home'}
             active={activeMatch(activeTab, 'overview')}
             refined={schoolAdminRefined}
             onClick={() => go('overview')}
@@ -237,7 +267,7 @@ export const GlassSidebar: React.FC<GlassSidebarProps> = ({
           <NavButton
             collapsed={collapsed}
             icon={LayoutGrid}
-            label={schoolAdminRefined ? 'All Modules' : 'All modules'}
+            label={schoolAdminRefined ? allModulesLabel : 'All modules'}
             active={activeTab === 'more'}
             refined={schoolAdminRefined}
             onClick={() => go('more')}
@@ -315,10 +345,10 @@ export const GlassSidebar: React.FC<GlassSidebarProps> = ({
               <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
               <div className="min-w-0 leading-tight">
                 <p className="truncate font-bold text-slate-800 dark:text-slate-100">
-                  Geleza SA Portal
+                  {footerPortalMeta.title}
                 </p>
                 <p className="truncate font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                  {currentSchool?.emis_number ? `EMIS ${currentSchool.emis_number}` : 'School Admin'}
+                  {footerPortalMeta.sub}
                 </p>
               </div>
             </div>

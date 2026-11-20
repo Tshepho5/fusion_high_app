@@ -15,6 +15,7 @@ interface DashboardLayoutProps {
   onSelectTab: (tabId: string, params?: any) => void;
   title?: string;
   schoolAdminRefined?: boolean;
+  refined?: boolean;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -22,8 +23,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   onSelectTab,
   title,
-  schoolAdminRefined = false,
+  schoolAdminRefined,
+  refined = true,
 }) => {
+  const useRefinedShell = schoolAdminRefined ?? refined;
   const { isAuthenticated, user, account, viewedDashboard } = useAuth();
   const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -72,7 +75,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   return (
     <div className="relative flex h-dvh overflow-hidden bg-[#E5EBF1] text-[#101820] transition-colors duration-300 selection:bg-[#168BFF] selection:text-white dark:bg-[#080B10] dark:text-[#F5F7FA]">
-      {!schoolAdminRefined && (
+      {!useRefinedShell && (
         <>
           {/* SVG Fluid Waves Backdrop Layer */}
           <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-90 dark:opacity-80" aria-hidden="true">
@@ -108,7 +111,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         onNavigateTab={onSelectTab}
-        schoolAdminRefined={schoolAdminRefined}
+        schoolAdminRefined={useRefinedShell}
       />
 
       <div className="geleza-app-shell relative z-10 flex min-h-0 min-w-0 flex-1">
@@ -117,7 +120,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onSelectTab={onSelectTab}
         mobileOpen={mobileNavOpen}
         onCloseMobile={() => setMobileNavOpen(false)}
-        schoolAdminRefined={schoolAdminRefined}
+        schoolAdminRefined={useRefinedShell}
       />
 
       {/* Main Content Column with Fixed Top Header and Isolated Scroll Container */}
@@ -133,13 +136,21 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           title={title}
           onNavigateHome={() => onSelectTab('overview')}
           onSelectTab={onSelectTab}
-          schoolAdminRefined={schoolAdminRefined}
+          schoolAdminRefined={useRefinedShell}
         />
 
         {viewedDashboard && account?.is_superadmin && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#168BFF]/30 bg-[#168BFF]/10 px-4 py-2.5">
+          <div
+            role="status"
+            aria-label="Executive dashboard inspection banner"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#168BFF]/30 bg-[#168BFF]/10 px-4 py-2.5"
+          >
             <p className="text-xs font-bold text-slate-900 dark:text-white">
-              Geleza SA is viewing {viewedDashboard.full_name} {viewedDashboard.surname || ''}'s {viewedDashboard.role} dashboard
+              Executive inspection ({account.full_name || 'Geleza SA'}): viewing{' '}
+              <span className="text-[#0878E8] dark:text-[#7CC4FF]">
+                {[viewedDashboard.full_name, viewedDashboard.surname].filter(Boolean).join(' ')}
+              </span>
+              &apos;s {viewedDashboard.role} dashboard
             </p>
             <button
               type="button"
@@ -147,7 +158,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 stopDashboardView();
                 navigate('/dashboard/admin?tab=users');
               }}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-bold cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-always-white text-xs font-bold shadow-sm transition-colors cursor-pointer shrink-0"
             >
               Return to school directory
             </button>

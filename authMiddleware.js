@@ -123,7 +123,13 @@ const auth = (req, res, next) => {
 async function openRegisteredSchoolDashboard(req) {
     if (!['GET', 'HEAD'].includes(String(req.method || '').toUpperCase())) return;
     const path = String(req.originalUrl || req.url || '');
-    if (path.startsWith('/api/profile') || path.startsWith('/api/auth') || path.includes('heartbeat') || path.includes('logout')) return;
+    if (
+        path.startsWith('/api/profile') ||
+        path.startsWith('/api/auth') ||
+        path.startsWith('/api/admin/users/profile/') ||
+        path.includes('heartbeat') ||
+        path.includes('logout')
+    ) return;
     const viewId = parseInt(req.headers['x-view-user-id'], 10);
     const schoolId = parseInt(req.headers['x-school-id'], 10);
     if (!Number.isInteger(viewId) || viewId <= 0) return;
@@ -149,7 +155,8 @@ async function openRegisteredSchoolDashboard(req) {
         id: loaded.account.id,
         role: String(loaded.account.role || '').toLowerCase(),
         email: loaded.account.email,
-        full_name: req.user.full_name,
+        full_name: loaded.account.full_name || '',
+        surname: loaded.account.surname || '',
         school_id: loaded.account.school_id,
         is_superadmin: false,
         sid: req.user.sid,

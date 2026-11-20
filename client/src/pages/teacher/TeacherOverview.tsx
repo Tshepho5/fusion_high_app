@@ -46,7 +46,9 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
+import { DashboardWelcomeBanner } from '../../components/layout/DashboardWelcomeBanner';
+import { Building2, GraduationCap } from 'lucide-react';
+import { useSchool } from '../../context/SchoolContext';
 
 export type SubjectViewMode = 'carousel' | 'grid' | 'compact' | 'list';
 
@@ -150,6 +152,7 @@ interface TeacherOverviewProps {
 
 export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
+  const { currentSchool } = useSchool();
   const [stats, setStats] = useState<any>(null);
   const [workload, setWorkload] = useState<any>(null);
   const [subjectsOverview, setSubjectsOverview] = useState<any[]>([]);
@@ -458,12 +461,31 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
   if (loading) return <TeacherOverviewSkeleton />;
 
 
+  const realSchoolName =
+    currentSchool?.name && currentSchool.name !== 'Your school' ? currentSchool.name : '';
+
   return (
-    <div className="space-y-6 animate-fade-in text-slate-100 pb-12">
-      <HomeGreeting />
+    <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-12">
+      <DashboardWelcomeBanner
+        roleLabel="Educator"
+        roleIcon={GraduationCap}
+        subtitle={
+          realSchoolName
+            ? `Manage your assigned classes, CAPS assessments, and lessons at ${realSchoolName}.`
+            : 'Manage your assigned classes, CAPS assessments, attendance, and lesson plans.'
+        }
+        metaPills={[
+          ...(realSchoolName ? [{ label: realSchoolName, icon: Building2 }] : []),
+          ...(displayCards.length > 0
+            ? [{ label: `${displayCards.length} Assigned ${displayCards.length === 1 ? 'Class' : 'Classes'}`, icon: BookOpen }]
+            : []),
+        ]}
+        onOpenProfile={() => onNavigateTab('profile')}
+        onOpenAllModules={() => onNavigateTab('more')}
+      />
 
       {/* GELEZA AI EDUCATOR COPILOT QUICK LAUNCHER */}
-      <section className="p-4 md:p-5 rounded-2xl bg-white dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] shadow-sm">
+      <section className="p-4 md:p-5 rounded-3xl bg-white/85 dark:bg-[#0D1520]/85 border border-[#C7D1DC]/90 dark:border-white/10 shadow-sm backdrop-blur-md">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -526,7 +548,7 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
           
           <div className="flex items-center gap-2">
             {/* View Mode Switcher */}
-            <div className="flex items-center p-1 rounded-xl bg-surface-dark border border-white/10 shadow-sm">
+            <div className="flex items-center p-1 rounded-xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-white/10 shadow-sm">
               <button
                 type="button"
                 onClick={() => handleSetSubjectsViewMode('carousel')}

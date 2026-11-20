@@ -1,39 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useSchool } from '../../context/SchoolContext';
 import { useTheme } from '../../context/ThemeContext';
-import {
-  categoryLabel,
-  visibleDirectoryModules,
-} from '../../pages/admin/adminDirectoryModel';
+import { sidebarGroupsForRole } from '../layout/sidebarNavigation';
 import {
   Search,
-  Sparkles,
-  BookOpen,
-  Calendar,
-  Clock,
-  MessageSquare,
-  Users,
-  Award,
   User,
   LayoutDashboard,
   LayoutGrid,
-  ShieldCheck,
-  Briefcase,
-  GraduationCap,
-  Megaphone,
   Moon,
   Sun,
-  Palette,
   ArrowRight,
-  Command,
   X,
-  Home
+  Home,
+  Settings,
 } from 'lucide-react';
 
 interface CommandItem {
   id: string;
   title: string;
-  category: 'Pages & Portals' | 'CAPS Subjects & Study' | 'Smart AI Tools' | 'Quick Actions';
+  category: string;
   subtitle?: string;
   icon: React.ElementType;
   iconColor: string;
@@ -52,15 +38,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
   onNavigateTab,
-  schoolAdminRefined = false,
 }) => {
-  const { role } = useAuth();
-  const { toggleTheme, setTheme } = useTheme();
+  const { role, account, viewedDashboard } = useAuth();
+  const { currentSchool } = useSchool();
+  const { theme, toggleTheme } = useTheme();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Global key listener for Ctrl+K / Cmd+K and Esc
+  const isPlatformAdmin = Boolean(account?.is_superadmin) && !viewedDashboard;
+
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -70,396 +57,108 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }
   }, [isOpen]);
 
-  const getCommands = (): CommandItem[] => {
-    const list: CommandItem[] = [];
+  const allCommands = useMemo<CommandItem[]>(() => {
+    const list: CommandItem[] = [
+      {
+        id: 'tab-overview',
+        title: isPlatformAdmin ? 'Platform Overview' : 'Dashboard Home',
+        subtitle: 'Return to your primary workspace overview',
+        category: 'Primary Navigation',
+        icon: Home,
+        iconColor: 'text-[#168BFF]',
+        action: () => onNavigateTab('overview'),
+        keywords: ['home', 'dashboard', 'overview'],
+      },
+      {
+        id: 'tab-more',
+        title: isPlatformAdmin ? 'Superadmin Command Centre' : 'All Modules Directory',
+        subtitle: 'Browse every module authorized for your role',
+        category: 'Primary Navigation',
+        icon: LayoutGrid,
+        iconColor: 'text-[#168BFF]',
+        action: () => onNavigateTab('more'),
+        keywords: ['all', 'modules', 'menu', 'directory', 'view all'],
+      },
+      {
+        id: 'tab-profile',
+        title: 'My Profile',
+        subtitle: 'Identity, profile picture, and account details',
+        category: 'Primary Navigation',
+        icon: User,
+        iconColor: 'text-sky-500',
+        action: () => onNavigateTab('profile'),
+        keywords: ['profile', 'avatar', 'account', 'photo'],
+      },
+      {
+        id: 'tab-settings',
+        title: 'Settings & Preferences',
+        subtitle: 'Appearance, font, and technical preferences',
+        category: 'Primary Navigation',
+        icon: Settings,
+        iconColor: 'text-slate-500 dark:text-slate-400',
+        action: () => onNavigateTab('settings'),
+        keywords: ['settings', 'preferences', 'font', 'theme'],
+      },
+    ];
 
-    // --- Pages & Portals ---
-    if (role === 'learner') {
-      list.push(
-        {
-          id: 'tab-overview',
-          title: 'Home',
-          subtitle: 'Academic summary, attendance overview & recent marks',
-          category: 'Pages & Portals',
-          icon: Home,
-          iconColor: 'text-indigo-400',
-          action: () => onNavigateTab('overview'),
-          keywords: ['home', 'dashboard', 'marks', 'overview']
-        },
-        {
-          id: 'tab-subjects',
-          title: 'My Subjects',
-          subtitle: 'Study materials, chapters, textbooks & curriculum topics',
-          category: 'Pages & Portals',
-          icon: BookOpen,
-          iconColor: 'text-cyan-400',
-          action: () => onNavigateTab('subjects'),
-          keywords: ['textbooks', 'books', 'syllabus', 'modules', 'caps', 'subjects']
-        },
-        {
-          id: 'tab-ai-tutor',
-          title: 'AI Study Tutor & Quizzes',
-          subtitle: 'Step-by-step math solver, practice quizzes & study companion',
-          category: 'Smart AI Tools',
-          icon: Sparkles,
-          iconColor: 'text-amber-400',
-          action: () => onNavigateTab('ai-tutor'),
-          keywords: ['ai', 'tutor', 'quiz', 'math', 'solver', 'practice', 'study']
-        },
-        {
-          id: 'tab-timetable',
-          title: 'Weekly Class Timetable',
-          subtitle: 'View today periods, subjects, rooms and educators',
-          category: 'Pages & Portals',
-          icon: Clock,
-          iconColor: 'text-emerald-400',
-          action: () => onNavigateTab('timetable'),
-          keywords: ['schedule', 'periods', 'classes', 'venues']
-        },
-        {
-          id: 'tab-calendar',
-          title: 'School & Class Events Calendar',
-          subtitle: 'Exam dates, sports fixtures, test schedules & holidays',
-          category: 'Pages & Portals',
-          icon: Calendar,
-          iconColor: 'text-rose-400',
-          action: () => onNavigateTab('calendar'),
-          keywords: ['events', 'exams', 'tests', 'sports', 'fixtures']
-        },
-        {
-          id: 'tab-messages',
-          title: 'Message Center & Teacher Chat',
-          subtitle: 'Chat directly with teachers, classmates & administration',
-          category: 'Pages & Portals',
-          icon: MessageSquare,
-          iconColor: 'text-emerald-400',
-          action: () => onNavigateTab('messages'),
-          keywords: ['chat', 'teacher', 'inbox', 'messages', 'talk']
-        },
-        {
-          id: 'tab-announcements',
-          title: 'School Announcements & Notices',
-          subtitle: 'Official broadcasts from the principal and school leadership',
-          category: 'Pages & Portals',
-          icon: Megaphone,
-          iconColor: 'text-yellow-400',
-          action: () => onNavigateTab('announcements'),
-          keywords: ['notices', 'broadcast', 'news', 'principal']
-        },
-        {
-          id: 'tab-profile',
-          title: 'Learner Profile & Avatar',
-          subtitle: 'Upload profile picture, change password & personal details',
-          category: 'Pages & Portals',
-          icon: User,
-          iconColor: 'text-blue-400',
-          action: () => onNavigateTab('profile'),
-          keywords: ['profile', 'avatar', 'picture', 'photo', 'password']
-        }
-      );
-    } else if (role === 'teacher') {
-      list.push(
-        {
-          id: 'tab-overview',
-          title: 'Educator Analytics Dashboard',
-          subtitle: 'Class averages, workload metrics and lesson plans',
-          category: 'Pages & Portals',
-          icon: LayoutDashboard,
-          iconColor: 'text-brand-400',
-          action: () => onNavigateTab('overview'),
-          keywords: ['teacher', 'overview', 'dashboard', 'analytics']
-        },
-        {
-          id: 'tab-classes',
-          title: 'Class Registers & Mark Allocation',
-          subtitle: 'Mark daily learner attendance and record assessment scores',
-          category: 'Pages & Portals',
-          icon: Users,
-          iconColor: 'text-cyan-400',
-          action: () => onNavigateTab('classes'),
-          keywords: ['roll', 'register', 'attendance', 'marks', 'assessment']
-        },
-        {
-          id: 'tab-ai-tools',
-          title: 'AI Lesson & Test Builder',
-          subtitle: 'Generate DBE CAPS compliant lesson plans, tests and rubrics',
-          category: 'Smart AI Tools',
-          icon: Sparkles,
-          iconColor: 'text-amber-400',
-          action: () => onNavigateTab('ai-tools'),
-          keywords: ['ai', 'lesson', 'plan', 'test', 'rubric', 'caps', 'generator']
-        },
-        {
-          id: 'tab-lesson-planning',
-          title: 'Lesson Planning & Notes',
-          subtitle: 'Plan lessons, write notes, and review the teaching calendar',
-          category: 'Pages & Portals',
-          icon: BookOpen,
-          iconColor: 'text-sky-400',
-          action: () => onNavigateTab('lesson-planning'),
-          keywords: ['lesson', 'plan', 'notes', 'reflection', 'calendar']
-        },
-        {
-          id: 'tab-calendar',
-          title: 'School Event Calendar',
-          subtitle: 'View term dates, exams, holidays & school fixtures',
-          category: 'Pages & Portals',
-          icon: Calendar,
-          iconColor: 'text-rose-400',
-          action: () => onNavigateTab('calendar'),
-          keywords: ['events', 'publish', 'schedule', 'fixtures']
-        },
-        {
-          id: 'tab-messages',
-          title: 'Teacher Chat & Communications',
-          subtitle: 'Direct messaging with students, parents & fellow teachers',
-          category: 'Pages & Portals',
-          icon: MessageSquare,
-          iconColor: 'text-emerald-400',
-          action: () => onNavigateTab('messages'),
-          keywords: ['chat', 'inbox', 'messages']
-        }
-      );
-    } else if (role === 'parent') {
-      list.push(
-        {
-          id: 'tab-overview',
-          title: 'Family Portal Dashboard',
-          subtitle: 'Overview of all linked children academic progress',
-          category: 'Pages & Portals',
-          icon: LayoutDashboard,
-          iconColor: 'text-amber-400',
-          action: () => onNavigateTab('overview'),
-          keywords: ['children', 'progress', 'family']
-        },
-        {
-          id: 'tab-marks',
-          title: 'Academic Reports & 7-Level Grades',
-          subtitle: 'Official term marks, CAPS level ratings and performance',
-          category: 'Pages & Portals',
-          icon: Award,
-          iconColor: 'text-indigo-400',
-          action: () => onNavigateTab('marks'),
-          keywords: ['report', 'card', 'marks', 'grades', 'levels']
-        },
-        {
-          id: 'tab-attendance',
-          title: 'Child Attendance Records',
-          subtitle: 'Daily presence, arrival punctuality and absentee logs',
-          category: 'Pages & Portals',
-          icon: Users,
-          iconColor: 'text-emerald-400',
-          action: () => onNavigateTab('attendance'),
-          keywords: ['attendance', 'absent', 'present', 'daily']
-        },
-        {
-          id: 'tab-messages',
-          title: 'Teacher Chat',
-          subtitle: 'Direct communication line with subject educators',
-          category: 'Pages & Portals',
-          icon: MessageSquare,
-          iconColor: 'text-emerald-400',
-          action: () => onNavigateTab('messages'),
-          keywords: ['chat', 'teacher', 'message', 'talk']
-        }
-      );
-    } else if (role === 'admin' && schoolAdminRefined) {
-      list.push(
-        {
-          id: 'tab-overview',
-          title: 'Dashboard Home',
-          subtitle: 'School Admin home overview and Quick Access',
-          category: 'Pages & Portals',
-          icon: Home,
-          iconColor: 'text-[#168BFF]',
-          action: () => onNavigateTab('overview'),
-          keywords: ['home', 'dashboard', 'overview', 'school'],
-        },
-        {
-          id: 'tab-more',
-          title: 'All Modules Directory',
-          subtitle: 'Browse all authorized school administrative modules',
-          category: 'Pages & Portals',
-          icon: LayoutGrid,
-          iconColor: 'text-[#168BFF]',
-          action: () => onNavigateTab('more'),
-          keywords: ['all', 'modules', 'menu', 'directory', 'view all'],
-        },
-        {
-          id: 'tab-profile',
-          title: 'My Profile',
-          subtitle: 'Profile details, avatar, and account settings',
-          category: 'Pages & Portals',
-          icon: User,
-          iconColor: 'text-sky-400',
-          action: () => onNavigateTab('profile'),
-          keywords: ['profile', 'avatar', 'account', 'photo'],
-        }
-      );
+    const groups = sidebarGroupsForRole(
+      role || '',
+      isPlatformAdmin,
+      currentSchool.teacher_modules,
+      currentSchool.learner_modules
+    );
 
-      visibleDirectoryModules(false).forEach((module) => {
-        const catLabel = categoryLabel(module.categoryId);
+    const seen = new Set<string>(['overview', 'more', 'profile', 'settings']);
+    groups.forEach((group) => {
+      group.items.forEach((item) => {
+        if (seen.has(item.id)) return;
+        seen.add(item.id);
         list.push({
-          id: `admin-mod-${module.id}`,
-          title: module.title,
-          subtitle: module.badge ? `${catLabel} • ${module.badge}` : catLabel,
-          category: 'Pages & Portals',
+          id: `mod-${item.id}`,
+          title: item.label,
+          subtitle: group.label,
+          category: group.label,
           icon: LayoutDashboard,
           iconColor: 'text-[#168BFF]',
-          action: () => onNavigateTab(module.id),
-          keywords: [module.id, module.title, catLabel, module.badge || ''],
+          action: () => onNavigateTab(item.id),
+          keywords: [item.id, item.label, group.label],
         });
       });
+    });
 
-      list.push({
-        id: 'act-toggle-theme',
-        title: 'Toggle Dark / Light Mode',
-        subtitle: 'Switch between Dark and Light workspace',
-        category: 'Quick Actions',
-        icon: Moon,
-        iconColor: 'text-amber-400',
-        action: () => toggleTheme(),
-        keywords: ['theme', 'dark', 'light', 'mode', 'color'],
-      });
-
-      return list;
-    } else if (role === 'admin') {
-      list.push(
-        {
-          id: 'tab-overview',
-          title: 'School Analytics & Leadership Hub',
-          subtitle: 'Enrolment statistics, attendance percentages & audit metrics',
-          category: 'Pages & Portals',
-          icon: LayoutDashboard,
-          iconColor: 'text-rose-400',
-          action: () => onNavigateTab('overview'),
-          keywords: ['analytics', 'metrics', 'school', 'admin']
-        },
-        {
-          id: 'tab-users',
-          title: 'Master User Directory & Permissions',
-          subtitle: 'Manage teachers, learners, parents and administrative roles',
-          category: 'Pages & Portals',
-          icon: Users,
-          iconColor: 'text-indigo-400',
-          action: () => onNavigateTab('users'),
-          keywords: ['users', 'learners', 'teachers', 'parents', 'accounts']
-        },
-        {
-          id: 'tab-timetable',
-          title: 'AI Master Timetable Allocator',
-          subtitle: 'Generate conflict-free schedules and publish to teachers',
-          category: 'Smart AI Tools',
-          icon: Clock,
-          iconColor: 'text-amber-400',
-          action: () => onNavigateTab('timetable'),
-          keywords: ['timetable', 'generate', 'publish', 'allocator', 'periods']
-        },
-        {
-          id: 'tab-calendar',
-          title: 'School Calendar Management',
-          subtitle: 'Schedule terms, exams, sports days and holidays',
-          category: 'Pages & Portals',
-          icon: Calendar,
-          iconColor: 'text-emerald-400',
-          action: () => onNavigateTab('calendar'),
-          keywords: ['calendar', 'events', 'holidays', 'terms']
-        },
-        {
-          id: 'tab-announcements',
-          title: 'Official School Broadcast Studio',
-          subtitle: 'Dispatch notifications and notices to all user portals',
-          category: 'Pages & Portals',
-          icon: Megaphone,
-          iconColor: 'text-cyan-400',
-          action: () => onNavigateTab('announcements'),
-          keywords: ['broadcast', 'notices', 'announcement', 'publish']
-        },
-        {
-          id: 'tab-messages',
-          title: 'School Chat Hub',
-          subtitle: 'Direct communication channels across the entire school',
-          category: 'Pages & Portals',
-          icon: MessageSquare,
-          iconColor: 'text-emerald-400',
-          action: () => onNavigateTab('messages'),
-          keywords: ['chat', 'messages']
-        }
-      );
-    }
-
-    // --- CAPS Subjects & Topics ---
-    list.push(
-      {
-        id: 'subj-math',
-        title: 'Mathematics (Grade 10-12)',
-        subtitle: 'Functions, Trigonometry, Calculus, Euclidean Geometry & Statistics',
-        category: 'CAPS Subjects & Study',
-        icon: BookOpen,
-        iconColor: 'text-cyan-400',
-        action: () => onNavigateTab('subjects'),
-        keywords: ['math', 'mathematics', 'calculus', 'algebra', 'geometry']
-      },
-      {
-        id: 'subj-phsc',
-        title: 'Physical Sciences (Physics & Chemistry)',
-        subtitle: 'Newtonian Mechanics, Chemical Bonding, Doppler Effect & Organic Chemistry',
-        category: 'CAPS Subjects & Study',
-        icon: BookOpen,
-        iconColor: 'text-indigo-400',
-        action: () => onNavigateTab('subjects'),
-        keywords: ['physics', 'chemistry', 'science', 'physical']
-      },
-      {
-        id: 'subj-lfsc',
-        title: 'Life Sciences (Biology)',
-        subtitle: 'DNA & RNA Code of Life, Genetics, Evolution & Endocrine System',
-        category: 'CAPS Subjects & Study',
-        icon: BookOpen,
-        iconColor: 'text-emerald-400',
-        action: () => onNavigateTab('subjects'),
-        keywords: ['biology', 'dna', 'genetics', 'evolution', 'life']
-      },
-      {
-        id: 'subj-acc',
-        title: 'Accounting & Financial Management',
-        subtitle: 'GAAP Principles, Balance Sheets, Ledger Adjustments & Cash Budgets',
-        category: 'CAPS Subjects & Study',
-        icon: BookOpen,
-        iconColor: 'text-amber-400',
-        action: () => onNavigateTab('subjects'),
-        keywords: ['accounting', 'finance', 'ledger', 'balance', 'budget']
-      }
-    );
-
-    // --- Quick Theme & Accessibility Actions ---
-    list.push(
-      {
-        id: 'act-toggle-theme',
-        title: 'Toggle Dark / Light Mode',
-        subtitle: 'Switch between Dark and Light workspace',
-        category: 'Quick Actions',
-        icon: Moon,
-        iconColor: 'text-yellow-400',
-        action: () => toggleTheme(),
-        keywords: ['theme', 'dark', 'light', 'mode', 'color']
-      }
-    );
+    list.push({
+      id: 'act-toggle-theme',
+      title: theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+      subtitle: 'Toggle between Dark and Light appearance',
+      category: 'Quick Actions',
+      icon: theme === 'dark' ? Sun : Moon,
+      iconColor: 'text-amber-500',
+      action: () => toggleTheme(),
+      keywords: ['theme', 'dark', 'light', 'mode', 'appearance'],
+    });
 
     return list;
-  };
+  }, [
+    role,
+    isPlatformAdmin,
+    currentSchool.teacher_modules,
+    currentSchool.learner_modules,
+    theme,
+    onNavigateTab,
+    toggleTheme,
+  ]);
 
-  const allCommands = getCommands();
-
-  const filteredCommands = allCommands.filter((cmd) => {
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    const titleMatch = cmd.title.toLowerCase().includes(q);
-    const subMatch = cmd.subtitle?.toLowerCase().includes(q);
-    const catMatch = cmd.category.toLowerCase().includes(q);
-    const kwMatch = cmd.keywords?.some((k) => k.toLowerCase().includes(q));
-    return titleMatch || subMatch || catMatch || kwMatch;
-  });
+  const filteredCommands = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return allCommands;
+    return allCommands.filter((cmd) => {
+      const titleMatch = cmd.title.toLowerCase().includes(q);
+      const subMatch = cmd.subtitle?.toLowerCase().includes(q);
+      const catMatch = cmd.category.toLowerCase().includes(q);
+      const kwMatch = cmd.keywords?.some((k) => k.toLowerCase().includes(q));
+      return titleMatch || subMatch || catMatch || kwMatch;
+    });
+  }, [allCommands, query]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -482,20 +181,23 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   if (!isOpen) return null;
 
-  // Group filtered commands by category
   const categories = Array.from(new Set(filteredCommands.map((c) => c.category)));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/75 backdrop-blur-xl animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/65 px-4 pt-16 backdrop-blur-md animate-fade-in sm:pt-20"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-2xl rounded-3xl bg-surface-darker/95 border border-brand-500/30 shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-fade-in relative"
-        style={{
-          boxShadow: '0 0 50px -10px rgba(99, 102, 241, 0.4), 0 25px 50px -12px rgba(0, 0, 0, 0.7)'
-        }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Quick module search"
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-[#C7D1DC] bg-white text-[#101820] shadow-2xl dark:border-white/15 dark:bg-[#0D1520] dark:text-[#F5F7FA]"
       >
         {/* Search Header */}
-        <div className="p-4 md:p-5 border-b border-white/10 flex items-center gap-3 bg-surface-dark/90">
-          <Search className="w-5 h-5 text-cyan-400 shrink-0" />
+        <div className="flex items-center gap-3 border-b border-[#C7D1DC] bg-[#F4F6F8] p-4 dark:border-white/10 dark:bg-[#080D14] md:p-5">
+          <Search className="h-5 w-5 shrink-0 text-[#168BFF]" />
           <input
             ref={inputRef}
             type="text"
@@ -505,36 +207,38 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Search tabs, CAPS topics, AI tools, or actions... (e.g. 'Math', 'Timetable', 'AI')"
-            className="flex-1 bg-transparent text-sm md:text-base text-white placeholder-slate-400 focus:outline-none"
+            placeholder="Search authorized modules or quick actions..."
+            className="flex-1 bg-transparent text-sm text-[#101820] placeholder-[#697586] focus:outline-none dark:text-white dark:placeholder-slate-400 md:text-base"
           />
           {query && (
             <button
+              type="button"
               onClick={() => setQuery('')}
-              className="p-1 rounded-lg text-slate-400 hover:text-white"
+              className="rounded-lg p-1 text-[#526071] hover:text-[#101820] dark:text-slate-400 dark:hover:text-white"
               title="Clear Search"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </button>
           )}
           <button
+            type="button"
             onClick={onClose}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-semibold border border-white/10 transition-colors"
+            className="flex items-center gap-1.5 rounded-xl border border-[#C7D1DC] bg-white px-2.5 py-1 text-xs font-semibold text-[#526071] transition-colors hover:text-[#101820] dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-white"
             title="Close Search Window"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="h-3.5 w-3.5" />
             <span>Close</span>
           </button>
         </div>
 
         {/* Results Stream */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-4 divide-y divide-white/5">
+        <div className="flex-1 space-y-4 overflow-y-auto p-3 custom-scrollbar">
           {filteredCommands.length > 0 ? (
             categories.map((category) => {
               const items = filteredCommands.filter((c) => c.category === category);
               return (
-                <div key={category} className="pt-2 first:pt-0 space-y-1">
-                  <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <div key={category} className="space-y-1">
+                  <p className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#526071] dark:text-slate-400">
                     {category}
                   </p>
                   {items.map((item) => {
@@ -543,61 +247,75 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     const Icon = item.icon;
 
                     return (
-                      <div
+                      <button
                         key={item.id}
+                        type="button"
                         onClick={() => {
                           item.action();
                           onClose();
                         }}
                         onMouseEnter={() => setSelectedIndex(globalIdx)}
-                        className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all ${
+                        className={`flex w-full items-center justify-between rounded-2xl p-3 text-left transition-all ${
                           isSelected
-                            ? 'bg-gradient-to-r from-brand-600/30 via-brand-500/20 to-cyan-500/20 border border-brand-500/40 text-white shadow-md translate-x-1'
-                            : 'hover:bg-white/5 text-slate-300'
+                            ? 'border border-[#168BFF]/40 bg-[#168BFF]/12 text-[#101820] shadow-xs dark:bg-[#168BFF]/20 dark:text-white'
+                            : 'border border-transparent text-[#101820] hover:bg-[#F4F6F8] dark:text-slate-200 dark:hover:bg-white/5'
                         }`}
                       >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className={`p-2 rounded-xl bg-white/5 border border-white/10 shrink-0 ${item.iconColor}`}>
-                            <Icon className="w-4 h-4" />
+                        <div className="flex min-w-0 items-center gap-3.5">
+                          <div className={`shrink-0 rounded-xl border border-[#C7D1DC] bg-white p-2 dark:border-white/10 dark:bg-white/5 ${item.iconColor}`}>
+                            <Icon className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs md:text-sm font-bold text-white truncate">
+                            <p className="truncate text-xs font-bold md:text-sm">
                               {item.title}
                             </p>
+                            {item.subtitle && (
+                              <p className="truncate text-[11px] text-[#526071] dark:text-slate-400">
+                                {item.subtitle}
+                              </p>
+                            )}
                           </div>
                         </div>
 
-                        <ArrowRight className={`w-4 h-4 shrink-0 transition-transform ${isSelected ? 'text-cyan-400 translate-x-0.5' : 'text-slate-600'}`} />
-                      </div>
+                        <ArrowRight
+                          className={`h-4 w-4 shrink-0 transition-transform ${
+                            isSelected ? 'translate-x-0.5 text-[#168BFF]' : 'text-slate-400 dark:text-slate-600'
+                          }`}
+                        />
+                      </button>
                     );
                   })}
                 </div>
               );
             })
           ) : (
-            <div className="py-12 text-center text-slate-500 text-xs">
-              <Search className="w-8 h-8 mx-auto text-slate-600 mb-2" />
-              <p className="font-bold text-slate-400">No results found for &ldquo;{query}&rdquo;</p>
-              <p className="text-[11px] text-slate-500 mt-1">Try searching for &apos;Math&apos;, &apos;Timetable&apos;, &apos;Tutor&apos;, or &apos;Theme&apos;.</p>
+            <div className="py-12 text-center text-xs text-[#526071] dark:text-slate-400">
+              <Search className="mx-auto mb-2 h-8 w-8 text-slate-400 dark:text-slate-600" />
+              <p className="font-bold">No authorized modules match &ldquo;{query}&rdquo;</p>
+              <p className="mt-1 text-[11px]">Try searching by module name, category, or &apos;Theme&apos;.</p>
             </div>
           )}
         </div>
 
         {/* Footer Navigation Hints */}
-        <div className="p-3 bg-surface-dark border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+        <div className="flex items-center justify-between border-t border-[#C7D1DC] bg-[#F4F6F8] px-4 py-3 text-[11px] text-[#526071] dark:border-white/10 dark:bg-[#080D14] dark:text-slate-400">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px] text-slate-300">↑↓</kbd>
+              <kbd className="rounded border border-[#C7D1DC] bg-white px-1.5 py-0.5 font-mono text-[10px] dark:border-white/10 dark:bg-white/10 dark:text-slate-300">
+                ↑↓
+              </kbd>
               <span>Navigate</span>
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px] text-slate-300">↵</kbd>
+              <kbd className="rounded border border-[#C7D1DC] bg-white px-1.5 py-0.5 font-mono text-[10px] dark:border-white/10 dark:bg-white/10 dark:text-slate-300">
+                ↵
+              </kbd>
               <span>Select</span>
             </span>
           </div>
 
-          <span className="text-[10px] font-mono text-cyan-400">
-            FUSION HIGH QUICK COMMAND 2.1
+          <span className="font-mono text-[10px] font-semibold text-[#168BFF]">
+            GELEZA SA QUICK SEARCH
           </span>
         </div>
       </div>

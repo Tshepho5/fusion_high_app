@@ -9,9 +9,21 @@ const isHostedApiUrl = (value: string) => (
   value.startsWith('https://') && !/localhost|127\.0\.0\.1/i.test(value)
 );
 
+const isLoopbackApiUrl = (value: string) => (
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(value)
+);
+
 export const getApiBaseUrl = (): string => {
   const env = import.meta.env;
   const configured = String(env.VITE_API_URL || '').trim();
+  const isStaging = env.MODE === 'staging' || String(env.VITE_STAGING_MODE || '') === 'true';
+  if (isStaging) {
+    if (configured && configured.startsWith(PRODUCTION_API_URL)) {
+      throw new Error('Refusing to target production API from staging mode.');
+    }
+    if (configured && isLoopbackApiUrl(configured)) return configured;
+    return '';
+  }
   if (env.PROD) {
     return isHostedApiUrl(configured) ? configured : PRODUCTION_API_URL;
   }

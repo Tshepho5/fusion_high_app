@@ -5,6 +5,7 @@ import { AdminOverviewSkeleton } from '../../components/admin/AdminOverviewSkele
 import { Modal } from '../../components/common/Modal';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
 import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
+import { DashboardWelcomeBanner } from '../../components/layout/DashboardWelcomeBanner';
 import { MasterAdminExecutiveHub } from '../../components/admin/MasterAdminExecutiveHub';
 import { SchoolModulePreferences } from '../../components/admin/SchoolModulePreferences';
 import { SchoolAdminWelcomeBanner } from '../../components/admin/SchoolAdminWelcomeBanner';
@@ -728,7 +729,36 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
           />
         </>
       ) : (
-        <HomeGreeting />
+        <DashboardWelcomeBanner
+          roleLabel="Platform Executive"
+          roleIcon={ShieldCheck}
+          subtitle={
+            viewingSchool && currentSchool?.name
+              ? `Inspecting ${currentSchool.name} campus workspace from Geleza SA Executive Governance.`
+              : 'Oversee registered partner schools, campus admissions, and platform operations on Geleza SA.'
+          }
+          metaPills={[
+            ...(viewingSchool && currentSchool?.name
+              ? [{ label: currentSchool.name, icon: Building2 }]
+              : [
+                  {
+                    label: `${registeredSchools.length} Verified ${registeredSchools.length === 1 ? 'Campus' : 'Campuses'}`,
+                    icon: Building2,
+                  },
+                ]),
+            ...(pendingSchoolApps.length > 0
+              ? [
+                  {
+                    label: `${pendingSchoolApps.length} Pending ${pendingSchoolApps.length === 1 ? 'Admission' : 'Admissions'}`,
+                    icon: Shield,
+                  },
+                ]
+              : []),
+          ]}
+          onOpenProfile={() => onNavigateTab('profile')}
+          onOpenAllModules={() => onNavigateTab('more')}
+          allModulesLabel="Command Centre"
+        />
       )}
 
       {/* Pending School Admissions Alert Banner */}

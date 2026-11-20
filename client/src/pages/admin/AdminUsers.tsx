@@ -446,17 +446,32 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
-  const openUserDashboard = (person: { id?: number; role?: string; full_name?: string; surname?: string; email?: string }) => {
+  const openUserDashboard = (person: {
+    id?: number;
+    role?: string;
+    full_name?: string;
+    surname?: string;
+    email?: string;
+    profile_picture?: string | null;
+    profile_picture_path?: string | null;
+    grade?: number | null;
+    learner_number?: string | null;
+  }) => {
     const role = dashboardRole(person.role);
     const id = Number(person.id);
     if (!insideSchool || !currentSchool?.id || !role || !Number.isInteger(id) || id <= 0) return;
+    const pic = person.profile_picture || person.profile_picture_path || null;
     startDashboardView({
       id,
       role,
       schoolId: Number(currentSchool.id),
       full_name: person.full_name || 'School user',
       surname: person.surname || '',
-      email: person.email || ''
+      email: person.email || '',
+      profile_picture: pic,
+      profile_picture_path: person.profile_picture_path || pic,
+      grade: person.grade ?? null,
+      learner_number: person.learner_number ?? null,
     });
     window.location.assign(`/dashboard/${role}`);
   };
@@ -1794,7 +1809,7 @@ export const AdminUsers: React.FC = () => {
                       {insideSchool && (
                         <button
                           type="button"
-                          onClick={() => openUserDashboard({ id: e.user_id, role: (e as any).account_role || e.employee_role || 'teacher', full_name: e.full_name, surname: e.surname, email: e.email })}
+                          onClick={() => openUserDashboard({ id: e.user_id, role: (e as any).account_role || e.employee_role || 'teacher', full_name: e.full_name, surname: e.surname, email: e.email, profile_picture: (e as any).profile_picture || (e as any).profile_picture_path || null, profile_picture_path: (e as any).profile_picture_path || null })}
                           className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
                         >
                           Open dashboard
@@ -1884,7 +1899,7 @@ export const AdminUsers: React.FC = () => {
                       {insideSchool && (
                         <button
                           type="button"
-                          onClick={() => openUserDashboard({ id: p.id, role: 'parent', full_name: p.full_name, surname: p.surname, email: p.email })}
+                          onClick={() => openUserDashboard({ id: p.id, role: 'parent', full_name: p.full_name, surname: p.surname, email: p.email, profile_picture: (p as any).profile_picture || (p as any).profile_picture_path || null, profile_picture_path: (p as any).profile_picture_path || null })}
                           className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
                         >
                           Open dashboard
@@ -1972,7 +1987,7 @@ export const AdminUsers: React.FC = () => {
                       {insideSchool && l.user_id && (
                         <button
                           type="button"
-                          onClick={() => openUserDashboard({ id: l.user_id, role: 'learner', full_name: l.full_name, surname: l.surname, email: l.email })}
+                          onClick={() => openUserDashboard({ id: l.user_id, role: 'learner', full_name: l.full_name, surname: l.surname, email: l.email, profile_picture: (l as any).profile_picture || (l as any).profile_picture_path || null, profile_picture_path: (l as any).profile_picture_path || null, grade: l.grade ?? null, learner_number: l.learner_number ?? null })}
                           className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
                         >
                           Open dashboard
@@ -2289,7 +2304,7 @@ export const AdminUsers: React.FC = () => {
                         {insideSchool && (
                           <button
                             type="button"
-                            onClick={() => openUserDashboard({ id: adm.id, role: 'admin', full_name: adm.full_name, surname: adm.surname, email: adm.email })}
+                            onClick={() => openUserDashboard({ id: adm.id, role: 'admin', full_name: adm.full_name, surname: adm.surname, email: adm.email, profile_picture: (adm as any).profile_picture || (adm as any).profile_picture_path || null, profile_picture_path: (adm as any).profile_picture_path || null })}
                             className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
                           >
                             Open dashboard
@@ -2380,7 +2395,7 @@ export const AdminUsers: React.FC = () => {
                       {insideSchool && (
                         <button
                           type="button"
-                          onClick={() => openUserDashboard({ id: u.id, role: u.role, full_name: u.full_name, surname: u.surname, email: u.email })}
+                          onClick={() => openUserDashboard({ id: u.id, role: u.role, full_name: u.full_name, surname: u.surname, email: u.email, profile_picture: (u as any).profile_picture || (u as any).profile_picture_path || null, profile_picture_path: (u as any).profile_picture_path || null })}
                           className="px-2 py-1 rounded-lg bg-[#168BFF]/15 text-[#168BFF] text-[10px] font-bold"
                         >
                           Open dashboard

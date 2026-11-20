@@ -4,6 +4,9 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ParentOverviewSkeleton } from '../../components/parent/ParentOverviewSkeleton';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
 import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
+import { DashboardWelcomeBanner } from '../../components/layout/DashboardWelcomeBanner';
+import { useSchool } from '../../context/SchoolContext';
+import { Building2 } from 'lucide-react';
 import {
   Users,
   GraduationCap,
@@ -48,6 +51,7 @@ interface ParentOverviewProps {
 
 export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab }) => {
   const { user } = useAuth();
+  const { currentSchool } = useSchool();
   const [children, setChildren] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -188,30 +192,59 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
 
   const uniqueChildren = deduplicateLearners(children);
 
+  const realSchoolName =
+    currentSchool?.name && currentSchool.name !== 'Your school' ? currentSchool.name : '';
+
   return (
     <div className="space-y-6 animate-fade-in text-slate-900 dark:text-slate-100 pb-12">
-      <HomeGreeting />
+      <DashboardWelcomeBanner
+        roleLabel="Parent / Guardian"
+        roleIcon={Users}
+        subtitle={
+          realSchoolName
+            ? `Track your linked learners’ academic progress, attendance, and school notices at ${realSchoolName}.`
+            : 'Track your linked learners’ academic progress, attendance, timetables, and school notices.'
+        }
+        metaPills={[
+          ...(realSchoolName ? [{ label: realSchoolName, icon: Building2 }] : []),
+          {
+            label:
+              uniqueChildren.length > 0
+                ? `${uniqueChildren.length} Linked ${uniqueChildren.length === 1 ? 'Learner' : 'Learners'}`
+                : 'No linked learners yet',
+            icon: GraduationCap,
+          },
+        ]}
+        onOpenProfile={() => onNavigateTab('profile')}
+        onOpenAllModules={() => onNavigateTab('more')}
+      />
 
       {/* PARENT COMPANION BANNER */}
-      <section className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-emerald-900/40 via-teal-900/30 to-slate-900/60 border border-emerald-500/20 shadow-lg relative overflow-hidden backdrop-blur-sm">
+      <section className="p-4 md:p-5 rounded-3xl bg-white/85 dark:bg-[#0D1520]/85 border border-emerald-500/30 dark:border-emerald-500/25 shadow-sm relative overflow-hidden backdrop-blur-md">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5">
-            <div className="p-3 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 shrink-0">
+            <div data-theme-preserve="true" className="p-3 rounded-2xl bg-emerald-600 text-white text-always-white shadow-sm shrink-0">
               <GraduationCap className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white">Parent Companion</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-[#101820] dark:text-white">Parent Companion</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                   Academic Overview
                 </span>
               </div>
+              <p className="mt-0.5 text-xs text-[#526071] dark:text-[#AAB5C2]">
+                {uniqueChildren.length > 0
+                  ? 'Review an academic progress summary for your linked learners.'
+                  : 'Link a learner below to view progress summaries and term reports.'}
+              </p>
             </div>
           </div>
           {uniqueChildren && uniqueChildren.length > 0 && (
             <button
               onClick={() => { setSelectedAiChild(uniqueChildren[0]); setIsAiModalOpen(true); }}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer shrink-0"
+              data-theme-preserve="true"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white text-always-white shadow-sm flex items-center gap-2 transition-all cursor-pointer shrink-0"
             >
               <FileText className="w-4 h-4" />
               <span>View Progress Summary</span>

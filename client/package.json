@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test src/pages/admin/adminDirectoryModel.test.ts src/pages/admin/schoolAdminHomeModel.test.ts"
+    "test": "node --experimental-strip-types --test src/pages/admin/adminDirectoryModel.test.ts src/pages/admin/schoolAdminHomeModel.test.ts src/utils/dashboardView.test.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

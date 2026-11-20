@@ -1,5 +1,11 @@
 const { Pool, types } = require('pg');
-const { assertTestDatabaseAllowed, isTestProcess } = require('../lib/testSafety');
+const {
+  assertStagingDatabaseAllowed,
+  assertTestDatabaseAllowed,
+  isStagingProcess,
+  isStagingReadOnly,
+  isTestProcess
+} = require('../lib/testSafety');
 require('dotenv').config();
 
 // Ensure PostgreSQL DATE columns (OID 1082) return exact 'YYYY-MM-DD' strings to prevent timezone shifting
@@ -35,7 +41,9 @@ const poolConfig = connectionString
       port: parseInt(process.env.DB_PORT || '5432', 10),
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME || 'FUSION_DB',
+      database: isStagingProcess()
+        ? (process.env.DB_NAME || '')
+        : (process.env.DB_NAME || 'FUSION_DB'),
       max: 50,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
@@ -43,6 +51,12 @@ const poolConfig = connectionString
 
 if (isTestProcess()) {
   assertTestDatabaseAllowed(poolConfig);
+} else if (isStagingProcess()) {
+  assertStagingDatabaseAllowed(poolConfig);
+}
+
+if (isStagingReadOnly()) {
+  poolConfig.options = '-c default_transaction_read_only=on';
 }
 
 const pool = new Pool(poolConfig);

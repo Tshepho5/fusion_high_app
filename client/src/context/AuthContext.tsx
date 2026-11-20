@@ -1,8 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { authService, userService } from '../services/api';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, ReactNode } from 'react';
+import api, { authService, userService } from '../services/api';
 import { clearAuthSession, readAuthValue, storeHoldingToken, writeAuthSession } from '../utils/authStorage';
 import { canEnterDashboard, InvalidAuthResponseError, isSessionToken } from '../services/authResponse';
-import { DASHBOARD_VIEW_EVENT, readDashboardView, stopDashboardView, DashboardView } from '../utils/dashboardView';
+import {
+  buildDashboardOwnerUser,
+  DASHBOARD_VIEW_EVENT,
+  readDashboardView,
+  stopDashboardView,
+  DashboardView,
+} from '../utils/dashboardView';
 
 export type UserRole = 'learner' | 'teacher' | 'admin' | 'parent' | null;
 
@@ -63,6 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const [user, setUserState] = useState<User | null>(readStoredUser);
   const [viewedDashboard, setViewedDashboard] = useState<DashboardView | null>(() => readDashboardView());
+  const [viewedProfile, setViewedProfile] = useState<Partial<User> | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sessionPrompt, setSessionPrompt] = useState<null | 'idle' | 'logout'>(null);
   const [tabBlocked, setTabBlocked] = useState(false);
@@ -309,26 +316,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     resetIdleTimer.current();
   };
 
+  const activeView = user?.is_superadmin ? viewedDashboard : null;
+
+  // Resolve target dashboard owner's live read-only profile (including real profile picture)
+  // without ever touching the authenticated Superadmin's own profile or leaking their avatar.
+  useEffect(() => {
+    if (!token || !activeView?.id) {
+      setViewedProfile(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .get(`/api/admin/users/profile/${activeView.id}`)
+      .then((res) => {
+        if (cancelled) return;
+        const data = res?.data?.profile || res?.data?.user || res?.data || null;
+        if (data && Number(data.id) === Number(activeView.id)) {
+          setViewedProfile(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setViewedProfile(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, activeView?.id]);
+
   const updateUser = (updatedData: Partial<User>) => {
-    if (!user) return;
+    if (!user || activeView) return;
     const newUserData = { ...user, ...updatedData };
     setUserState(newUserData);
     localStorage.setItem('user', JSON.stringify(newUserData));
   };
 
-  const activeView = user?.is_superadmin ? viewedDashboard : null;
-  const dashboardUser = activeView
-    ? {
-        ...user,
-        id: activeView.id,
-        role: activeView.role,
-        full_name: activeView.full_name,
-        surname: activeView.surname,
-        email: activeView.email,
-        school_id: activeView.schoolId,
-        is_superadmin: false
-      }
-    : user;
+  const dashboardUser = useMemo(
+    () => buildDashboardOwnerUser(user, activeView, viewedProfile),
+    [user, activeView, viewedProfile]
+  );
   const dashboardRole = (activeView ? activeView.role : role) as UserRole;
 
   return (

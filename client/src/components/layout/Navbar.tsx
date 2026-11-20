@@ -33,13 +33,23 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectTab,
   schoolAdminRefined = false,
 }) => {
-  const { user, role, logout } = useAuth();
+  const { user, account, viewedDashboard, role, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
   const [deviceOnline, setDeviceOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Distinguish the signed-in session identity from a target dashboard being inspected by Superadmin.
+  const isExecutiveInspection = Boolean(viewedDashboard && account?.is_superadmin);
+  const sessionActor = isExecutiveInspection ? account : user;
+  const sessionAvatarPath = sessionActor?.profile_picture || sessionActor?.profile_picture_path || '';
+  const sessionDisplayName = [sessionActor?.full_name, sessionActor?.surname]
+    .filter(Boolean)
+    .join(' ')
+    .trim() || sessionActor?.full_name || 'My Profile';
+  const sessionInitial = sessionDisplayName.charAt(0).toUpperCase() || 'U';
 
   useEffect(() => {
     const mark = (online: boolean) => setDeviceOnline(online);
@@ -198,11 +208,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-8 h-8 rounded-full bg-[#168BFF] flex items-center justify-center text-white text-always-white font-bold text-xs shadow-xs overflow-hidden shrink-0 border border-sky-400/40 relative"
               >
                 <span className="select-none text-white text-always-white">
-                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                  {sessionInitial}
                 </span>
-                {(user?.profile_picture || user?.profile_picture_path) && (
+                {sessionAvatarPath && (
                   <img
-                    src={getProfilePictureUrl(user.profile_picture || user.profile_picture_path)}
+                    src={getProfilePictureUrl(sessionAvatarPath)}
                     alt=""
                     className="absolute inset-0 w-full h-full object-cover"
                     onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }}
@@ -241,13 +251,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl bg-white dark:bg-[#121B2B] border border-slate-200/90 dark:border-white/15 shadow-2xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
               <div className="px-3 py-2.5 border-b border-slate-100 dark:border-white/10 mb-1">
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                  {user?.full_name || 'User Profile'}
+                  {sessionDisplayName}
                 </p>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                  {user?.email || `${(role || 'user').toLowerCase()}@geleza-sa.co.za`}
+                  {sessionActor?.email || `${(role || 'user').toLowerCase()}@geleza-sa.co.za`}
                 </p>
                 <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[9px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wide font-mono">
-                  {role || 'Portal User'}
+                  {isExecutiveInspection
+                    ? 'Executive Session (Inspecting)'
+                    : account?.is_superadmin
+                      ? 'Platform Executive'
+                      : (role || 'Portal User')}
                 </div>
               </div>
 

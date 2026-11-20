@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { teacherService } from '../../services/api';
 import { useSchool } from '../../context/SchoolContext';
-import { moduleAllowed } from '../../utils/schoolModules';
+import { moduleAllowed, parentModuleAllowed } from '../../utils/schoolModules';
 import {
   Star,
   Plus,
@@ -38,7 +38,9 @@ import {
   TrendingUp,
   Building2,
   HelpCircle,
-  FolderOpen
+  FolderOpen,
+  SlidersHorizontal,
+  Zap
 } from 'lucide-react';
 
 export interface CatalogModule {
@@ -703,6 +705,11 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
   const { currentSchool } = useSchool();
   const catalog = useMemo(() => {
     const base = ROLE_MODULE_CATALOGS[role] || ROLE_MODULE_CATALOGS.teacher;
+    if (role === 'parent') {
+      return base.filter((module) =>
+        parentModuleAllowed(module.id, currentSchool.learner_modules, currentSchool.teacher_modules)
+      );
+    }
     if (role !== 'teacher' && role !== 'learner') return base;
     const selected = role === 'teacher' ? currentSchool.teacher_modules : currentSchool.learner_modules;
     const partner = role === 'learner' ? currentSchool.teacher_modules : undefined;
@@ -869,22 +876,20 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
   }, [catalog, selectedCategory, searchQuery]);
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <section aria-label="Quick Access" className={`space-y-3.5 ${className}`}>
       {/* 1. Header Bar */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-500 dark:text-amber-400 flex items-center justify-center border border-amber-500/25 shadow-xs">
-            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#168BFF]/25 bg-[#168BFF]/10 text-[#168BFF]">
+            <Zap className="h-4 w-4" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base xl:text-xl font-extrabold font-display text-[#101820] dark:text-[#F5F7FA] tracking-tight">
-                Favorite Modules
-              </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#168BFF]/10 text-[#168BFF] border border-[#168BFF]/30 font-mono">
-                {favoriteModules.length} Pinned
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <h2 className="font-display text-base font-extrabold tracking-tight text-[#101820] dark:text-[#F5F7FA] sm:text-lg">
+              Quick Access
+            </h2>
+            <span className="rounded-full border border-[#C7D1DC] bg-[#F4F6F8] px-2 py-0.5 font-mono text-[10px] font-bold text-[#526071] dark:border-white/10 dark:bg-white/5 dark:text-[#AAB5C2]">
+              {favoriteModules.length} Pinned
+            </span>
           </div>
         </div>
 
@@ -893,32 +898,34 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl bg-[#168BFF]/10 hover:bg-[#168BFF]/20 text-[#168BFF] border border-[#168BFF]/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-            title="Add or remove favorite modules from your home page"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#C7D1DC] bg-white/80 px-3 py-1.5 text-xs font-bold text-[#526071] transition-colors hover:border-[#168BFF]/50 hover:text-[#101820] dark:border-white/15 dark:bg-white/5 dark:text-[#AAB5C2] dark:hover:border-[#168BFF]/50 dark:hover:text-white cursor-pointer"
+            title="Pin or unpin authorized modules on your home page"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Favorites</span>
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>Customize</span>
           </button>
           <button
             type="button"
             onClick={() => onNavigateTab('more')}
-            className="hidden sm:flex px-3 py-1.5 rounded-xl bg-white dark:bg-[#111821] hover:bg-slate-50 dark:hover:bg-[#171F29] text-[#526071] dark:text-[#AAB5C2] border border-[#C7D1DC] dark:border-[#2C3948] text-xs font-semibold transition-all items-center gap-1 cursor-pointer active:scale-95"
-            title="Browse all modules in the Menu page"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[#168BFF]/35 bg-[#168BFF]/10 px-3.5 py-1.5 text-xs font-bold text-[#0878E8] transition-colors hover:bg-[#168BFF] hover:text-white dark:text-[#7CC4FF] dark:hover:bg-[#168BFF] dark:hover:text-white cursor-pointer"
+            title="Browse all authorized modules"
           >
-            <span>All in Menu</span>
-            <ArrowRight className="w-3 h-3" />
+            <span>View All</span>
+            <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      {/* 2. Favorites Grid or Empty State */}
+      {/* 2. Quick Access Grid or Empty State */}
       {favoriteModules.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {favoriteModules.map((mod) => {
             const IconComp = mod.icon;
             return (
               <div
                 key={mod.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   if (mod.id === 'attendance' && role === 'teacher') {
                     setIsClassModalOpen(true);
@@ -926,68 +933,58 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
                     onNavigateTab(mod.id);
                   }
                 }}
-                className="group relative p-3.5 xl:p-4 rounded-2xl xl:rounded-3xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 dark:hover:border-[#168BFF]/60 hover:bg-white dark:hover:bg-[#171F29] transition-all cursor-pointer flex items-center gap-3 overflow-hidden min-h-[72px] xl:min-h-[92px] shadow-sm"
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (mod.id === 'attendance' && role === 'teacher') setIsClassModalOpen(true);
+                    else onNavigateTab(mod.id);
+                  }
+                }}
+                className="group relative flex min-h-[104px] flex-col items-center justify-center gap-2.5 rounded-2xl border border-[#C7D1DC]/90 bg-white/85 px-3 py-4 text-center shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-[#168BFF]/60 hover:bg-white hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#168BFF] dark:border-white/10 dark:bg-[#0D1520]/85 dark:hover:border-[#168BFF]/60 dark:hover:bg-[#131F2E] cursor-pointer"
               >
                 {/* Remove Quick Button (Stop Propagation) */}
                 <button
                   type="button"
                   onClick={(e) => handleRemoveFavorite(e, mod.id)}
-                  title="Remove from home page favorites"
-                  className="absolute top-2.5 right-2.5 w-6 h-6 rounded-lg bg-white dark:bg-[#171F29] hover:bg-rose-500 hover:text-white text-[#697586] dark:text-[#8794A5] border border-[#C7D1DC] dark:border-[#2C3948] flex items-center justify-center transition-all opacity-80 group-hover:opacity-100 active:scale-90 cursor-pointer z-10"
+                  title="Remove from Quick Access"
+                  aria-label={`Remove ${mod.title} from Quick Access`}
+                  className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-md border border-[#C7D1DC] bg-white/90 text-[#697586] opacity-0 transition-all hover:bg-rose-500 hover:text-white group-hover:opacity-100 focus:opacity-100 dark:border-white/10 dark:bg-[#171F29] dark:text-[#8794A5] cursor-pointer"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="h-3 w-3" />
                 </button>
 
-                {/* Top Info */}
-                <div className="flex items-start gap-2.5">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border bg-white dark:bg-[#171F29] border-[#C7D1DC] dark:border-[#2C3948]">
-                    <IconComp className="w-4.5 h-4.5 text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] transition-colors" />
-                  </div>
-                  <div className="pr-6">
-                    <h3 className="text-xs sm:text-sm font-bold text-[#101820] dark:text-[#F5F7FA] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors line-clamp-2">
-                      {mod.title}
-                    </h3>
-                  </div>
-                </div>
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#168BFF]/20 bg-[#168BFF]/10 text-[#168BFF] transition-transform duration-200 group-hover:scale-105 group-hover:bg-[#168BFF] group-hover:text-white">
+                  <IconComp className="h-5 w-5" />
+                </span>
+                <h3 className="line-clamp-2 text-xs font-bold leading-snug text-[#101820] transition-colors group-hover:text-[#0878E8] dark:text-[#F5F7FA] dark:group-hover:text-[#7CC4FF]">
+                  {mod.title}
+                </h3>
               </div>
             );
           })}
-
-          {/* Add Module Quick Tile */}
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            className="p-3.5 rounded-2xl border-2 border-dashed border-[#C7D1DC] dark:border-[#2C3948] hover:border-[#168BFF]/60 hover:bg-[#168BFF]/5 transition-all flex flex-col items-center justify-center gap-2 text-center group cursor-pointer min-h-[92px]"
-            title="Click to add more favorite modules"
-          >
-            <div className="w-7 h-7 rounded-xl bg-white dark:bg-[#171F29] group-hover:bg-[#168BFF]/20 text-[#697586] dark:text-[#8794A5] group-hover:text-[#168BFF] flex items-center justify-center transition-colors border border-[#C7D1DC] dark:border-[#2C3948]">
-              <Plus className="w-4 h-4" />
-            </div>
-            <span className="text-xs font-bold text-[#526071] dark:text-[#AAB5C2] group-hover:text-[#168BFF] dark:group-hover:text-[#168BFF] transition-colors">
-              Add More
-            </span>
-          </button>
         </div>
       ) : (
         /* Empty State */
-        <div className="p-5 rounded-2xl bg-[#F4F6F8] dark:bg-[#111821] border border-[#C7D1DC] dark:border-[#2C3948] flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-sm">
+        <div className="p-5 rounded-2xl bg-white/85 dark:bg-[#0D1520]/85 border border-[#C7D1DC] dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left shadow-sm backdrop-blur-md">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-500 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-amber-400" />
+            <div className="w-10 h-10 rounded-2xl bg-[#168BFF]/10 border border-[#168BFF]/25 text-[#168BFF] flex items-center justify-center shrink-0">
+              <Zap className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-xs sm:text-sm font-bold text-[#101820] dark:text-[#F5F7FA]">
-                No favorite modules added yet
+                No pinned Quick Access modules yet
               </h3>
             </div>
           </div>
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white font-bold text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95 shrink-0"
+            data-theme-preserve="true"
+            className="px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-always-white font-bold text-xs transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95 shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Favorite Modules</span>
+            <span>Pin Modules</span>
           </button>
         </div>
       )}
@@ -1260,6 +1257,6 @@ export const FavoriteModulesSection: React.FC<FavoriteModulesSectionProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };

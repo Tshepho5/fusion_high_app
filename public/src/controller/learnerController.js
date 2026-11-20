@@ -390,10 +390,13 @@ exports.getMySubjectsOverview = async (req, res) => {
 
         let annRows = [];
         try {
-            const annRes = await db.query(
-                `SELECT title, content as text, TO_CHAR(created_at, 'Mon DD, YYYY') as date 
-                 FROM announcements ORDER BY created_at DESC LIMIT 3`
-            );
+            const annRes = learner.school_id
+                ? await db.query(
+                    `SELECT title, content as text, TO_CHAR(created_at, 'Mon DD, YYYY') as date 
+                     FROM announcements WHERE school_id = $1 ORDER BY created_at DESC LIMIT 3`,
+                    [learner.school_id]
+                )
+                : { rows: [] };
             annRows = annRes.rows;
         } catch (_) {}
 
@@ -406,7 +409,7 @@ exports.getMySubjectsOverview = async (req, res) => {
             upcoming_assessments_count: totalPending || 2,
             assignments_due_count: totalPending,
             overall_average: overallAvg,
-            home_language: chosenHomeLanguage,
+            home_language: learner.home_language || null,
             subjects: subjectDetails,
             upcoming_schedule: scheduleFormatted,
             announcements: annRows

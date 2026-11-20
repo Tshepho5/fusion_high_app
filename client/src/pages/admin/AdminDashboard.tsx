@@ -170,7 +170,7 @@ export const AdminDashboard: React.FC = () => {
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       title={getTabTitle()}
-      schoolAdminRefined={!isSuperAdmin}
+      refined={true}
     >
       {showBack && (
         <ModulePageHeader

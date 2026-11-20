@@ -119,7 +119,7 @@ exports.getWorkload = async (req, res) => {
                 JOIN subjects s ON s.id = tt.subject_id
                 LEFT JOIN classes c ON c.id = tt.class_id
                 WHERE tt.teacher_id = $1
-            `, [teacherId]),
+            `, [teacherId]).catch(() => ({ rows: [] })),
             db.query(`
                 SELECT DISTINCT c.name as class_name, c.grade as grade_level, s.name as subject_name, s.code as subject_code
                 FROM classes c
@@ -322,7 +322,7 @@ exports.getMySubjectsOverview = async (req, res) => {
                 JOIN subjects s ON s.id = tt.subject_id
                 LEFT JOIN classes c ON c.id = tt.class_id
                 WHERE tt.teacher_id = $1
-            `, [teacherId]),
+            `, [teacherId]).catch(() => ({ rows: [] })),
             db.query(`
                 SELECT DISTINCT c.id, c.name as class_name, c.grade as grade_level, c.stream,
                        s.name as subject_name, s.code as subject_code

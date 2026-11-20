@@ -740,6 +740,17 @@ exports.recordMark = async (req, res) => {
 exports.getLearnerProgress = async (req, res) => {
     try {
         const { childId } = req.params;
+        const childRes = await db.query(
+            'SELECT id, school_id FROM children WHERE id = $1 LIMIT 1',
+            [childId]
+        );
+        if (childRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Learner not found.' });
+        }
+        const childSchoolId = childRes.rows[0].school_id;
+        if (!req.user?.is_superadmin && Number(childSchoolId) !== Number(req.user?.school_id)) {
+            return res.status(403).json({ error: 'Forbidden: Learner belongs to a different school.' });
+        }
         const result = await db.query(
             `SELECT p.id, p.subject, p.term, p.grade, p.notes, COALESCE(p.date, NOW()) as created_at
              FROM progress p
