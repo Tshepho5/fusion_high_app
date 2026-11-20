@@ -14,7 +14,6 @@ import {
 
 import { useTheme } from '../../context/ThemeContext';
 import { NotificationDropdown } from './NotificationDropdown';
-import { FusionAppIcon } from '../common/FusionAppIcon';
 import { soundNotificationService } from '../../services/soundNotificationService';
 
 interface NavbarProps {
@@ -25,7 +24,7 @@ interface NavbarProps {
   onSelectTab?: (tabId: string) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPalette, title, onNavigateHome, onSelectTab }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, title, onSelectTab }) => {
   const { user, role, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
@@ -79,43 +78,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, onOpenCommandPa
     };
   }, [showProfileMenu, user?.id]);
 
-  const handleHomeClick = () => {
-    if (onNavigateHome) {
-      onNavigateHome();
-    } else if (onSelectTab) {
-      onSelectTab('overview');
-    }
-  };
-
   return (
-    <header className="sticky top-0 z-30 flex h-16 min-w-0 items-center justify-between gap-2 border-b border-slate-200/80 dark:border-[#1B2E3D] bg-white/95 dark:bg-[#09131F]/95 px-3 sm:px-4 md:px-8 backdrop-blur-md transition-colors">
-      {/* Left: Branding & App Icon (Brings user back to Home page when clicked) */}
-      <div className="flex items-center gap-3">
+    <header className="geleza-glass-header sticky top-0 z-30 flex h-16 min-w-0 shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white/95 px-3 backdrop-blur-md transition-colors dark:border-[#1B2E3D] dark:bg-[#09131F]/95 sm:px-4 md:px-6">
+      <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
-          onClick={handleHomeClick}
-          className="flex items-center gap-2.5 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 rounded-xl p-1 -m-1 transition-all"
-          title="Return to Home Dashboard"
+          onClick={onToggleSidebar}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 md:hidden dark:border-white/10 dark:text-slate-200"
+          aria-label="Open navigation"
         >
-          <FusionAppIcon className="w-8 h-8 rounded-xl shadow-xs transition-transform duration-200 group-hover:scale-105" />
-          <div className="hidden sm:flex flex-col text-left leading-none">
-            <span className="font-display font-extrabold text-sm tracking-tight text-slate-800 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-              GELEZA SA
-            </span>
-            <span className="text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold tracking-normal mt-0.5">
-              Geleza Smart, The Future Is Thine
-            </span>
-          </div>
+          <Menu className="h-5 w-5" />
         </button>
-      </div>
-
-      {title && (
-        <div className="hidden xl:flex flex-1 justify-center px-6 min-w-0 pointer-events-none">
-          <h1 className="text-sm font-bold text-slate-800 dark:text-white truncate max-w-xl tracking-tight">
+        {title && (
+          <h1 className="truncate text-sm font-bold tracking-tight text-slate-800 dark:text-white">
             {title}
           </h1>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Right: Notification Bell and User Profile Avatar at top corner */}
       <div className="flex items-center gap-3">

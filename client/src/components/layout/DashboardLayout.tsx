@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { stopDashboardView } from '../../utils/dashboardView';
 import { Navbar } from './Navbar';
+import { GlassSidebar } from './GlassSidebar';
 import { CommandPalette } from '../common/CommandPalette';
-import { BottomNavigationDock } from './BottomNavigationDock';
 import { TabPreviewSkeleton } from '../common/TabPreviewSkeleton';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 import { TesterReportButton } from '../tester/TesterReportButton';
@@ -14,8 +14,6 @@ interface DashboardLayoutProps {
   activeTab: string;
   onSelectTab: (tabId: string, params?: any) => void;
   title?: string;
-  customBottomDock?: React.ReactNode;
-  hideBottomDock?: boolean;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -23,23 +21,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   activeTab,
   onSelectTab,
   title,
-  customBottomDock,
-  hideBottomDock = false,
 }) => {
   const { isAuthenticated, user, account, viewedDashboard } = useAuth();
   const navigate = useNavigate();
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Tab transition state to display the shimmer skeleton whenever user switches tabs
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
   const prevTabRef = useRef(activeTab);
 
   const mainRef = useRef<HTMLElement>(null);
-
-  // Menu dock only on Home / Modules list — module pages use the back button instead
-  const isHomeOrMenu =
-    activeTab === 'overview' || activeTab === 'home' || activeTab === 'more';
-  const showBottomDock = !hideBottomDock && isHomeOrMenu;
 
   useEffect(() => {
     if (prevTabRef.current !== activeTab) {
@@ -77,7 +69,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   }, [isAuthenticated, user]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#E5EBF1] dark:bg-[#080B10] text-[#101820] dark:text-[#F5F7FA] selection:bg-[#168BFF] selection:text-white relative transition-colors duration-300">
+    <div className="relative flex h-dvh overflow-hidden bg-[#E5EBF1] text-[#101820] transition-colors duration-300 selection:bg-[#168BFF] selection:text-white dark:bg-[#080B10] dark:text-[#F5F7FA]">
       {/* SVG Fluid Waves Backdrop Layer */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-90 dark:opacity-80" aria-hidden="true">
         <svg className="w-full h-full" viewBox="0 0 1440 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -112,8 +104,16 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onNavigateTab={onSelectTab}
       />
 
+      <div className="geleza-app-shell relative z-10 flex min-h-0 min-w-0 flex-1">
+      <GlassSidebar
+        activeTab={activeTab}
+        onSelectTab={onSelectTab}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => setMobileNavOpen(false)}
+      />
+
       {/* Main Content Column with Fixed Top Header and Isolated Scroll Container */}
-      <div className="flex flex-1 flex-col h-screen overflow-hidden min-w-0 z-10 relative">
+      <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Laser Shimmer Top Progress Bar when switching tabs */}
         {isTabTransitioning && (
           <div className="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-r from-transparent via-[#168BFF] to-[#0878E8] z-50 animate-pulse pointer-events-none" />
@@ -121,6 +121,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         <Navbar
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          onToggleSidebar={() => setMobileNavOpen(true)}
           title={title}
           onNavigateHome={() => onSelectTab('overview')}
           onSelectTab={onSelectTab}
@@ -149,8 +150,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           key={activeTab}
           className={`flex-1 overflow-y-auto min-h-0 custom-scrollbar ${
             activeTab === 'messages'
-              ? `p-2 md:p-4 ${showBottomDock ? 'pb-32 xl:pb-36' : 'pb-8'}`
-              : `p-4 md:p-8 py-6 ${activeTab === 'more' ? 'pb-40' : showBottomDock ? 'pb-32 xl:pb-36' : 'pb-8'}`
+              ? 'p-2 md:p-4 pb-8'
+              : 'p-4 md:p-8 py-6 pb-8'
           } max-w-7xl 2xl:max-w-[1600px] min-[1800px]:max-w-[1760px] w-full mx-auto flex flex-col`}
         >
           {isTabTransitioning ? (
@@ -164,18 +165,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           )}
         </main>
 
-        {/* Menu dock only on Home / Modules — hidden inside modules (back button is enough) */}
         <TesterReportButton activeTab={activeTab} />
-        {showBottomDock && (
-          customBottomDock !== undefined ? (
-            customBottomDock
-          ) : (
-            <BottomNavigationDock
-              activeTab={activeTab}
-              onSelectTab={onSelectTab}
-            />
-          )
-        )}
+      </div>
       </div>
     </div>
   );
