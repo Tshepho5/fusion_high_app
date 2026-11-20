@@ -152,17 +152,22 @@ exports.getMySubjectsOverview = async (req, res) => {
             learner.subjects
         );
 
-        let classmatesCount = 32;
+        let classmatesCount = null;
         try {
-            const classmatesRes = await db.query(`SELECT COUNT(*) as cnt FROM children WHERE grade = $1`, [learner.grade || 10]);
-            classmatesCount = parseInt(classmatesRes.rows[0]?.cnt || 32, 10);
+            if (learner.school_id && learner.grade) {
+                const classmatesRes = await db.query(
+                    `SELECT COUNT(*) as cnt FROM children WHERE grade = $1 AND school_id = $2`,
+                    [learner.grade, learner.school_id]
+                );
+                classmatesCount = parseInt(classmatesRes.rows[0]?.cnt || 0, 10);
+            }
         } catch (_) {}
 
         const subjectDetails = [];
         let totalAvgSum = 0;
         let validAvgCount = 0;
 
-        let learnerClassName = `${learner.grade || 10}A`;
+        let learnerClassName = '';
         let classTeacherFormatted = 'To Be Assigned';
         let classTeacherEmail = null;
         try {
@@ -175,11 +180,11 @@ exports.getMySubjectsOverview = async (req, res) => {
                      FROM classes c
                      LEFT JOIN users u_ht ON c.homeroom_teacher_id = u_ht.id
                      LEFT JOIN users u_at ON c.assigned_teacher_id = u_at.id
-                     WHERE c.id = $1 LIMIT 1`,
-                    [learner.class_id]
+                     WHERE c.id = $1 AND ($2::int IS NULL OR c.school_id = $2) LIMIT 1`,
+                    [learner.class_id, learner.school_id || null]
                 );
             }
-            if (!classRes || classRes.rows.length === 0) {
+            if ((!classRes || classRes.rows.length === 0) && learner.school_id && learner.grade) {
                 classRes = await db.query(
                     `SELECT c.id, c.name as class_name, 
                             COALESCE(u_ht.full_name || ' ' || u_ht.surname, u_at.full_name || ' ' || u_at.surname) as class_teacher_name,
@@ -187,17 +192,20 @@ exports.getMySubjectsOverview = async (req, res) => {
                      FROM classes c
                      LEFT JOIN users u_ht ON c.homeroom_teacher_id = u_ht.id
                      LEFT JOIN users u_at ON c.assigned_teacher_id = u_at.id
-                     WHERE c.grade = $1 AND (c.stream = $2 OR c.stream = 'General')
+                     WHERE c.school_id = $1 AND c.grade = $2 AND (c.stream = $3 OR c.stream = 'General')
                      ORDER BY c.id ASC LIMIT 1`,
-                    [learner.grade || 10, learner.stream || 'General']
+                    [learner.school_id, learner.grade, learner.stream || 'General']
                 );
             }
             if (classRes && classRes.rows.length > 0) {
                 learnerClassName = classRes.rows[0].class_name || learnerClassName;
                 classTeacherFormatted = classRes.rows[0].class_teacher_name?.trim() || classTeacherFormatted;
                 classTeacherEmail = classRes.rows[0].class_teacher_email || null;
-                if (!learner.class_id && classRes.rows[0].id && learner.id) {
-                    await db.query(`UPDATE children SET class_id = $1 WHERE id = $2`, [classRes.rows[0].id, learner.id]).catch(() => {});
+                if (!learner.class_id && classRes.rows[0].id && learner.id && learner.school_id) {
+                    await db.query(
+                        `UPDATE children SET class_id = $1 WHERE id = $2 AND school_id = $3 AND class_id IS NULL`,
+                        [classRes.rows[0].id, learner.id, learner.school_id]
+                    ).catch(() => {});
                 }
             }
         } catch (_) {}
@@ -329,7 +337,7 @@ exports.getMySubjectsOverview = async (req, res) => {
             });
         }
 
-        const overallAvg = validAvgCount > 0 ? Math.round(totalAvgSum / validAvgCount) : 72;
+        const overallAvg = validAvgCount > 0 ? Math.round(totalAvgSum / validAvgCount) : null;
         const totalPending = subjectDetails.reduce((sum, s) => sum + s.assignments_due, 0);
 
         // Schedule formatting
@@ -339,12 +347,17 @@ exports.getMySubjectsOverview = async (req, res) => {
                 `SELECT cl.name as class_name FROM children c JOIN classes cl ON c.class_id = cl.id WHERE c.id = $1`,
                 [learner.id]
             );
-            const className = classRes.rows[0]?.class_name || '10A';
+            const className = classRes.rows[0]?.class_name || learnerClassName;
 
-            const ttRes = await db.query(`SELECT timetable_data FROM timetables WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 1`);
-            if (ttRes.rows.length > 0 && ttRes.rows[0].timetable_data) {
+            const ttRes = learner.school_id
+                ? await db.query(
+                    `SELECT timetable_data FROM timetables WHERE is_active = TRUE AND school_id = $1 AND ($2::int IS NULL OR grade = $2) ORDER BY created_at DESC LIMIT 1`,
+                    [learner.school_id, learner.grade || null]
+                )
+                : { rows: [] };
+            if (className && ttRes.rows.length > 0 && ttRes.rows[0].timetable_data) {
                 const ttData = ttRes.rows[0].timetable_data;
-                const classTT = ttData[className] || ttData['10A'] || {};
+                const classTT = ttData[className] || {};
                 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 
                 for (const day of days) {
@@ -1331,27 +1344,24 @@ exports.getAchievementsOverview = async (req, res) => {
  */
 exports.getSubjectAnnouncements = async (req, res) => {
     try {
-        const userId = req.user?.id;
         const { subject } = req.query;
-        let grade = req.query.grade ? parseInt(req.query.grade, 10) : null;
-
-        if (!grade && userId) {
-            const child = await getOrLinkLearnerChild(req.user);
-            grade = child?.grade || 10;
-        }
-        if (!grade) grade = 10;
+        const child = req.user?.id ? await getOrLinkLearnerChild(req.user) : null;
+        const grade = child?.grade || null;
+        const schoolId = child?.school_id || null;
+        if (!grade || !schoolId) return res.status(400).json({ error: 'This learner has no grade or school on record.' });
 
         let query = `
             SELECT a.id, a.title, a.content, a.created_at, a.subject_target, a.is_assignment,
                    COALESCE(u.full_name || ' ' || u.surname, 'School Administration') as author_name
             FROM announcements a
             LEFT JOIN users u ON a.author_id = u.id
-            WHERE (a.subject_target ILIKE $1 OR $2 ILIKE ('%' || a.subject_target || '%') OR a.subject_target IS NULL OR $2 = '')
+            WHERE a.school_id = $4
+              AND (a.subject_target ILIKE $1 OR $2 ILIKE ('%' || a.subject_target || '%') OR a.subject_target IS NULL OR $2 = '')
               AND (a.grade_target = $3 OR a.grade_target IS NULL)
             ORDER BY a.created_at DESC
             LIMIT 20
         `;
-        const { rows } = await db.query(query, [`%${subject || ''}%`, subject || '', grade]);
+        const { rows } = await db.query(query, [`%${subject || ''}%`, subject || '', grade, schoolId]);
         res.json(rows);
     } catch (err) {
         console.error("Error fetching subject announcements:", err);

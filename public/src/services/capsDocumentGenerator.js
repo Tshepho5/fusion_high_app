@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Generates an official South African CAPS Curriculum Examination Paper or Study Guide PDF
+ * Generates a Geleza SA study resource PDF. It is not a government publication.
  * @param {Object} metadata - { title, subject, grade, term, year, paperNumber, resourceType }
  * @param {string} outputPath - Optional absolute path to save the generated PDF
  * @returns {PDFDocument} - The PDFKit document stream
@@ -13,10 +13,10 @@ function generateCapsDocumentPdf(metadata, outputPath) {
     size: 'A4',
     margins: { top: 40, bottom: 40, left: 45, right: 45 },
     info: {
-      Title: metadata.title || 'CAPS Official Resource',
-      Author: 'Fusion High School & Department of Basic Education',
-      Subject: metadata.subject || 'National Curriculum Assessment',
-      Keywords: 'CAPS, DBE, NSC, Examination, South Africa',
+      Title: metadata.title || 'Geleza SA study resource',
+      Author: 'Geleza SA',
+      Subject: metadata.subject || 'Study resource',
+      Keywords: 'Geleza SA, study resource',
     }
   });
 
@@ -30,11 +30,11 @@ function generateCapsDocumentPdf(metadata, outputPath) {
   const darkGray = '#334155';
   const lightGray = '#f1f5f9';
 
-  const subject = metadata.subject || 'Curriculum Resource';
-  const grade = metadata.grade || 10;
-  const year = metadata.year || 2024;
-  const term = metadata.term || 'Term 4 Examination';
-  const title = metadata.title || `${subject} Grade ${grade} Examination Resource`;
+  const subject = metadata.subject || 'Study resource';
+  const grade = metadata.grade || null;
+  const year = metadata.year || null;
+  const term = metadata.term || null;
+  const title = metadata.title || (grade ? `${subject} Grade ${grade} study resource` : `${subject} study resource`);
   const isMemo = /memo/i.test(title) || metadata.resourceType === 'exam_memo';
   const isStudyGuide = /study|guide|notes/i.test(title) || metadata.resourceType === 'study_guide';
 
@@ -44,17 +44,17 @@ function generateCapsDocumentPdf(metadata, outputPath) {
   doc.fillColor('#ffffff')
      .fontSize(14)
      .font('Helvetica-Bold')
-     .text('DEPARTMENT OF BASIC EDUCATION • REPUBLIC OF SOUTH AFRICA', 55, 52, { align: 'center', width: 485 });
+     .text('GELEZA SA', 55, 52, { align: 'center', width: 485 });
 
   doc.fillColor('#38bdf8')
      .fontSize(10)
      .font('Helvetica')
-     .text('NATIONAL SENIOR CERTIFICATE & PROVINCIAL CURRICULUM ARCHIVE', 55, 72, { align: 'center', width: 485 });
+     .text('EDUCATIONAL STUDY RESOURCE', 55, 72, { align: 'center', width: 485 });
 
   doc.fillColor('#f8fafc')
      .fontSize(9)
      .font('Helvetica-Bold')
-     .text(`FUSION HIGH SCHOOL DIGITAL PORTAL • OFFICIAL CAPS MATERIAL`, 55, 90, { align: 'center', width: 485 });
+     .text('Not an official government publication', 55, 90, { align: 'center', width: 485 });
 
   doc.moveDown(3);
 
@@ -71,12 +71,12 @@ function generateCapsDocumentPdf(metadata, outputPath) {
   doc.fillColor(darkGray)
      .fontSize(9)
      .font('Helvetica')
-     .text(`Subject: ${subject}  |  Grade: ${grade}  |  Academic Year: ${year}  |  Assessment: ${term}`, 55, startY + 45, { width: 485 });
+     .text(`Subject: ${subject}  |  Grade: ${grade || 'Not recorded'}  |  Academic Year: ${year || 'Not recorded'}  |  Term: ${term || 'Not recorded'}`, 55, startY + 45, { width: 485 });
 
   doc.fillColor('#64748b')
      .fontSize(8)
      .font('Helvetica-Oblique')
-     .text(`Document Type: ${isMemo ? 'Official Marking Guideline / Memorandum' : (isStudyGuide ? 'CAPS Core Summary & Study Guide' : 'Standard Examination Question Paper')} • Time: 2 - 3 Hours • Total Marks: 100 - 150`, 55, startY + 62);
+     .text(`Document type: ${isMemo ? 'Study memorandum draft' : (isStudyGuide ? 'Study notes' : 'Practice questions')}. This is not an official memorandum.`, 55, startY + 62);
 
   // 3. Instructions & Information
   doc.y = startY + 95;
@@ -88,7 +88,7 @@ function generateCapsDocumentPdf(metadata, outputPath) {
   doc.moveDown(0.5);
   doc.fillColor(darkGray).fontSize(9).font('Helvetica');
   const instructions = [
-    '1. This document consists of all standard curriculum questions and study guidelines required for DBE CAPS moderation.',
+    '1. This is a Geleza SA study resource. It is not a departmental examination or moderation paper.',
     '2. Read through all questions and reference notes carefully before attempting solutions.',
     '3. Answer ALL questions according to the specific rubrics and curriculum guidelines provided.',
     '4. Number the answers correctly according to the numbering system used in this question paper.',
@@ -150,7 +150,7 @@ function generateCapsDocumentPdf(metadata, outputPath) {
     doc.font('Helvetica-Bold').text(`QUESTION 1: GENERAL CURRICULUM ASSESSMENT FOR ${subject.toUpperCase()} [30 MARKS]`);
     doc.font('Helvetica').moveDown(0.3);
     doc.text('1.1 Define the primary terminology and core conceptual foundations applicable to this CAPS term.', { indent: 10 });
-    doc.text('1.2 Analyze the problem scenario provided in accordance with standard departmental assessment guidelines.', { indent: 10 });
+    doc.text('1.2 Analyze the problem scenario using the study notes in this resource.', { indent: 10 });
     doc.text('1.3 Provide well-structured arguments supported by relevant examples, calculations, or empirical case studies.', { indent: 10 });
   }
 
@@ -161,9 +161,9 @@ function generateCapsDocumentPdf(metadata, outputPath) {
   doc.rect(45, footerY, 505, 45).stroke('#cbd5e1');
 
   doc.fillColor('#0f172a').fontSize(8).font('Helvetica-Bold')
-     .text('AUTHENTICATED CAPS EXAMINATION MATERIAL', 55, footerY + 8);
+     .text('EDUCATIONAL STUDY RESOURCE', 55, footerY + 8);
   doc.fillColor('#64748b').fontSize(7).font('Helvetica')
-     .text('Produced by Fusion High School Management System • Verified by Curriculum Head: Dr. T. Makola\nThis document is official study material aligned with the DBE National Curriculum Statement (South Africa).', 55, footerY + 20);
+     .text('Educational study resource provided through Geleza SA. This page is not an official government publication or a departmental memorandum.', 55, footerY + 20);
 
   return doc;
 }

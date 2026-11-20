@@ -1085,10 +1085,10 @@ window.viewParentChildReportCard = async function(childId) {
             <div style="border-top:1px solid #94a3b8; padding-top:1.25rem; margin-top:1.5rem; display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; text-align:center; font-size:0.78rem;">
                 <div>
                     <div style="height:45px; display:flex; align-items:flex-end; justify-content:center; color:#334155; font-family:'Brush Script MT', cursive, sans-serif; font-size:1.3rem;">
-                        K. Mokoena
+                        ${s.class_teacher || 'Not recorded'}
                     </div>
-                    <div style="border-top:1px dashed #64748b; padding-top:4px; font-weight:700;">Class Teacher Signature</div>
-                    <div style="color:#64748b; font-size:0.7rem;">Date: 2026/09/12</div>
+                    <div style="border-top:1px dashed #64748b; padding-top:4px; font-weight:700;">Class Teacher</div>
+                    <div style="color:#64748b; font-size:0.7rem;">Date: ${s.issue_date || 'Not recorded'}</div>
                 </div>
 
                 <div>
@@ -1098,15 +1098,15 @@ window.viewParentChildReportCard = async function(childId) {
                         </div>
                     </div>
                     <div style="border-top:1px dashed #64748b; padding-top:4px; font-weight:700;">School Official Stamp</div>
-                    <div style="color:#64748b; font-size:0.7rem;">EMIS: ${s.emis_number || '911220001'}</div>
+                    <div style="color:#64748b; font-size:0.7rem;">EMIS: ${s.emis_number || 'Not recorded'}</div>
                 </div>
 
                 <div>
                     <div style="height:45px; display:flex; align-items:flex-end; justify-content:center; color:#1e3a8a; font-family:'Brush Script MT', cursive, sans-serif; font-size:1.4rem;">
-                        Dr. T. Makola
+                        ${s.principal_name || 'Not recorded'}
                     </div>
-                    <div style="border-top:1px dashed #64748b; padding-top:4px; font-weight:700;">Principal: ${s.principal_name || 'Dr. T. Makola'}</div>
-                    <div style="color:#64748b; font-size:0.7rem;">Certified by Examination Board</div>
+                    <div style="border-top:1px dashed #64748b; padding-top:4px; font-weight:700;">Principal: ${s.principal_name || 'Not recorded'}</div>
+                    <div style="color:#64748b; font-size:0.7rem;">Stored school record</div>
                 </div>
             </div>
         `;

@@ -18,30 +18,27 @@ exports.getEnrolledSubjectsWithSyllabus = async (req, res) => {
             [learnerUserId]
         );
 
-        let grade = 10;
-        let stream = 'Science';
-        let customSubjects = null;
-        let schoolId = null;
-
-        if (childRes.rows.length > 0) {
-            const child = childRes.rows[0];
-            grade = child.grade || 10;
-            stream = child.stream || 'Science';
-            customSubjects = child.subjects;
-            schoolId = child.school_id || null;
-        } else {
-            const userRes = await db.query('SELECT school_id FROM users WHERE id = $1', [learnerUserId]);
-            if (userRes.rows.length > 0 && userRes.rows[0].school_id) {
-                schoolId = userRes.rows[0].school_id;
-            }
+        if (childRes.rows.length === 0) {
+            return res.status(404).json({ error: 'No learner record is linked to this account.' });
         }
+        const child = childRes.rows[0];
+        const grade = child.grade;
+        const stream = child.stream || null;
+        const customSubjects = child.subjects;
+        const schoolId = child.school_id || null;
+        if (!grade) return res.status(400).json({ error: 'This learner has no grade on record.' });
+        if (!stream) return res.status(400).json({ error: 'This learner has no stream on record.' });
 
-        // Resolve enrolled subject list
-        let subjectsList = [];
-        if (customSubjects && Array.isArray(customSubjects) && customSubjects.length > 0) {
-            subjectsList = customSubjects;
-        } else {
-            subjectsList = curriculumService.getSubjectsForGradeAndStream(grade, stream);
+        const subjectsList = Array.isArray(customSubjects) ? customSubjects.filter(Boolean) : [];
+        if (subjectsList.length === 0) {
+            return res.json({
+                grade,
+                stream,
+                schoolName: null,
+                totalSubjects: 0,
+                subjects: [],
+                message: 'No subjects are recorded for this learner.'
+            });
         }
 
         // Attach syllabus topics for each subject
@@ -56,7 +53,7 @@ exports.getEnrolledSubjectsWithSyllabus = async (req, res) => {
         });
 
         // Fetch school name
-        let schoolName = 'Geleza SA';
+        let schoolName = null;
         if (schoolId) {
             try {
                 const sRes = await db.query('SELECT name FROM schools WHERE id = $1', [schoolId]);

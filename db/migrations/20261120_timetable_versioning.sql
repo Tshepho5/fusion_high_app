@@ -1,0 +1,72 @@
+-- PROPOSAL ONLY. Do not execute.
+-- The current timetables table stores one JSON grid per row and has no academic year,
+-- effective date, period configuration, classroom catalogue, teacher availability, or approval history.
+-- Saving another JSON row can keep an old draft, but it cannot represent period times,
+-- room bookings, or a reviewed change as separate records.
+-- This proposal adds those records without updating or deleting the five existing timetable rows.
+
+-- ALTER TABLE timetables ADD COLUMN academic_year INTEGER;
+-- ALTER TABLE timetables ADD COLUMN effective_from DATE;
+-- ALTER TABLE timetables ADD COLUMN change_reason TEXT;
+-- No default is set. Existing rows stay null until a person reviews them.
+
+-- CREATE TABLE school_timetable_days (
+--   id SERIAL PRIMARY KEY,
+--   school_id INTEGER NOT NULL REFERENCES schools(id),
+--   day_name VARCHAR(20) NOT NULL,
+--   is_open BOOLEAN NOT NULL DEFAULT TRUE,
+--   UNIQUE (school_id, day_name)
+-- );
+--
+-- CREATE TABLE school_periods (
+--   id SERIAL PRIMARY KEY,
+--   school_id INTEGER NOT NULL REFERENCES schools(id),
+--   period_name VARCHAR(40) NOT NULL,
+--   starts_at TIME NOT NULL,
+--   ends_at TIME NOT NULL,
+--   period_kind VARCHAR(20) NOT NULL CHECK (period_kind IN ('lesson', 'break', 'lunch', 'special')),
+--   sort_order INTEGER NOT NULL
+-- );
+--
+-- CREATE TABLE school_rooms (
+--   id SERIAL PRIMARY KEY,
+--   school_id INTEGER NOT NULL REFERENCES schools(id),
+--   name VARCHAR(80) NOT NULL,
+--   room_kind VARCHAR(40) NOT NULL DEFAULT 'classroom',
+--   UNIQUE (school_id, name)
+-- );
+--
+-- CREATE TABLE teacher_availability (
+--   id SERIAL PRIMARY KEY,
+--   school_id INTEGER NOT NULL REFERENCES schools(id),
+--   teacher_id INTEGER NOT NULL REFERENCES users(id),
+--   day_name VARCHAR(20) NOT NULL,
+--   period_id INTEGER NOT NULL REFERENCES school_periods(id),
+--   is_available BOOLEAN NOT NULL
+-- );
+--
+-- CREATE TABLE timetable_entries (
+--   id SERIAL PRIMARY KEY,
+--   timetable_id INTEGER NOT NULL REFERENCES timetables(id),
+--   school_id INTEGER NOT NULL REFERENCES schools(id),
+--   class_id INTEGER NOT NULL REFERENCES classes(id),
+--   subject_name VARCHAR(80) NOT NULL,
+--   teacher_id INTEGER REFERENCES users(id),
+--   room_id INTEGER REFERENCES school_rooms(id),
+--   day_name VARCHAR(20) NOT NULL,
+--   period_id INTEGER NOT NULL REFERENCES school_periods(id)
+-- );
+--
+-- CREATE TABLE timetable_approvals (
+--   id SERIAL PRIMARY KEY,
+--   timetable_id INTEGER NOT NULL REFERENCES timetables(id),
+--   school_id INTEGER NOT NULL REFERENCES schools(id),
+--   action VARCHAR(20) NOT NULL CHECK (action IN ('draft', 'approved', 'published', 'archived')),
+--   actor_id INTEGER NOT NULL REFERENCES users(id),
+--   change_reason TEXT,
+--   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- );
+
+-- Rollback is to leave these statements unapplied.
+-- If they are later applied to empty new tables only:
+-- DROP TABLE IF EXISTS timetable_approvals, timetable_entries, teacher_availability, school_rooms, school_periods, school_timetable_days;

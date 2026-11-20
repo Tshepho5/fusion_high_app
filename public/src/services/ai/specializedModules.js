@@ -98,7 +98,20 @@ Provide a constructive explanation:
      * MODULE 3: GELEZA TEACHER COPILOT
      * Generates a formal CAPS-aligned lesson plan
      */
-    async generateLessonPlan({ subject, grade, topic, term = 1, durationMinutes = 60 }) {
+    async generateLessonPlan({ subject, grade, topic, term, durationMinutes = 60 }) {
+        const { parseTerm, parseGrade } = require('../../../../lib/academicContext');
+        const gradeCheck = parseGrade(grade);
+        const termCheck = parseTerm(term);
+        if (!subject || !topic || !gradeCheck.ok || !termCheck.ok) {
+            return {
+                status: 'needs_context',
+                official: false,
+                lessonPlanMarkdown: null,
+                message: !gradeCheck.ok ? gradeCheck.message : (!termCheck.ok ? termCheck.message : 'Choose a subject and topic.')
+            };
+        }
+        grade = gradeCheck.grade;
+        term = termCheck.term;
         const prompt = `You are helping one teacher draft a lesson. Do not claim it is CAPS-approved or officially aligned.
 Subject: ${subject}
 Grade: ${grade}

@@ -5,6 +5,7 @@ const { auth } = require('../../../authMiddleware');
 const { automationSchoolId, positiveId } = require('../../../lib/aiAccess');
 const { loadAuthorisedClass } = require('../../../lib/aiLearnerAccess');
 const { conversationTurns } = require('../../../lib/aiConversation');
+const { parseGrade, parseTerm } = require('../../../lib/academicContext');
 const gelezaOrchestrator = require('../services/ai/gelezaOrchestrator');
 const aiProvider = require('../services/ai/aiProvider');
 const specializedModules = require('../services/ai/specializedModules');
@@ -292,9 +293,13 @@ router.post('/tutor/quiz', async (req, res) => {
 router.post('/tutor/explain-mistake', async (req, res) => {
     try {
         const { subject, grade, question, studentAnswer, correctAnswer } = req.body;
+        const gradeCheck = parseGrade(grade);
+        if (!subject || !gradeCheck.ok) {
+            return res.status(400).json({ error: gradeCheck.ok ? 'Choose a subject.' : gradeCheck.message });
+        }
         const result = await specializedModules.explainStudentMistake({
-            subject: subject || 'Mathematics',
-            grade: grade || 10,
+            subject,
+            grade: gradeCheck.grade,
             question,
             studentAnswer,
             correctAnswer
@@ -316,11 +321,18 @@ router.post('/teacher/lesson-plan', async (req, res) => {
             return res.status(403).json({ error: 'Forbidden: Requires educator or administrator role.' });
         }
         const { subject, grade, topic, term, durationMinutes } = req.body;
+        const gradeCheck = parseGrade(grade);
+        const termCheck = parseTerm(term);
+        if (!subject || !topic || !gradeCheck.ok || !termCheck.ok) {
+            return res.status(400).json({
+                error: !gradeCheck.ok ? gradeCheck.message : (!termCheck.ok ? termCheck.message : 'Choose a subject and topic.')
+            });
+        }
         const result = await specializedModules.generateLessonPlan({
-            subject: subject || 'Mathematics',
-            grade: grade || 10,
-            topic: topic || 'Core Topic',
-            term: term || 1,
+            subject,
+            grade: gradeCheck.grade,
+            topic,
+            term: termCheck.term,
             durationMinutes: durationMinutes || 60
         });
         res.json({ success: true, ...result });
@@ -340,10 +352,14 @@ router.post('/teacher/assessment', async (req, res) => {
             return res.status(403).json({ error: 'Forbidden: Requires educator or administrator role.' });
         }
         const { subject, grade, topic, totalMarks } = req.body;
+        const gradeCheck = parseGrade(grade);
+        if (!subject || !topic || !gradeCheck.ok) {
+            return res.status(400).json({ error: gradeCheck.ok ? 'Choose a subject and topic.' : gradeCheck.message });
+        }
         const result = await specializedModules.generateAssessmentPaper({
-            subject: subject || 'Mathematics',
-            grade: grade || 10,
-            topic: topic || 'Core Topic',
+            subject,
+            grade: gradeCheck.grade,
+            topic,
             totalMarks: totalMarks || 30
         });
         res.json({ success: true, ...result });

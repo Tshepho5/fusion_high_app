@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../services/api';
+import { adminService, classStaffService } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import {
@@ -28,9 +28,11 @@ const PERIODS = [
 ];
 
 export const AdminTimetable: React.FC = () => {
-  const [grade, setGrade] = useState<number>(10);
-  const [stream, setStream] = useState<string>('General');
-  const [targetSubject, setTargetSubject] = useState<string>('all');
+  const [grade, setGrade] = useState<number | ''>('');
+  const [stream, setStream] = useState<string>('');
+  const [academicYear, setAcademicYear] = useState<string>('');
+  const [schoolClasses, setSchoolClasses] = useState<any[]>([]);
+  const [targetSubject, setTargetSubject] = useState<string>('');
   const [generating, setGenerating] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [timetableData, setTimetableData] = useState<any | null>(null);
@@ -58,9 +60,9 @@ export const AdminTimetable: React.FC = () => {
             setTimetableData(activeOrFirst.timetable_data);
             setActiveTimetableName(activeOrFirst.name || `Grade ${activeOrFirst.grade} Timetable`);
             setActiveTimetableId(activeOrFirst.id);
-            setGrade(activeOrFirst.grade || 10);
-            setStream(activeOrFirst.stream || 'General');
-            const firstClass = Object.keys(activeOrFirst.timetable_data || {})[0] || `Grade ${activeOrFirst.grade || 10}A`;
+            setGrade(activeOrFirst.grade || '');
+            setStream(activeOrFirst.stream && !/multi-stream/i.test(String(activeOrFirst.stream)) ? activeOrFirst.stream : '');
+            const firstClass = Object.keys(activeOrFirst.timetable_data || {})[0] || '';
             setSelectedClass(firstClass);
           }
         }
@@ -98,6 +100,9 @@ export const AdminTimetable: React.FC = () => {
   useEffect(() => {
     fetchTimetablesList();
     fetchFetTeachers();
+    classStaffService.getClasses()
+      .then((rows) => setSchoolClasses(Array.isArray(rows) ? rows : []))
+      .catch(() => setSchoolClasses([]));
   }, []);
 
   const handleSelectStoredTimetable = (tt: any) => {
@@ -105,9 +110,9 @@ export const AdminTimetable: React.FC = () => {
     setTimetableData(tt.timetable_data);
     setActiveTimetableName(tt.name || `Grade ${tt.grade} Timetable`);
     setActiveTimetableId(tt.id);
-    setGrade(tt.grade || 10);
-    setStream(tt.stream || 'General');
-    const firstClass = Object.keys(tt.timetable_data || {})[0] || `Grade ${tt.grade || 10}A`;
+    setGrade(tt.grade || '');
+    setStream(tt.stream && !/multi-stream/i.test(String(tt.stream)) ? tt.stream : '');
+    const firstClass = Object.keys(tt.timetable_data || {})[0] || '';
     setSelectedClass(firstClass);
     setStatusMessage(`Now viewing "${tt.name}".`);
     window.scrollTo({ top: 300, behavior: 'smooth' });
@@ -156,13 +161,30 @@ export const AdminTimetable: React.FC = () => {
   const [generatingSchoolWide, setGeneratingSchoolWide] = useState(false);
 
   const handleGenerateSchoolWide = async () => {
+    if (!academicYear) {
+      setError('Choose an academic year before preparing a proposal.');
+      return;
+    }
     setGeneratingSchoolWide(true);
     setError(null);
     setStatusMessage(null);
     try {
-      const res = await adminService.generateSchoolWideTimetable();
-      setStatusMessage(res.message || 'Successfully generated conflict-free 1-hour timetables for all Grades 8 to 12! Drafts distributed to educators.');
-      fetchTimetablesList();
+      const res = await adminService.generateSchoolWideTimetable({ academic_year: Number(academicYear) });
+      if (!res || res.saved !== false || !Array.isArray(res.proposals) || res.proposals.length === 0) {
+        setError(res?.error || 'No timetable proposal was produced.');
+        return;
+      }
+      const first = res.proposals[0];
+      setTimetableData(first.timetable_data);
+      setGrade(first.grade);
+      setStream(first.streams && first.streams[0] ? first.streams[0] : '');
+      setActiveTimetableName(`Unsaved proposal for grade ${first.grade}`);
+      setActiveTimetableId(null);
+      setSelectedClass(Object.keys(first.timetable_data || {})[0] || '');
+      const skipped = Array.isArray(res.skipped) && res.skipped.length
+        ? ` Some grades were left out: ${res.skipped.map((item: any) => item.grade).join(', ')}.`
+        : '';
+      setStatusMessage(`${res.message || 'Proposal prepared. Nothing was saved.'}${skipped}`);
     } catch (err: any) {
       console.error('Failed to generate school-wide timetables:', err);
       setError(err.response?.data?.error || err.message || 'Failed to generate school-wide timetables.');
@@ -176,17 +198,27 @@ export const AdminTimetable: React.FC = () => {
     setError(null);
     setStatusMessage(null);
     try {
+      if (!academicYear || !grade || !stream) {
+        setError('Choose the academic year, grade, and stream recorded for this school.');
+        return;
+      }
       const res = await adminService.generateTimetable({
         grade,
         stream,
-        target_subject: targetSubject === 'all' ? undefined : targetSubject
+        academic_year: Number(academicYear),
+        target_subject: targetSubject || undefined
       });
+      if (!res || res.saved !== false || !res.timetable_data || !res.filled_count) {
+        setError(res?.error || 'No timetable proposal was produced.');
+        return;
+      }
       setTimetableData(res.timetable_data);
-      setActiveTimetableName(`Grade ${grade} (${stream}) Generated 1-Hour Schedule`);
+      setActiveTimetableName(`Unsaved proposal for grade ${grade} (${stream})`);
       setActiveTimetableId(null);
-      const firstClass = Object.keys(res.timetable_data || {})[0] || `Grade ${grade}A`;
+      const firstClass = Object.keys(res.timetable_data || {})[0] || '';
       setSelectedClass(firstClass);
-      setStatusMessage(`Clash-free 1-hour timetable generated (${res.filled_count || 0} slots, balanced ~3 slots/teacher per day).`);
+      const gapNote = Array.isArray(res.gaps) && res.gaps.length ? ` ${res.gaps.length} periods could not be filled.` : '';
+      setStatusMessage(`${res.message || 'Proposal prepared. Nothing was saved.'}${gapNote}`);
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Failed to generate timetable.');
     } finally {
@@ -202,7 +234,7 @@ export const AdminTimetable: React.FC = () => {
     try {
       const res = await adminService.publishToTeachers({
         timetable_data: timetableData,
-        generation_details: { grade, stream },
+        generation_details: { grade, stream, academic_year: Number(academicYear) },
         name: `Grade ${grade} (${stream}) Master Timetable`
       });
       setStatusMessage(res.message || 'Timetable published to assigned teachers for review!');
@@ -250,6 +282,9 @@ export const AdminTimetable: React.FC = () => {
 
   const availableClasses = timetableData ? Object.keys(timetableData) : [];
   const activeClassData = timetableData && selectedClass ? timetableData[selectedClass] : null;
+  const configuredGrades = [...new Set(schoolClasses.map((row) => Number(row.grade)).filter((value) => Number.isInteger(value)))].sort((a, b) => a - b);
+  const configuredStreams = [...new Set(schoolClasses.filter((row) => Number(row.grade) === Number(grade) && row.stream).map((row) => String(row.stream)))];
+  const classesMissingStream = schoolClasses.filter((row) => !row.stream).length;
 
   return (
     <div className="space-y-6">
@@ -264,18 +299,18 @@ export const AdminTimetable: React.FC = () => {
 
         <button
           onClick={handleGenerateSchoolWide}
-          disabled={generatingSchoolWide}
+          disabled={generatingSchoolWide || !academicYear}
           className="py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold text-xs shadow-glow-emerald transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
         >
           {generatingSchoolWide ? (
             <>
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Generating All Grades (8–12)...</span>
+              <span>Preparing a proposal...</span>
             </>
           ) : (
             <>
               <Sparkles className="w-4 h-4 text-emerald-200" />
-              <span>⚡ 1-Click School-Wide Auto-Scheduler (Grades 8–12)</span>
+              <span>Prepare an unsaved proposal for this school's classes</span>
             </>
           )}
         </button>
@@ -302,7 +337,27 @@ export const AdminTimetable: React.FC = () => {
           Single Grade Custom Schedule Generator
         </h3>
 
+        {(schoolClasses.length === 0 || classesMissingStream > 0 || !academicYear) && (
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200 space-y-1">
+            {schoolClasses.length === 0 && <p>No classes are recorded for this school.</p>}
+            {classesMissingStream > 0 && <p>{classesMissingStream} class record{classesMissingStream === 1 ? '' : 's'} have no stream.</p>}
+            {!academicYear && <p>Choose an academic year. Subject offerings are read for that year.</p>}
+            <p>A proposal is not saved, and it cannot be built until classes, streams, subject offerings, and teacher assignments exist.</p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Academic year
+            </label>
+            <input
+              type="number"
+              value={academicYear}
+              onChange={(e) => setAcademicYear(e.target.value)}
+              className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
               Select Grade
@@ -310,22 +365,16 @@ export const AdminTimetable: React.FC = () => {
             <select
               value={grade}
               onChange={(e) => {
-                const newGrade = parseInt(e.target.value, 10);
-                setGrade(newGrade);
-                if (newGrade <= 9) {
-                  setStream('General');
-                } else if (stream === 'General') {
-                  setStream('Science');
-                }
-                setTargetSubject('all');
+                setGrade(e.target.value ? parseInt(e.target.value, 10) : '');
+                setStream('');
+                setTargetSubject('');
               }}
               className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              <option value={8}>Grade 8</option>
-              <option value={9}>Grade 9</option>
-              <option value={10}>Grade 10</option>
-              <option value={11}>Grade 11</option>
-              <option value={12}>Grade 12</option>
+              <option value="">Choose a recorded grade</option>
+              {configuredGrades.map((value) => (
+                <option key={value} value={value}>Grade {value}</option>
+              ))}
             </select>
           </div>
 
@@ -336,89 +385,15 @@ export const AdminTimetable: React.FC = () => {
             <select
               value={stream}
               onChange={(e) => {
-                const newStream = e.target.value;
-                setStream(newStream);
-                setTargetSubject('all');
+                setStream(e.target.value);
+                setTargetSubject('');
               }}
               className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
-              {grade <= 9 ? (
-                <option value="General">General (GET Phase 9 Subjects)</option>
-              ) : (
-                <>
-                  <option value="Science">Science (Maths & Sciences)</option>
-                  <option value="Commerce">Commerce (Accounting & Business)</option>
-                  <option value="Tourism">Humanities & Tourism</option>
-                  <option value="General">General Stream</option>
-                </>
-              )}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              Focus Subject Priority
-            </label>
-            <select
-              value={targetSubject}
-              onChange={(e) => setTargetSubject(e.target.value)}
-              className="w-full rounded-xl bg-surface-darker border border-white/10 px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="all">All Subjects (Balanced Distribution)</option>
-              {grade <= 9 ? (
-                <>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Natural Sciences">Natural Sciences</option>
-                  <option value="Social Sciences">Social Sciences</option>
-                  <option value="Economic and Management Sciences (EMS)">EMS</option>
-                  <option value="Technology">Technology</option>
-                  <option value="Creative Arts">Creative Arts</option>
-                  <option value="English FAL">English FAL</option>
-                  <option value="Home Language">Home Language</option>
-                  <option value="Life Orientation">Life Orientation</option>
-                </>
-              ) : stream === 'Science' ? (
-                <>
-                  <option value="Mathematics">Mathematics (Pure)</option>
-                  <option value="Physical Sciences">Physical Sciences</option>
-                  <option value="Life Sciences">Life Sciences</option>
-                  <option value="Geography">Geography</option>
-                  <option value="English FAL">English FAL</option>
-                  <option value="Home Language">Home Language</option>
-                  <option value="Life Orientation">Life Orientation</option>
-                </>
-              ) : stream === 'Commerce' ? (
-                <>
-                  <option value="Accounting">Accounting</option>
-                  <option value="Business Studies">Business Studies</option>
-                  <option value="Economics">Economics</option>
-                  <option value="Mathematical Literacy">Mathematical Literacy</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="English FAL">English FAL</option>
-                  <option value="Home Language">Home Language</option>
-                  <option value="Life Orientation">Life Orientation</option>
-                </>
-              ) : stream === 'Tourism' ? (
-                <>
-                  <option value="Tourism">Tourism</option>
-                  <option value="Geography">Geography</option>
-                  <option value="History">History</option>
-                  <option value="Mathematical Literacy">Mathematical Literacy</option>
-                  <option value="English FAL">English FAL</option>
-                  <option value="Home Language">Home Language</option>
-                  <option value="Life Orientation">Life Orientation</option>
-                </>
-              ) : (
-                <>
-                  <option value="Mathematics">Mathematics / Mathematical Literacy</option>
-                  <option value="Geography">Geography</option>
-                  <option value="History">History</option>
-                  <option value="Tourism">Tourism</option>
-                  <option value="English FAL">English FAL</option>
-                  <option value="Home Language">Home Language</option>
-                  <option value="Life Orientation">Life Orientation</option>
-                </>
-              )}
+              <option value="">Choose a recorded stream</option>
+              {configuredStreams.map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
             </select>
           </div>
 
@@ -459,7 +434,7 @@ export const AdminTimetable: React.FC = () => {
                   className="px-4 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 font-bold text-xs shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>{deletingId === activeTimetableId ? 'Deleting...' : 'Delete Timetable'}</span>
+                  <span>{deletingId === activeTimetableId ? 'Archiving...' : 'Archive timetable'}</span>
                 </button>
               ) : (
                 <button
@@ -477,7 +452,7 @@ export const AdminTimetable: React.FC = () => {
 
               <button
                 onClick={handlePublishToTeachers}
-                disabled={publishing}
+                disabled={publishing || !academicYear || !grade || !stream}
                 className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 {publishing ? (
@@ -485,7 +460,7 @@ export const AdminTimetable: React.FC = () => {
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Publish Master Timetable</span>
+                    <span>Save draft for review</span>
                   </>
                 )}
               </button>
@@ -557,7 +532,7 @@ export const AdminTimetable: React.FC = () => {
                           <span>{entry.teacher || 'Assigned Educator'}</span>
                         </p>
                         <p className="text-[11px] text-slate-400 font-mono">
-                          {entry.room || `Room ${grade}A`} • {entry.duration || '1 Hour (60 min)'}
+                          {entry.room || 'Room not recorded'} • {entry.duration || '1 Hour (60 min)'}
                         </p>
                       </div>
                     ) : (
@@ -568,7 +543,7 @@ export const AdminTimetable: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => setEditingSlot({ day: selectedDay, period, data: entry || { subject: 'Mathematics', teacher: '', room: `Room ${grade}A` } })}
+                    onClick={() => setEditingSlot({ day: selectedDay, period, data: entry || { subject: '', teacher: '', room: '' } })}
                     className="w-full py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-bold flex items-center justify-center gap-2 transition-colors"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
@@ -720,67 +695,12 @@ export const AdminTimetable: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Add CAPS Subject Chips */}
-            <div className="space-y-2">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase">Quick Add CAPS Subjects</label>
-              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
-                {[
-                  'Mathematics',
-                  'Physical Sciences',
-                  'Life Sciences',
-                  'English FAL',
-                  'Home Language',
-                  'Accounting',
-                  'Business Studies',
-                  'Economics',
-                  'Geography',
-                  'History',
-                  'Tourism',
-                  'Mathematical Literacy',
-                  'Life Orientation'
-                ].map((capSub) => {
-                  const isSelected = editingTeacherSubjects.subjects.some(
-                    s => s.toLowerCase().trim() === capSub.toLowerCase().trim()
-                  );
-                  return (
-                    <button
-                      key={capSub}
-                      type="button"
-                      onClick={() => {
-                        if (isSelected) {
-                          setEditingTeacherSubjects({
-                            ...editingTeacherSubjects,
-                            subjects: editingTeacherSubjects.subjects.filter(
-                              s => s.toLowerCase().trim() !== capSub.toLowerCase().trim()
-                            )
-                          });
-                        } else {
-                          setEditingTeacherSubjects({
-                            ...editingTeacherSubjects,
-                            subjects: [...editingTeacherSubjects.subjects, capSub]
-                          });
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white border-indigo-400'
-                          : 'bg-surface-darker text-slate-400 border-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      {isSelected ? `✓ ${capSub}` : `+ ${capSub}`}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Custom Subject Input */}
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase">Or Add Custom Subject</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase">Add a subject this school offers</label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="e.g. Engineering Graphics & Design"
+                  placeholder="Subject name"
                   value={newSubjectInput}
                   onChange={(e) => setNewSubjectInput(e.target.value)}
                   onKeyDown={(e) => {

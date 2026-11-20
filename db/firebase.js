@@ -37,6 +37,20 @@ if (isTestProcess()) {
   return;
 }
 
+if (process.env.GELEZA_STAGING === '1') {
+  console.log('[FIREBASE] Staging process does not initialise the production Firebase project.');
+  module.exports = {
+    app: null,
+    db: null,
+    firestore: null,
+    auth: null,
+    storage: null,
+    bucket: null,
+    mocked: true
+  };
+  return;
+}
+
 let serviceAccount = null;
 
 // Check for raw JSON string in environment variable (ideal for cloud hosts like Render)

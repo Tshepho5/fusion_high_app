@@ -13,7 +13,19 @@ const { ensureTesterSchema } = require('../lib/testerProgramme');
 
 let isEnsured = false;
 
+async function assertIsolatedStagingDatabase() {
+  if (process.env.GELEZA_STAGING !== '1') return;
+  const result = await db.query('SELECT current_database() AS name');
+  const name = result.rows[0] && result.rows[0].name;
+  if (name !== 'geleza_phase_g2') {
+    console.error('STAGING_STOPPED The process is not connected to geleza_phase_g2.');
+    process.exit(1);
+  }
+  console.log('Staging database identity confirmed: geleza_phase_g2');
+}
+
 async function ensureDatabaseSchema() {
+  await assertIsolatedStagingDatabase();
   try {
     // 1. Recycle Bin Table (Prevents "relation recycle_bin does not exist" errors)
     await db.query(`
@@ -207,5 +219,6 @@ async function ensureDatabaseSchema() {
 
 module.exports = {
   ensureDatabaseSchema,
+  assertIsolatedStagingDatabase,
   isEnsured: () => isEnsured
 };

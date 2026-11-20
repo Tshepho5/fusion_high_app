@@ -141,7 +141,7 @@ async function initializeAllDatabaseTables(customClient) {
         country VARCHAR(100),
         race VARCHAR(50),
         parent_type VARCHAR(50),
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         is_superadmin BOOLEAN DEFAULT FALSE,
         reset_code VARCHAR(10),
         reset_expiry TIMESTAMP,
@@ -151,7 +151,7 @@ async function initializeAllDatabaseTables(customClient) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_superadmin BOOLEAN DEFAULT FALSE;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT FALSE;
@@ -171,13 +171,13 @@ async function initializeAllDatabaseTables(customClient) {
         phone VARCHAR(20),
         email VARCHAR(255),
         hired_date DATE,
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       -- Add school_id column to tables in case they existed prior
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
-      ALTER TABLE employees ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS school_id INTEGER;
+      ALTER TABLE employees ADD COLUMN IF NOT EXISTS school_id INTEGER;
 
       CREATE TABLE IF NOT EXISTS classes (
         id SERIAL PRIMARY KEY,
@@ -187,59 +187,9 @@ async function initializeAllDatabaseTables(customClient) {
         homeroom_teacher_id INTEGER
       );
 
-      DO $$
-      BEGIN
-        PERFORM pg_advisory_xact_lock(hashtext('fusion-seed-default-classes')::bigint);
-        IF EXISTS (
-          SELECT 1
-          FROM pg_constraint
-          WHERE conrelid = 'classes'::regclass
-            AND contype = 'u'
-            AND pg_get_constraintdef(oid) = 'UNIQUE (name)'
-        ) THEN
-          INSERT INTO classes (name, grade, stream)
-          VALUES
-            ('8A', 8, 'General'),
-            ('8B', 8, 'General'),
-            ('9A', 9, 'General'),
-            ('9B', 9, 'General'),
-            ('10A', 10, 'Science'),
-            ('10B', 10, 'Commerce'),
-            ('10C', 10, 'Tourism'),
-            ('11A', 11, 'Science'),
-            ('11B', 11, 'Tourism'),
-            ('11C', 11, 'Commerce'),
-            ('12A', 12, 'Science'),
-            ('12B', 12, 'Commerce'),
-            ('12C', 12, 'Tourism')
-          ON CONFLICT (name) DO NOTHING;
-        ELSE
-          INSERT INTO classes (name, grade, stream)
-          SELECT v.name, v.grade, v.stream
-          FROM (VALUES
-            ('8A', 8, 'General'),
-            ('8B', 8, 'General'),
-            ('9A', 9, 'General'),
-            ('9B', 9, 'General'),
-            ('10A', 10, 'Science'),
-            ('10B', 10, 'Commerce'),
-            ('10C', 10, 'Tourism'),
-            ('11A', 11, 'Science'),
-            ('11B', 11, 'Tourism'),
-            ('11C', 11, 'Commerce'),
-            ('12A', 12, 'Science'),
-            ('12B', 12, 'Commerce'),
-            ('12C', 12, 'Tourism')
-          ) AS v(name, grade, stream)
-          WHERE NOT EXISTS (
-            SELECT 1 FROM classes c WHERE c.name = v.name
-          );
-        END IF;
-      END $$;
-
       ALTER TABLE classes ADD COLUMN IF NOT EXISTS homeroom_teacher_id INTEGER;
       ALTER TABLE classes ADD COLUMN IF NOT EXISTS assigned_teacher_id INTEGER;
-      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE classes ADD COLUMN IF NOT EXISTS school_id INTEGER;
 
       CREATE TABLE IF NOT EXISTS teacher_assignments (
         id SERIAL PRIMARY KEY,
@@ -641,7 +591,7 @@ async function initializeAllDatabaseTables(customClient) {
       ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
       ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS file_size VARCHAR(50) DEFAULT '2.4 MB';
       ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'General';
-      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbooks ADD COLUMN IF NOT EXISTS school_id INTEGER;
 
       CREATE TABLE IF NOT EXISTS textbook_inventory (
         id SERIAL PRIMARY KEY,
@@ -654,7 +604,7 @@ async function initializeAllDatabaseTables(customClient) {
         total_copies INTEGER DEFAULT 50,
         available_copies INTEGER DEFAULT 50,
         unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00,
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         stream VARCHAR(50) DEFAULT 'General',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -664,7 +614,7 @@ async function initializeAllDatabaseTables(customClient) {
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00;
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS total_copies INTEGER DEFAULT 50;
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS available_copies INTEGER DEFAULT 50;
-      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER;
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'General';
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS isbn VARCHAR(50);
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS barcode_prefix VARCHAR(50);
@@ -682,7 +632,7 @@ async function initializeAllDatabaseTables(customClient) {
         condition_on_return VARCHAR(50),
         replacement_fee NUMERIC(10, 2) DEFAULT 0.00,
         status VARCHAR(30) DEFAULT 'issued',
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -694,7 +644,7 @@ async function initializeAllDatabaseTables(customClient) {
       ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS condition_on_return VARCHAR(50);
       ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS replacement_fee NUMERIC(10, 2) DEFAULT 0.00;
       ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'issued';
-      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER;
       ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS copy_barcode VARCHAR(100);
 
       -- 7. Exam Sessions & Seating Allocations
@@ -1102,7 +1052,7 @@ async function initializeAllDatabaseTables(customClient) {
       -- 16. Parent-Educator Consultations (PTC 20-min slots)
       CREATE TABLE IF NOT EXISTS teacher_consultations (
         id SERIAL PRIMARY KEY,
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         teacher_id INTEGER,
         parent_id INTEGER,
         child_id INTEGER,
@@ -1165,7 +1115,7 @@ async function initializeAllDatabaseTables(customClient) {
         trophy_title VARCHAR(255),
         highlights TEXT,
         created_by INTEGER,
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -1196,7 +1146,7 @@ async function initializeAllDatabaseTables(customClient) {
       -- 18. Official CAPS Term Academic Report Cards
       CREATE TABLE IF NOT EXISTS report_cards (
         id SERIAL PRIMARY KEY,
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         child_id INTEGER,
         grade INTEGER NOT NULL,
         term INTEGER NOT NULL,
@@ -1256,7 +1206,7 @@ async function initializeAllDatabaseTables(customClient) {
         title VARCHAR(255) NOT NULL,
         description TEXT,
         badge_icon VARCHAR(50) DEFAULT 'award',
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -1272,7 +1222,7 @@ async function initializeAllDatabaseTables(customClient) {
         detention_date DATE,
         detention_status VARCHAR(50) DEFAULT 'none',
         parent_notified BOOLEAN DEFAULT TRUE,
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -1343,7 +1293,7 @@ async function initializeAllDatabaseTables(customClient) {
           FOREACH tbl IN ARRAY tbls LOOP
             IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = tbl) THEN
               BEGIN
-                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1', tbl);
+                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS school_id INTEGER', tbl);
               EXCEPTION WHEN OTHERS THEN NULL;
               END;
             END IF;

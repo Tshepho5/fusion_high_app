@@ -12,6 +12,7 @@ const { resolveSchoolId } = require('../services/schoolScope');
 const { loadAuthorisedLearner } = require('../../../lib/aiLearnerAccess');
 const { percentageFromMark, observedMarkSummary, finiteNumber } = require('../../../lib/academicEvidence');
 const { describeRecordedMarks } = require('../../../lib/academicRecord');
+const { parseTerm, parseAcademicYear, parseGrade } = require('../../../lib/academicContext');
 const db = require('../../../db/db');
 
 router.use(authenticateToken);
@@ -162,8 +163,8 @@ router.get('/geleza/learner/:childId', async (req, res) => {
     // 1. Fetch learner information, school, user gender, & attendance stats
     const learnerRes = await db.query(
       `SELECT c.id, c.full_name, c.surname, c.grade, c.school_id,
-              COALESCE(u.gender, 'Male') as gender,
-              COALESCE(s.school_type, 'Public') as school_type,
+              u.gender,
+              s.school_type,
               (SELECT COUNT(*) FROM attendance WHERE child_id = c.id) as total_attendance_records,
               (SELECT COUNT(*) FROM attendance WHERE child_id = c.id AND status = 'present') as present_days,
               (SELECT COUNT(*) FROM attendance WHERE child_id = c.id AND status = 'absent') as absent_days
@@ -256,13 +257,19 @@ router.get('/geleza/learner/:childId', async (req, res) => {
 router.post('/geleza/learner/:childId/evaluate-and-save', async (req, res) => {
   try {
     const { childId } = req.params;
-    const { term = 1, academic_year = 2026, user_id } = req.body;
+    const termCheck = parseTerm(req.body && req.body.term);
+    const yearCheck = parseAcademicYear(req.body && req.body.academic_year);
+    if (!termCheck.ok) return res.status(400).json({ success: false, error: termCheck.message });
+    if (!yearCheck.ok) return res.status(400).json({ success: false, error: yearCheck.message });
+    const term = termCheck.term;
+    const academic_year = yearCheck.year;
+    const { user_id } = req.body;
 
     // Fetch learner and compute factors
     const learnerRes = await db.query(
       `SELECT c.id, c.school_id, c.full_name, c.surname, c.grade,
-              COALESCE(u.gender, 'Male') as gender,
-              COALESCE(s.school_type, 'Public') as school_type,
+              u.gender,
+              s.school_type,
               (SELECT COUNT(*) FROM attendance WHERE child_id = c.id) as total_attendance,
               (SELECT COUNT(*) FROM attendance WHERE child_id = c.id AND status = 'present') as present_days
        FROM children c
@@ -571,15 +578,28 @@ router.put('/geleza/profile/:childId', async (req, res) => {
 router.post('/geleza/evaluate-cohort', async (req, res) => {
   try {
     const school_id = resolveSchoolId(req);
-    const { grade, class_id, term = 1, academic_year = 2026, user_id } = req.body;
+    const termCheck = parseTerm(req.body && req.body.term);
+    const yearCheck = parseAcademicYear(req.body && req.body.academic_year);
+    if (!termCheck.ok) return res.status(400).json({ success: false, error: termCheck.message });
+    if (!yearCheck.ok) return res.status(400).json({ success: false, error: yearCheck.message });
+    const { grade, class_id, user_id } = req.body;
+    const term = termCheck.term;
+    const academic_year = yearCheck.year;
     if (!school_id) {
       return res.status(403).json({ success: false, error: 'This account is not attached to a school.' });
+    }
+    if (!grade && !class_id) {
+      return res.status(400).json({ success: false, error: 'Choose a grade or a class.' });
+    }
+    if (grade) {
+      const gradeCheck = parseGrade(grade);
+      if (!gradeCheck.ok) return res.status(400).json({ success: false, error: gradeCheck.message });
     }
 
     let query = `
       SELECT c.id, c.school_id, c.full_name, c.surname, c.grade, c.class_id,
-             COALESCE(u.gender, 'Male') as gender,
-             COALESCE(s.school_type, 'Public') as school_type,
+             u.gender,
+             s.school_type,
              (SELECT COUNT(*) FROM attendance WHERE child_id = c.id) as total_attendance,
              (SELECT COUNT(*) FROM attendance WHERE child_id = c.id AND status = 'present') as present_days,
              p.weekly_hours_studied, p.tutoring_sessions, p.access_to_resources, p.internet_access,

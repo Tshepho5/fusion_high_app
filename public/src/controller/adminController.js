@@ -3905,10 +3905,10 @@ exports.getSubjectLearnersWithFlags = async (req, res) => {
                 full_name: `${l.full_name} ${l.surname}`.trim(),
                 first_name: l.full_name,
                 surname: l.surname,
-                learner_number: l.learner_number || `2026-FHS-${String(l.id).padStart(3, '0')}`,
+                learner_number: l.learner_number || null,
                 grade: l.grade,
                 class_name: l.class_name,
-                stream: l.stream || 'Science',
+                stream: l.stream || null,
                 parent_name: `${l.parent_full_name || ''} ${l.parent_surname || ''}`.trim() || 'Parent/Guardian',
                 parent_phone: l.parent_phone || 'N/A',
                 marks: {
@@ -4403,6 +4403,7 @@ exports.approveStaffInvite = async (req, res) => {
       return res.status(500).json({ error: 'Teacher registration is not available.' });
     }
 
+    const bcrypt = require('bcryptjs');
     const finalPasswordHash = effectivePasswordHash || await bcrypt.hash(require('crypto').randomBytes(16).toString('hex'), 10);
 
     const userRes = await db.query(`

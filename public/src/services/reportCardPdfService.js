@@ -411,16 +411,9 @@ function generateLearnerReportCardPdf(reportData) {
 
       // Promotion policy text
       doc.fontSize(6.2).font('Helvetica-Bold').fillColor('#000000');
-      const phaseTitle = learner.grade <= 6
-        ? 'Intermediate Phase Gr 4-6:'
-        : (learner.grade <= 9 ? 'Senior Phase Gr 7-9:' : 'FET Phase Gr 10-12:');
-      const phaseRule = learner.grade <= 6
-        ? 'The learner must achieve at least: Level 4 in HL; Level 3 in FAL; Level 3 in Mathematics and Level 3 in any other two (2) of the remaining approved subjects.'
-        : (learner.grade <= 9
-          ? 'The learner must achieve at least: Level 3 in HL; Level 2 in FAL; Level 2 in Mathematics; Level 3 in any other three (3) subjects and Level 2 in any other two (2) subjects.'
-          : 'National Senior Certificate (CAPS): Home Language >= 40%; 2 other subjects >= 40%; 3 other subjects >= 30%. Bachelor Admission: >= 50% in four designated subjects.');
+      const phaseRule = 'Term results use this school\'s internal 40 line. They are not a Department of Basic Education promotion decision. A stored promotion is shown only when an authorised school official has recorded one.';
 
-      doc.text(`${phaseTitle} ${phaseRule}`, leftMargin, currentY, { width: contentWidth });
+      doc.text(phaseRule, leftMargin, currentY, { width: contentWidth });
       currentY = doc.y + 2;
 
       // 7-Point Achievement Level Scale Legend

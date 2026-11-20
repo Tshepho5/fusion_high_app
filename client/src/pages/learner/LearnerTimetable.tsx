@@ -103,8 +103,9 @@ export const LearnerTimetable: React.FC = () => {
         const list = Array.isArray(res) ? res : res.timetables || [];
         setTimetableList(list);
         if (list.length > 0) {
-          const active = list.find((t: any) => t.is_active) || list[0];
-          setActiveSchedule(active);
+          setActiveSchedule(list[0]);
+        } else if (res && res.message) {
+          setError(res.message);
         }
       })
       .catch((err) => {

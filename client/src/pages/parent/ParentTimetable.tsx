@@ -143,7 +143,7 @@ export const ParentTimetable: React.FC<ParentTimetableProps> = ({ onNavigateTab,
     const map: Record<string, Record<string, any>> = {};
     DAYS.forEach(day => { map[day] = {}; });
 
-    let classKey = Object.keys(parsedData).find(k => k.includes(`${selectedChild?.grade}A`) || k.includes(`${selectedChild?.grade}`)) || Object.keys(parsedData)[0];
+    let classKey = Object.keys(parsedData)[0];
     
     if (classKey && parsedData[classKey]) {
       const classDays = parsedData[classKey];
@@ -159,9 +159,9 @@ export const ParentTimetable: React.FC<ParentTimetableProps> = ({ onNavigateTab,
                   period: normTime,
                   time: normTime,
                   class: classKey,
-                  subject: entry.subject || 'Class Session',
-                  teacher: entry.teacher || 'Subject Educator',
-                  room: entry.room || `Room ${selectedChild?.grade || 10}A`,
+                  subject: entry.subject,
+                  teacher: entry.teacher || 'Teacher not recorded',
+                  room: entry.room || 'Room not recorded',
                 };
               }
             }

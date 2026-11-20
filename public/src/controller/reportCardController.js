@@ -1160,6 +1160,9 @@ async function buildFullReportCardData(schoolId, childId, academicYear, targetTe
   });
   const finalAvg = termAverages.final;
   outcomes.final = existingRc?.promotion_status || (finalAvg !== null ? (finalAvg >= 50 ? 'Promoted' : (finalAvg >= 40 ? 'Progressed' : 'Not Promoted')) : '-');
+  outcomes.basis = 'internal_school_threshold';
+  outcomes.official_departmental_decision = false;
+  outcomes.authorised_promotion = existingRc?.promotion_status || null;
 
   // Dates
   const repSettings = school.report_settings || {};

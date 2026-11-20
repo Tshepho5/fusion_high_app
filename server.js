@@ -35,7 +35,7 @@ const applicationRoutes = require('./public/src/routes/applicationRoutes');
 const notificationRoutes = require('./public/src/routes/notificationRoutes');
 const aiTutorController = require('./public/src/controller/aiTutorController');
 const initApplicationTables = require('./db/init_applications');
-const { ensureDatabaseSchema } = require('./db/schemaEnsurer');
+const { ensureDatabaseSchema, assertIsolatedStagingDatabase } = require('./db/schemaEnsurer');
 const NotificationService = require('./public/src/services/notificationService');
 
 // Run schema auto-sync immediately in background
@@ -80,6 +80,7 @@ const gelezaAutomationJob = require('./public/src/services/ai/gelezaAutomationJo
 if (!process.env.VERCEL) {
   (async () => {
     try {
+      await assertIsolatedStagingDatabase();
       await initializeAllDatabaseTables();
       await initApplicationTables();
       const { createParentApplicationsTable } = require('./db/create_parent_applications_table');
@@ -367,8 +368,8 @@ const handleCapsResourceDownload = async (req, res) => {
     // Lookup metadata from textbooks table in database if available
     let title = cleanFilename.replace(/\.pdf$/i, '').replace(/_/g, ' ');
     let subject = 'Curriculum';
-    let grade = 10;
-    let year = 2024;
+    let grade = null;
+    let year = null;
     let resourceType = 'past_paper';
 
     try {

@@ -1,7 +1,20 @@
 const db = require('../../../db/db');
 const { resolveSchoolId } = require('../services/schoolScope');
+const { parseGrade, parseAcademicYear } = require('../../../lib/academicContext');
+const { teacherOwnsSlot, offeredSubjectNames } = require('../../../lib/teacherSlot');
+const { buildClassProposal } = require('../../../lib/timetableGeneration');
+const { selectPublishedClass, teacherCanPublish, parseTimetableData } = require('../../../lib/timetableAccess');
 const emailService = require('../services/emailService');
 const NotificationService = require('../services/notificationService');
+
+const PERIODS_1_HOUR = [
+    '08:00 - 09:00',
+    '09:00 - 10:00',
+    '10:00 - 11:00',
+    '11:45 - 12:45',
+    '12:45 - 13:45',
+    '13:45 - 14:45'
+];
 
 // Ensure timetables table is initialized with grade, stream, status, and school_id columns
 async function ensureTimetablesTable() {
@@ -15,7 +28,7 @@ async function ensureTimetablesTable() {
                 timetable_data JSONB NOT NULL,
                 status VARCHAR(50) DEFAULT 'draft_teachers',
                 is_active BOOLEAN DEFAULT TRUE,
-                school_id INT DEFAULT 1,
+                school_id INT,
                 created_by INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -23,7 +36,7 @@ async function ensureTimetablesTable() {
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft_teachers';
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS grade INT DEFAULT 10;
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS stream VARCHAR(100) DEFAULT 'General';
-            ALTER TABLE timetables ADD COLUMN IF NOT EXISTS school_id INT DEFAULT 1;
+            ALTER TABLE timetables ADD COLUMN IF NOT EXISTS school_id INT;
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS created_by INT;
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
             ALTER TABLE timetables ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
@@ -38,701 +51,183 @@ ensureTimetablesTable();
 /**
  * Resolves the active school ID from token, query, header, or body.
  */
-const getSchoolIdFromReq = (req) => {
-    if (req.user && !req.user.is_superadmin && req.user.school_id) {
-        return parseInt(req.user.school_id, 10);
-    }
-    const raw = resolveSchoolId(req);
-    const parsed = parseInt(raw, 10);
-    return isNaN(parsed) ? 1 : parsed;
-};
+const getSchoolIdFromReq = (req) => resolveSchoolId(req);
 
-// Official Department of Basic Education CAPS Stream Subjects Matrix
-const CAPS_STREAM_SUBJECTS = {
-    // GET Phase (Grades 8 and 9 - General Standard Curriculum)
-    GET: [
-        'Mathematics',
-        'Natural Sciences',
-        'English FAL',
-        'Home Language',
-        'Social Sciences',
-        'Economic and Management Sciences (EMS)',
-        'Technology',
-        'Creative Arts',
-        'Life Orientation'
-    ],
-    // FET Phase (Grades 10, 11, 12 - Pure Sciences / STEM)
-    SCIENCE: [
-        'Mathematics',
-        'Physical Sciences',
-        'Life Sciences',
-        'Geography',
-        'English FAL',
-        'Home Language',
-        'Life Orientation'
-    ],
-    // FET Phase (Grades 10, 11, 12 - Commercial / Business)
-    COMMERCE: [
-        'Accounting',
-        'Business Studies',
-        'Economics',
-        'English FAL',
-        'Home Language',
-        'Life Orientation',
-        'Mathematical Literacy'
-    ],
-    // FET Phase (Grades 10, 11, 12 - Services & Tourism)
-    TOURISM: [
-        'Tourism',
-        'Geography',
-        'History',
-        'English FAL',
-        'Home Language',
-        'Life Orientation',
-        'Mathematical Literacy'
-    ],
-    // FET Phase (Grades 10, 11, 12 - Humanities / Arts & Social Sciences)
-    HUMANITIES: [
-        'Geography',
-        'History',
-        'Tourism',
-        'English FAL',
-        'Home Language',
-        'Life Orientation',
-        'Mathematical Literacy'
-    ],
-    // FET Phase (Grades 10, 11, 12 - General Stream)
-    GENERAL_FET: [
-        'Mathematics',
-        'Geography',
-        'History',
-        'English FAL',
-        'Home Language',
-        'Life Orientation',
-        'Tourism'
-    ]
-};
-
-/**
- * Returns strictly isolated, CAPS-compliant subject roster for a given grade and stream.
- */
-function getStreamSubjects(grade, streamName) {
-    const gr = parseInt(grade, 10) || 10;
-    const str = (streamName || 'General').toLowerCase().trim();
-
-    if (gr <= 9) {
-        return [...CAPS_STREAM_SUBJECTS.GET];
-    }
-
-    if (str.includes('science') || str.includes('stem') || str.includes('pure')) {
-        return [...CAPS_STREAM_SUBJECTS.SCIENCE];
-    }
-    if (str.includes('commerc') || str.includes('business') || str.includes('econ') || str.includes('account')) {
-        return [...CAPS_STREAM_SUBJECTS.COMMERCE];
-    }
-    if (str.includes('touris') || str.includes('service')) {
-        return [...CAPS_STREAM_SUBJECTS.TOURISM];
-    }
-    if (str.includes('humanit') || str.includes('social') || str.includes('art')) {
-        return [...CAPS_STREAM_SUBJECTS.HUMANITIES];
-    }
-
-    return [...CAPS_STREAM_SUBJECTS.GENERAL_FET];
+function missingSchool(res, schoolId) {
+    if (schoolId) return false;
+    res.status(400).json({ error: 'Choose a school before opening a timetable.' });
+    return true;
 }
 
-// Standard 1-hour CAPS Class Periods (60 minutes each) with 45-minute nutrition break:
-const PERIODS_1_HOUR = [
-    "08:00 - 09:00",
-    "09:00 - 10:00",
-    "10:00 - 11:00",
-    "11:45 - 12:45",
-    "12:45 - 13:45",
-    "13:45 - 14:45"
-];
+async function offeringsAvailable(schoolId, year, grade) {
+    const ready = await db.query("SELECT to_regclass('public.school_subject_offerings') AS reg");
+    if (!ready.rows[0] || !ready.rows[0].reg) {
+        return { ready: false, subjects: [] };
+    }
+    const offeringRes = await db.query(
+        `SELECT subject_name FROM school_subject_offerings
+         WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND is_active = TRUE
+         ORDER BY subject_name`,
+        [schoolId, year, grade]
+    );
+    return { ready: true, subjects: offeredSubjectNames(offeringRes.rows) };
+}
 
-/**
- * Generates an automated, clash-free, CAPS-aligned weekly timetable preview with 1-hour class periods.
- * Smartly allocates ~3 slots per teacher per day across different classes with morning/afternoon rotation.
- */
+async function assignmentsForGrade(schoolId, grade) {
+    const result = await db.query(
+        `SELECT ta.teacher_id, ta.subject_name, ta.grade_level, ta.class_name, ta.class_id,
+                u.full_name, u.surname
+         FROM teacher_assignments ta
+         JOIN users u ON u.id = ta.teacher_id
+         WHERE u.school_id = $1 AND ta.grade_level = $2`,
+        [schoolId, grade]
+    );
+    return result.rows;
+}
+
 exports.generateAITimetable = async (req, res) => {
-    const { grade = 10, stream = 'General', target_subject, max_teacher_daily_slots = 3 } = req.body;
-    const targetGrade = parseInt(grade, 10) || 10;
+    const gradeCheck = parseGrade(req.body && req.body.grade);
+    const stream = String((req.body && req.body.stream) || '').trim();
+    const yearCheck = parseAcademicYear(req.body && (req.body.academic_year || req.body.academicYear));
+    if (!gradeCheck.ok) return res.status(400).json({ error: gradeCheck.message });
+    if (!stream) return res.status(400).json({ error: 'Choose the class stream.' });
+    if (!yearCheck.ok) return res.status(400).json({ error: yearCheck.message });
     const schoolId = getSchoolIdFromReq(req);
+    if (missingSchool(res, schoolId)) return;
+    const targetGrade = gradeCheck.grade;
+    const targetSubject = String((req.body && req.body.target_subject) || '').trim();
 
     try {
-        // 1. Fetch active TEACHERS of THIS school (excluding admin/management), classes, and subjects
-        const [teachersRes, classesRes, subjectsRes, activeTimetablesRes] = await Promise.all([
-            db.query(
-                `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.classes_taught 
-                 FROM users u 
-                 JOIN employees e ON u.id = e.user_id 
-                 LEFT JOIN roles r ON u.role_id = r.id
-                 WHERE (r.name = 'teacher' OR r.name IS NULL)
-                   AND LOWER(COALESCE(r.name, '')) != 'admin'
-                   AND u.school_id = $1
-                 ORDER BY u.surname, u.full_name`,
-                [schoolId]
-            ),
-            db.query(
-                `SELECT id, name, grade, stream FROM classes WHERE grade = $1 AND (stream = $2 OR stream IS NULL OR stream = 'General') AND school_id = $3 ORDER BY name;`,
-                [targetGrade, stream, schoolId]
-            ),
-            db.query(
-                `SELECT name FROM subjects WHERE (grade = $1 OR grade IS NULL) AND (stream = $2 OR stream = 'General' OR stream ILIKE 'General%') ORDER BY name;`,
-                [targetGrade, stream]
-            ),
-            // Fetch all other active published timetables for THIS school to avoid educator double-booking
-            db.query(
-                `SELECT id, grade, stream, timetable_data FROM timetables WHERE is_active = TRUE AND grade != $1 AND school_id = $2`,
-                [targetGrade, schoolId]
-            )
-        ]);
-
-        let classes = classesRes.rows;
-        if (classes.length === 0) {
-            classes = [
-                { id: 1, name: `Grade ${targetGrade}A`, grade: targetGrade, stream },
-                { id: 2, name: `Grade ${targetGrade}B`, grade: targetGrade, stream }
-            ];
-        }
-
-        let teachers = teachersRes.rows;
-        if (teachers.length === 0) {
-            const allTeachersRes = await db.query(
-                `SELECT u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.classes_taught 
-                 FROM users u 
-                 JOIN employees e ON u.id = e.user_id 
-                 LEFT JOIN roles r ON u.role_id = r.id
-                 WHERE (r.name = 'teacher' OR r.name IS NULL)
-                   AND LOWER(COALESCE(r.name, '')) != 'admin'
-                   AND u.school_id = $1
-                 ORDER BY u.surname, u.full_name`,
-                [schoolId]
-            );
-            teachers = allTeachersRes.rows;
-        }
-
-        // Strictly enforce CAPS stream subject roster to prevent mixing (e.g. no Business Studies in Science)
-        let subjects = getStreamSubjects(targetGrade, stream);
-
-        // If a specific target subject was prioritized by the admin, place it at the front
-        if (target_subject && subjects.includes(target_subject)) {
-            subjects = [target_subject, ...subjects.filter(s => s !== target_subject)];
-        }
-
-        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-        // Initialize timetable structure for each class
-        const timetable = {};
-        classes.forEach(c => {
-            timetable[c.name] = {};
-            days.forEach(day => {
-                timetable[c.name][day] = {};
-            });
-        });
-
-        // Run full conflict-free scheduling with 1-hour periods, max 3 slots per teacher/day, and cross-timetable safety
-        const fullResult = autoScheduleFullTimetableLogic(
-            timetable,
-            { grade: targetGrade, stream, target_subject, max_teacher_daily_slots: parseInt(max_teacher_daily_slots, 10) || 3 },
-            teachers,
-            subjects,
-            classes,
-            activeTimetablesRes.rows
+        const classesRes = await db.query(
+            `SELECT id, name, grade, stream, room_number
+             FROM classes
+             WHERE school_id = $1 AND grade = $2 AND stream = $3
+               AND COALESCE(ownership_quarantine, FALSE) = FALSE
+             ORDER BY name`,
+            [schoolId, targetGrade, stream]
         );
-
-        const finalTimetableData = fullResult.timetable_data;
-        const filledCount = fullResult.filled_count;
-
-        res.json({
-            message: `1-Hour Timetable preview generated successfully (${filledCount} periods scheduled with 0 clashes and 3 slots/day teacher workload balance).`,
-            timetable_data: finalTimetableData,
-            teachers: teachers,
-            filled_count: filledCount,
-            classes: classes,
+        if (classesRes.rows.length === 0) {
+            return res.status(400).json({ error: 'This school has no classes recorded for that grade and stream.' });
+        }
+        const offerings = await offeringsAvailable(schoolId, yearCheck.year, targetGrade);
+        if (!offerings.ready) {
+            return res.status(400).json({
+                error: 'This school has no subject-offering records yet. An administrator must configure the subjects for this grade and year before a timetable can be generated.'
+            });
+        }
+        let subjects = offerings.subjects;
+        if (subjects.length === 0) {
+            return res.status(400).json({ error: 'This school has no subjects configured for that grade and year.' });
+        }
+        if (targetSubject && !subjects.includes(targetSubject)) {
+            return res.status(400).json({ error: 'That subject is not offered by this school for the selected grade.' });
+        }
+        if (targetSubject) {
+            subjects = [targetSubject, ...subjects.filter((name) => name !== targetSubject)];
+        }
+        const assignments = await assignmentsForGrade(schoolId, targetGrade);
+        const proposal = buildClassProposal({
+            classes: classesRes.rows,
+            subjects,
+            assignments,
             periods: PERIODS_1_HOUR,
-            break_time: {
-                after_period: 3,
-                duration: "45 Minutes",
-                time: "11:00 - 11:45",
-                label: "Nutrition & Midday Break"
-            },
-            generation_details: { grade: targetGrade, stream, target_subject, school_id: schoolId }
+            maxDailySlots: parseInt(req.body && req.body.max_teacher_daily_slots, 10) || 3
         });
-
+        if (proposal.filled_count === 0) {
+            return res.status(400).json({
+                error: 'No timetable was produced. Teacher assignments do not cover the configured subjects for these classes.',
+                gaps: proposal.gaps,
+                saved: false
+            });
+        }
+        res.json({
+            message: 'This is an unsaved proposal. Existing timetables were not changed.',
+            saved: false,
+            status: 'proposal',
+            timetable_data: proposal.timetable_data,
+            gaps: proposal.gaps,
+            filled_count: proposal.filled_count,
+            classes: classesRes.rows,
+            periods: PERIODS_1_HOUR,
+            generation_details: { grade: targetGrade, stream, academic_year: yearCheck.year, school_id: schoolId }
+        });
     } catch (err) {
         console.error('Error generating timetable preview:', err);
-        res.status(500).json({ error: 'Failed to generate timetable preview: ' + err.message });
+        res.status(500).json({ error: 'Failed to generate timetable preview.' });
     }
 };
 
-/**
- * 1-CLICK SCHOOL-WIDE AUTO-SCHEDULER & DRAFT DISTRIBUTOR:
- * Generates conflict-free 1-hour timetables for all Grades (8, 9, 10, 11, 12) simultaneously for the active school.
- * Tracks teacher busy slots across all grades to guarantee zero double bookings.
- * Automatically saves them with status 'draft_teachers' and sends email alerts to the school's teachers.
- */
 exports.generateSchoolWideTimetable = async (req, res) => {
-    const adminId = req.user ? req.user.id : null;
     const schoolId = getSchoolIdFromReq(req);
-    const grades = [8, 9, 10, 11, 12];
-    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    if (missingSchool(res, schoolId)) return;
+    const yearCheck = parseAcademicYear(req.body && (req.body.academic_year || req.body.academicYear));
+    if (!yearCheck.ok) return res.status(400).json({ error: yearCheck.message });
 
     try {
-        await ensureTimetablesTable();
-
-        // 1. Fetch all teachers for THIS specific school
-        const allTeachersRes = await db.query(
-            `SELECT u.id, u.id as user_id, u.full_name, u.surname, u.email, e.subjects, e.grades_taught, e.classes_taught
-             FROM users u
-             JOIN employees e ON u.id = e.user_id
-             LEFT JOIN roles r ON u.role_id = r.id
-             WHERE (r.name = 'teacher' OR r.name IS NULL)
-               AND LOWER(COALESCE(r.name, '')) != 'admin'
-               AND u.school_id = $1
-             ORDER BY u.surname, u.full_name`,
+        const classesRes = await db.query(
+            `SELECT id, name, grade, stream, room_number
+             FROM classes
+             WHERE school_id = $1 AND COALESCE(ownership_quarantine, FALSE) = FALSE
+             ORDER BY grade, name`,
             [schoolId]
         );
-        const allTeachers = allTeachersRes.rows;
-
-        if (allTeachers.length === 0) {
-            return res.json({
-                message: `No educators are registered for this school yet. Please add teachers to this school before generating its master timetable.`,
-                timetables: [],
-                total_grades: 0,
-                notified_teachers_count: 0
-            });
+        const grades = [...new Set(classesRes.rows.map((row) => Number(row.grade)).filter((grade) => Number.isInteger(grade)))];
+        if (grades.length === 0) {
+            return res.status(400).json({ error: 'This school has no classes recorded for a timetable.' });
         }
-
-        // 2. Fetch all classes for THIS school
-        const classesRes = await db.query(`SELECT id, name, grade, stream FROM classes WHERE school_id = $1 ORDER BY grade, name`, [schoolId]);
-        const allDbClasses = classesRes.rows;
-
-        const generatedSchedules = [];
-        const runningActiveTimetables = [];
-
-        // Deactivate previous active timetables of THIS school
-        await db.query(`UPDATE timetables SET is_active = FALSE WHERE school_id = $1`, [schoolId]);
-
-        for (const gr of grades) {
-            let gradeClasses = allDbClasses.filter(c => c.grade === gr);
-            if (gradeClasses.length === 0) {
-                gradeClasses = [
-                    { id: gr * 10 + 1, name: `Grade ${gr}A`, grade: gr, stream: gr >= 10 ? 'Science' : 'General' },
-                    { id: gr * 10 + 2, name: `Grade ${gr}B`, grade: gr, stream: gr >= 10 ? 'Commerce' : 'General' },
-                    { id: gr * 10 + 3, name: `Grade ${gr}C`, grade: gr, stream: gr >= 10 ? 'Tourism' : 'General' }
-                ];
-            }
-
-            const stream = gr >= 10 ? 'Multi-Stream' : 'General';
-
-            const timetableData = {};
-            gradeClasses.forEach(c => {
-                timetableData[c.name] = {};
-                days.forEach(d => {
-                    timetableData[c.name][d] = {};
+        const proposals = [];
+        const skipped = [];
+        for (const grade of grades) {
+            const gradeClasses = classesRes.rows.filter((row) => Number(row.grade) === grade);
+            const offerings = await offeringsAvailable(schoolId, yearCheck.year, grade);
+            if (!offerings.ready) {
+                return res.status(400).json({
+                    error: 'This school has no subject-offering records yet. An administrator must configure the subjects for each grade and year before a timetable can be generated.',
+                    saved: false
                 });
-            });
-
-            const result = autoScheduleFullTimetableLogic(
-                timetableData,
-                { grade: gr, stream, max_teacher_daily_slots: 3 },
-                allTeachers,
-                null,
-                gradeClasses,
-                runningActiveTimetables
-            );
-
-            const timetableName = `Grade ${gr} Master Timetable (1-Hour Conflict-Free)`;
-            
-            const insertRes = await db.query(
-                `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, school_id, created_by, updated_at)
-                 VALUES ($1, $2, $3, $4, 'draft_teachers', TRUE, $5, $6, NOW()) RETURNING *`,
-                [timetableName, gr, stream, JSON.stringify(result.timetable_data), schoolId, adminId]
-            );
-
-            runningActiveTimetables.push({
-                id: insertRes.rows[0].id,
-                grade: gr,
-                timetable_data: result.timetable_data
-            });
-
-            generatedSchedules.push(insertRes.rows[0]);
-        }
-
-        // Notify all teachers of this school via in-app Notification Icon
-        const teacherIds = allTeachers.map(t => t.id).filter(Boolean);
-        if (teacherIds.length > 0) {
-            await NotificationService.sendToUsers(teacherIds, {
-                title: 'School-Wide Timetable Generated (Grades 8 - 12)',
-                message: 'Principal / Administration has generated the 1-hour conflict-free master timetable for Grades 8 to 12. Please review your subject allocations in your Educator Portal.',
-                type: 'timetable',
-                category: 'timetable',
-                actionUrl: '/dashboard/teacher?tab=timetable'
-            }).catch(e => console.warn('Timetable notification error:', e.message));
-        }
-
-        for (const teacher of allTeachers) {
-
-            if (teacher.email) {
-                emailService.sendTimetableDraftToTeacher({
-                    teacherName: teacher.full_name,
-                    teacherEmail: teacher.email,
-                    grade: '8-12',
-                    stream: 'All Streams',
-                    timetableName: 'School-Wide Master Timetable'
-                }).catch(err => console.error(`[EMAIL ERROR] School-wide draft email to ${teacher.email}:`, err.message));
             }
+            if (offerings.subjects.length === 0) {
+                skipped.push({ grade, reason: 'No subjects are configured for this grade and year.' });
+                continue;
+            }
+            const assignments = await assignmentsForGrade(schoolId, grade);
+            const proposal = buildClassProposal({
+                classes: gradeClasses,
+                subjects: offerings.subjects,
+                assignments,
+                periods: PERIODS_1_HOUR
+            });
+            if (proposal.filled_count === 0) {
+                skipped.push({ grade, reason: 'No teacher assignment could be placed for this grade.', gaps: proposal.gaps });
+                continue;
+            }
+            proposals.push({
+                grade,
+                streams: [...new Set(gradeClasses.map((row) => String(row.stream || '').trim()).filter(Boolean))],
+                timetable_data: proposal.timetable_data,
+                gaps: proposal.gaps,
+                filled_count: proposal.filled_count,
+                saved: false
+            });
         }
-
+        if (proposals.length === 0) {
+            return res.status(400).json({
+                error: 'No timetable was produced from this school\'s classes, subjects, and teacher assignments.',
+                skipped,
+                saved: false
+            });
+        }
         res.json({
-            message: `Successfully generated clash-free 1-hour timetables for Grades 8, 9, 10, 11, and 12 in 1 click! Drafts distributed to all educators of this school for review.`,
-            timetables: generatedSchedules,
-            total_grades: grades.length,
-            notified_teachers_count: allTeachers.length
+            message: 'These are unsaved proposals for the classes this school has recorded. Existing timetables were not changed.',
+            saved: false,
+            proposals,
+            skipped
         });
     } catch (err) {
         console.error('Error generating school-wide timetable:', err);
-        res.status(500).json({ error: 'Failed to generate school-wide timetable: ' + err.message });
+        res.status(500).json({ error: 'Failed to generate school-wide timetable.' });
     }
 };
-
-/**
- * Intelligent conflict-free 1-hour scheduler:
- * - Each period takes exactly 1 hour.
- * - Maximum ~3 periods per day per teacher across classes.
- * - Rotates morning and afternoon periods across the week.
- * - Checks other active school timetables to guarantee zero double-booking.
- * - No subject repeated more than once per day for the same class.
- * - Strictly isolated CAPS stream subjects (no Business Studies in Science, no Physics in Commerce).
- */
-function autoScheduleFullTimetableLogic(timetable_data, generation_details, allTeachers, availableSubjects, classesList = [], otherActiveTimetables = []) {
-    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    const periods = PERIODS_1_HOUR; // 6 slots of 1 hour each
-    const maxDailySlotsPerTeacher = generation_details.max_teacher_daily_slots || 3;
-
-    // 1. Build teacher occupancy tracker from existing active school timetables
-    const teacherBusyMap = {};
-    const teacherDailySlotCount = {};
-
-    allTeachers.forEach(t => {
-        const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
-        teacherBusyMap[tKey] = {};
-        teacherDailySlotCount[tKey] = {};
-        days.forEach(day => {
-            teacherBusyMap[tKey][day] = {};
-            teacherDailySlotCount[tKey][day] = 0;
-        });
-    });
-
-    // Populate existing busy slots from other grades' published active timetables
-    otherActiveTimetables.forEach(activeTT => {
-        const data = typeof activeTT.timetable_data === 'string' ? JSON.parse(activeTT.timetable_data) : activeTT.timetable_data;
-        if (!data) return;
-        Object.keys(data).forEach(cName => {
-            const classObj = data[cName];
-            days.forEach(day => {
-                const dayObj = classObj?.[day];
-                if (!dayObj) return;
-                Object.keys(dayObj).forEach(period => {
-                    const slot = dayObj[period];
-                    if (slot && slot.teacher) {
-                        const tKey = slot.teacher.trim().toLowerCase();
-                        if (teacherBusyMap[tKey]) {
-                            if (!teacherBusyMap[tKey][day]) teacherBusyMap[tKey][day] = {};
-                            teacherBusyMap[tKey][day][period] = true;
-                            teacherDailySlotCount[tKey][day] = (teacherDailySlotCount[tKey][day] || 0) + 1;
-                        }
-                    }
-                });
-            });
-        });
-    });
-
-    // 2. Subject uniqueness tracker per class per day
-    const classDaySubjects = {};
-    const classNames = Object.keys(timetable_data);
-    classNames.forEach(cName => {
-        classDaySubjects[cName] = {};
-        days.forEach(day => {
-            classDaySubjects[cName][day] = new Set();
-        });
-    });
-
-    let filledSlots = 0;
-
-    // 3. Schedule slots with workload distribution
-    for (let dIdx = 0; dIdx < days.length; dIdx++) {
-        const day = days[dIdx];
-
-        for (let pIdx = 0; pIdx < periods.length; pIdx++) {
-            const period = periods[pIdx];
-            const isMorning = pIdx < 3; // Periods 1, 2, 3 are morning; 4, 5, 6 are afternoon
-
-            for (let cIdx = 0; cIdx < classNames.length; cIdx++) {
-                const className = classNames[cIdx];
-                if (!timetable_data[className][day]) timetable_data[className][day] = {};
-
-                if (timetable_data[className][day][period]?.subject) {
-                    classDaySubjects[className][day].add(timetable_data[className][day][period].subject);
-                    continue;
-                }
-
-                const targetGrade = parseInt(generation_details.grade, 10) || 10;
-                
-                // Identify class stream
-                const matchedClass = classesList.find(c => c.name === className);
-                let classStream = matchedClass?.stream || generation_details.stream || 'General';
-                if (className.toLowerCase().includes('science') || className.toLowerCase().endsWith('a')) {
-                    if (targetGrade >= 10 && (!matchedClass?.stream || matchedClass.stream === 'General')) {
-                        classStream = 'Science';
-                    }
-                } else if (className.toLowerCase().includes('commerce') || className.toLowerCase().endsWith('b')) {
-                    if (targetGrade >= 10 && (!matchedClass?.stream || matchedClass.stream === 'General')) {
-                        classStream = 'Commerce';
-                    }
-                } else if (className.toLowerCase().includes('tourism') || className.toLowerCase().endsWith('c')) {
-                    if (targetGrade >= 10 && (!matchedClass?.stream || matchedClass.stream === 'General')) {
-                        classStream = 'Tourism';
-                    }
-                }
-
-                // Resolve stream-isolated subject list for this class
-                const classSubjectsList = (availableSubjects && availableSubjects.length >= 6 && generation_details.stream !== 'Multi-Stream') 
-                    ? availableSubjects 
-                    : getStreamSubjects(targetGrade, classStream);
-
-                const prioritySubject = generation_details.target_subject && generation_details.target_subject !== 'all'
-                    ? generation_details.target_subject.trim()
-                    : null;
-
-                // Pick a subject not yet taken today by this class
-                let unusedSubjects = classSubjectsList.filter(s => !classDaySubjects[className][day].has(s));
-                if (unusedSubjects.length === 0) {
-                    unusedSubjects = classSubjectsList;
-                }
-
-                let currentSubject = null;
-
-                // Guaranteed Focus Subject Priority: If admin specified a priority subject, guarantee prime daily placement for each class!
-                if (prioritySubject) {
-                    const matchedPriority = classSubjectsList.find(s => 
-                        s.toLowerCase().trim() === prioritySubject.toLowerCase().trim() ||
-                        s.toLowerCase().includes(prioritySubject.toLowerCase().trim()) ||
-                        prioritySubject.toLowerCase().includes(s.toLowerCase().trim())
-                    ) || (classSubjectsList.includes(prioritySubject) ? prioritySubject : null);
-
-                    if (matchedPriority && !classDaySubjects[className][day].has(matchedPriority)) {
-                        // Prioritize in prime morning slot (Period 1 or 2) or the first available period of the day
-                        const isPrimePeriodForClass = (pIdx === 0 && cIdx % 2 === 0) || (pIdx === 1 && cIdx % 2 === 1) || pIdx === 0 || unusedSubjects.length === classSubjectsList.length;
-                        if (isPrimePeriodForClass) {
-                            currentSubject = matchedPriority;
-                        }
-                    }
-                }
-
-                if (!currentSubject) {
-                    // Filter out priority subject if already handled for today, and rotate remaining subjects fairly
-                    const remainingToRotate = unusedSubjects.filter(s => !prioritySubject || s.toLowerCase().trim() !== prioritySubject.toLowerCase().trim());
-                    const listToPickFrom = remainingToRotate.length > 0 ? remainingToRotate : unusedSubjects;
-                    const subjectOffset = (dIdx * 3 + pIdx + cIdx * 2) % listToPickFrom.length;
-                    currentSubject = listToPickFrom[subjectOffset];
-                }
-
-                classDaySubjects[className][day].add(currentSubject);
-
-                // Strict Helper to check if an educator is qualified for a specific subject and grade phase
-                const isTeacherQualifiedForSubjectAndGrade = (t, subj, gr) => {
-                    if (!t || !Array.isArray(t.subjects) || t.subjects.length === 0) return false;
-                    
-                    const g = parseInt(gr, 10) || 10;
-                    const isGET = g === 8 || g === 9;
-                    const isFETPhase = g >= 10 && g <= 12;
-                    
-                    // Check grades taught by teacher if specified in employee profile
-                    const gradesTaught = Array.isArray(t.grades_taught) ? t.grades_taught : [];
-                    if (gradesTaught.length > 0) {
-                        const teachesThisGrade = gradesTaught.includes(g);
-                        const teachesPhase = isGET 
-                            ? gradesTaught.some(gt => gt === 8 || gt === 9)
-                            : gradesTaught.some(gt => gt >= 10);
-                        if (!teachesThisGrade && !teachesPhase) {
-                            return false;
-                        }
-                    }
-
-                    const subLow = subj.toLowerCase().trim();
-                    
-                    return t.subjects.some(s => {
-                        const sLow = s.toLowerCase().trim();
-                        if (sLow === subLow) return true;
-
-                        // 1. Natural Sciences (Grade 8 & 9 only): Can be taught by Natural Sciences, Life Sciences, or Physical Sciences educators
-                        if (isGET && subLow.includes('natural science')) {
-                            return sLow.includes('natural science') || sLow.includes('life science') || sLow.includes('physic');
-                        }
-
-                        // 2. Mathematics:
-                        // - In Grade 8 & 9: Senior phase Mathematics
-                        // - In Grade 10-12: FET Mathematics / Mathematical Literacy
-                        if (subLow.includes('math')) {
-                            return sLow.includes('math');
-                        }
-
-                        // 3. Physical Sciences (FET Grade 10-12 only): Strictly Physical Sciences / Physics
-                        if (isFETPhase && subLow.includes('physic')) {
-                            return sLow.includes('physic');
-                        }
-
-                        // 4. Life Sciences (FET Grade 10-12 only): Strictly Life Sciences / Biology
-                        if (isFETPhase && subLow.includes('life science')) {
-                            return sLow.includes('life science');
-                        }
-
-                        // 5. English FAL / English HL:
-                        if (subLow.includes('english')) {
-                            return sLow.includes('english');
-                        }
-
-                        // 6. Social Sciences (Grade 8 & 9 only): Can be taught by Social Sciences, History, or Geography educators
-                        if (isGET && subLow.includes('social science')) {
-                            return sLow.includes('social science') || sLow.includes('geograph') || sLow.includes('history');
-                        }
-
-                        // 7. Geography (FET 10-12): Strictly Geography
-                        if (subLow.includes('geograph')) {
-                            return sLow.includes('geograph');
-                        }
-
-                        // 8. History (FET 10-12): Strictly History
-                        if (subLow.includes('history')) {
-                            return sLow.includes('history');
-                        }
-
-                        // 9. Tourism (FET 10-12): Strictly Tourism
-                        if (subLow.includes('tourism')) {
-                            return sLow.includes('tourism');
-                        }
-
-                        // 10. Commercial subjects (Accounting, Business Studies, Economics, EMS)
-                        if (isGET && subLow.includes('ems')) {
-                            return sLow.includes('ems') || sLow.includes('account') || sLow.includes('business') || sLow.includes('economic');
-                        }
-                        if (subLow.includes('account')) {
-                            return sLow.includes('account');
-                        }
-                        if (subLow.includes('business')) {
-                            return sLow.includes('business');
-                        }
-                        if (subLow.includes('economic')) {
-                            return sLow.includes('economic');
-                        }
-
-                        // 11. Technology & Creative Arts (Grade 8 & 9)
-                        if (subLow.includes('technology')) {
-                            return sLow.includes('technology');
-                        }
-                        if (subLow.includes('creative art')) {
-                            return sLow.includes('creative art') || sLow.includes('art');
-                        }
-
-                        // 12. Life Orientation
-                        if (subLow.includes('life orientation')) {
-                            return sLow.includes('life orientation');
-                        }
-
-                        // 13. Official Home Languages (Sepedi, Sesotho, Setswana, siSwati, Tshivenda, Xitsonga, Afrikaans, isiNdebele, isiXhosa, isiZulu)
-                        const langMatches = [
-                            'sepedi', 'sesotho', 'setswana', 'siswati', 'tshivenda', 'xitsonga',
-                            'afrikaans', 'isindebele', 'isixhosa', 'isizulu'
-                        ];
-                        for (const lang of langMatches) {
-                            if (subLow.includes(lang) && sLow.includes(lang)) {
-                                return true;
-                            }
-                        }
-
-                        return false;
-                    });
-                };
-
-                const normalizeClassName = (raw) => {
-                    if (!raw) return '';
-                    return raw.toString().replace(/^Grade\s*/i, '').trim().toUpperCase();
-                };
-
-                const doesTeacherTeachClass = (t, cName) => {
-                    if (!t || !Array.isArray(t.classes_taught) || t.classes_taught.length === 0) return true;
-                    const norm = normalizeClassName(cName);
-                    return t.classes_taught.some(tc => normalizeClassName(tc) === norm);
-                };
-
-                // Find a free subject-specialist teacher who strictly teaches this subject, grade phase, and class
-                let assignedTeacher = allTeachers.find(t => {
-                    const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
-                    if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
-                    
-                    const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
-                    if (dailySlots >= maxDailySlotsPerTeacher) return false;
-
-                    return isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade) && doesTeacherTeachClass(t, className);
-                });
-
-                // Fallback 1: Any qualified teacher matching the class within (maxDailySlots + 1)
-                if (!assignedTeacher) {
-                    assignedTeacher = allTeachers.find(t => {
-                        const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
-                        if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
-                        const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
-                        return dailySlots < (maxDailySlotsPerTeacher + 1) && 
-                               isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade) && 
-                               doesTeacherTeachClass(t, className);
-                    });
-                }
-
-                // Fallback 2: If no class-specific teacher is free, find any qualified teacher
-                if (!assignedTeacher) {
-                    assignedTeacher = allTeachers.find(t => {
-                        const tKey = `${t.full_name} ${t.surname || ''}`.trim().toLowerCase();
-                        if (teacherBusyMap[tKey]?.[day]?.[period]) return false;
-                        const dailySlots = teacherDailySlotCount[tKey]?.[day] || 0;
-                        return dailySlots < (maxDailySlotsPerTeacher + 1) && 
-                               isTeacherQualifiedForSubjectAndGrade(t, currentSubject, targetGrade);
-                    });
-                }
-
-                // If no teacher in DB is assigned to this subject, place the subject on the timetable as Unassigned (Pending Allocation)
-                // (NEVER assign an educator of a different discipline or grade phase)
-                let teacherFullName = '';
-                if (assignedTeacher) {
-                    teacherFullName = `${assignedTeacher.full_name} ${assignedTeacher.surname || ''}`.trim();
-                    const tKey = teacherFullName.toLowerCase();
-                    if (teacherBusyMap[tKey]) {
-                        if (!teacherBusyMap[tKey][day]) teacherBusyMap[tKey][day] = {};
-                        teacherBusyMap[tKey][day][period] = true;
-                        teacherDailySlotCount[tKey][day] = (teacherDailySlotCount[tKey][day] || 0) + 1;
-                    }
-                } else {
-                    teacherFullName = 'Unassigned (Pending Allocation)';
-                }
-
-                const isSeniorGET = targetGrade === 8 || targetGrade === 9;
-                const syllabusPhase = isSeniorGET ? 'GET Senior Phase' : 'FET Phase';
-
-                timetable_data[className][day][period] = {
-                    subject: currentSubject,
-                    teacher: teacherFullName,
-                    room: `Room ${className.replace(/[^0-9]/g, '') || '10'}${String.fromCharCode(65 + cIdx)}`,
-                    duration: '1 Hour (60 min)',
-                    lesson_focus: `CAPS ${syllabusPhase} (Grade ${targetGrade}) ${currentSubject} Session`
-                };
-                filledSlots++;
-            }
-        }
-    }
-
-    return { timetable_data, filled_count: filledSlots };
-}
 
 /**
  * ADMIN / PRINCIPAL: Publishes master timetable draft to educators for subject review.
@@ -740,28 +235,27 @@ function autoScheduleFullTimetableLogic(timetable_data, generation_details, allT
  */
 exports.publishToTeachers = async (req, res) => {
     const { timetable_data, generation_details, name } = req.body;
-    const grade = generation_details?.grade || 10;
-    const stream = generation_details?.stream || 'General';
+    const gradeCheck = parseGrade(generation_details && generation_details.grade);
+    const stream = String((generation_details && generation_details.stream) || '').trim();
+    const yearCheck = parseAcademicYear(generation_details && (generation_details.academic_year || generation_details.academicYear));
+    if (!gradeCheck.ok) return res.status(400).json({ error: gradeCheck.message });
+    if (!stream) return res.status(400).json({ error: 'Choose the class stream.' });
+    if (!yearCheck.ok) return res.status(400).json({ error: yearCheck.message });
+    const grade = gradeCheck.grade;
     const adminId = req.user ? req.user.id : null;
     const schoolId = getSchoolIdFromReq(req);
+    if (missingSchool(res, schoolId)) return;
 
     if (!timetable_data) {
         return res.status(400).json({ error: 'Missing timetable data to publish.' });
     }
 
     try {
-        const timetableName = name || `Grade ${grade} (${stream}) Master Timetable`;
-        
-        // Deactivate previous active timetables for this grade in THIS school
-        await db.query(
-            `UPDATE timetables SET is_active = FALSE WHERE grade = $1 AND school_id = $2`,
-            [grade, schoolId]
-        );
+        const timetableName = name || `Grade ${grade} (${stream}) ${yearCheck.year} timetable draft`;
 
-        // Insert new draft master timetable for educator review
         const result = await db.query(
             `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, school_id, created_by, updated_at) 
-             VALUES ($1, $2, $3, $4, 'draft_teachers', TRUE, $5, $6, NOW()) RETURNING *`,
+             VALUES ($1, $2, $3, $4, 'draft_teachers', FALSE, $5, $6, NOW()) RETURNING *`,
             [timetableName, grade, stream, JSON.stringify(timetable_data), schoolId, adminId]
         );
 
@@ -808,7 +302,7 @@ exports.publishToTeachers = async (req, res) => {
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50)`);
-            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER`);
 
             await db.query(
                 `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, school_id)
@@ -843,19 +337,34 @@ exports.publishToTeachers = async (req, res) => {
 exports.getTeacherTimetables = async (req, res) => {
     const teacherId = req.user.id;
     const schoolId = resolveSchoolId(req);
+    if (missingSchool(res, schoolId)) return;
     try {
         const [empRes, userRes] = await Promise.all([
             db.query('SELECT grades_taught, subjects FROM employees WHERE user_id = $1', [teacherId]),
-            db.query('SELECT full_name, surname FROM users WHERE id = $1', [teacherId])
+            db.query('SELECT full_name, surname FROM users WHERE id = $1 AND school_id = $2', [teacherId, schoolId])
         ]);
-        const grades = empRes.rows[0]?.grades_taught || [10, 11, 12];
+        const grades = Array.isArray(empRes.rows[0]?.grades_taught) ? empRes.rows[0].grades_taught.filter((grade) => Number.isInteger(Number(grade))) : [];
+        if (grades.length === 0) {
+            return res.json({
+                timetables: [],
+                personal_schedule: { Monday: {}, Tuesday: {}, Wednesday: {}, Thursday: {}, Friday: {} },
+                my_slots: [],
+                message: 'No grades are assigned to this teacher.'
+            });
+        }
         const teacherName = userRes.rows[0] ? `${userRes.rows[0].full_name} ${userRes.rows[0].surname || ''}`.trim() : '';
+        const assignmentRes = await db.query(
+            `SELECT teacher_id, subject_name, class_name, grade_level
+             FROM teacher_assignments
+             WHERE teacher_id = $1`,
+            [teacherId]
+        ).catch(() => ({ rows: [] }));
 
         const { rows } = await db.query(
             `SELECT * FROM timetables 
-             WHERE school_id = $1 AND (grade = ANY($2::int[]) OR status = 'published_to_learners' OR status = 'draft_teachers' OR is_active = TRUE)
+             WHERE school_id = $1 AND grade = ANY($2::int[])
              ORDER BY updated_at DESC`,
-            [schoolId, grades.length ? grades : [10, 11, 12]]
+            [schoolId, grades]
         );
 
         // Build personalized timetable slots for this teacher across all active grades & classes
@@ -867,9 +376,6 @@ exports.getTeacherTimetables = async (req, res) => {
             Thursday: {},
             Friday: {}
         };
-
-        const tLower = teacherName.toLowerCase();
-        const surnameLower = userRes.rows[0]?.surname ? userRes.rows[0].surname.toLowerCase() : '';
 
         rows.forEach(tt => {
             const data = typeof tt.timetable_data === 'string' ? JSON.parse(tt.timetable_data) : tt.timetable_data;
@@ -883,10 +389,8 @@ exports.getTeacherTimetables = async (req, res) => {
 
                     Object.keys(daySlots).forEach(period => {
                         const slot = daySlots[period];
-                        if (slot && slot.teacher) {
-                            const slotTeacherLower = slot.teacher.toLowerCase();
-                            const isMatch = (tLower && slotTeacherLower.includes(tLower)) ||
-                                (surnameLower && slotTeacherLower.includes(surnameLower));
+                        if (slot && teacherOwnsSlot(slot, className, teacherId, assignmentRes.rows)) {
+                            const isMatch = true;
 
                             if (isMatch) {
                                 const entry = {
@@ -897,7 +401,7 @@ exports.getTeacherTimetables = async (req, res) => {
                                     period,
                                     subject: slot.subject,
                                     teacher: slot.teacher,
-                                    room: slot.room || `Room ${className.replace(/[^0-9]/g, '') || '10'}A`,
+                                    room: slot.room || null,
                                     duration: slot.duration || '1 Hour (60 min)',
                                     lesson_focus: slot.lesson_focus
                                 };
@@ -926,35 +430,78 @@ exports.getTeacherTimetables = async (req, res) => {
  * TEACHER: Officially verifies subject allocations and publishes timetable to learners & parents.
  */
 exports.teacherPublishToLearners = async (req, res) => {
-    const { timetable_id, timetable_data } = req.body;
+    const { timetable_id } = req.body;
     const teacherId = req.user.id;
     const schoolId = resolveSchoolId(req);
+    if (!schoolId) return res.status(400).json({ error: 'Choose a school before opening a timetable.' });
+    if (!timetable_id) return res.status(400).json({ error: 'Choose the timetable draft to publish.' });
 
     try {
-        let tt;
-        if (timetable_id) {
-            const ttRes = await db.query('SELECT * FROM timetables WHERE id = $1 AND school_id = $2', [timetable_id, schoolId]);
-            tt = ttRes.rows[0];
-        } else {
-            const ttRes = await db.query('SELECT * FROM timetables WHERE school_id = $1 AND is_active = TRUE ORDER BY updated_at DESC LIMIT 1', [schoolId]);
-            tt = ttRes.rows[0];
-        }
+        const ttRes = await db.query(
+            `SELECT t.*, r.name AS author_role
+             FROM timetables t
+             LEFT JOIN users u ON u.id = t.created_by
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE t.id = $1 AND t.school_id = $2`,
+            [timetable_id, schoolId]
+        );
+        const tt = ttRes.rows[0];
 
         if (!tt) {
             return res.status(404).json({ error: 'Timetable not found for this school to publish.' });
         }
+        if (tt.status !== 'draft_teachers') {
+            return res.status(409).json({ error: 'Only a timetable draft can be published.' });
+        }
+        if (!tt.grade || !String(tt.stream || '').trim()) {
+            return res.status(400).json({ error: 'This draft has no grade or stream, so it cannot be published.' });
+        }
 
-        const grade = tt.grade || 10;
-        const stream = tt.stream || 'General';
+        const grade = tt.grade;
+        const stream = tt.stream;
+        const draftData = parseTimetableData(tt.timetable_data) || {};
+        const classNames = Object.keys(draftData);
+        const [assignmentRes, classRes] = await Promise.all([
+            db.query(
+                `SELECT ta.teacher_id, ta.class_name
+                 FROM teacher_assignments ta
+                 JOIN users u ON u.id = ta.teacher_id
+                 WHERE ta.teacher_id = $1 AND u.school_id = $2`,
+                [teacherId, schoolId]
+            ),
+            db.query(
+                `SELECT name, assigned_teacher_id, homeroom_teacher_id
+                 FROM classes
+                 WHERE school_id = $1 AND grade = $2`,
+                [schoolId, grade]
+            )
+        ]);
+        if (!teacherCanPublish({
+            role: req.user.role,
+            teacherId,
+            classNames,
+            assignments: assignmentRes.rows,
+            classRows: classRes.rows,
+            createdBy: tt.created_by,
+            authorRole: tt.author_role
+        })) {
+            return res.status(403).json({ error: 'You can publish your own class draft, or a school draft for classes assigned to you. Another teacher’s draft stays with that teacher.' });
+        }
 
-        // Update timetable status to officially published for learners
         const updatedRes = await db.query(
             `UPDATE timetables 
-             SET status = 'published_to_learners', 
-                 timetable_data = COALESCE($1, timetable_data), 
+             SET status = 'published_to_learners',
+                 is_active = TRUE,
                  updated_at = NOW() 
-             WHERE id = $2 AND school_id = $3 RETURNING *`,
-            [timetable_data ? JSON.stringify(timetable_data) : null, tt.id, schoolId]
+             WHERE id = $1 AND school_id = $2 AND status = 'draft_teachers' RETURNING *`,
+            [tt.id, schoolId]
+        );
+        await db.query(
+            `UPDATE timetables
+             SET status = 'archived', is_active = FALSE, updated_at = NOW()
+             WHERE school_id = $1 AND grade = $2 AND stream = $3 AND id <> $4
+               AND status = 'published_to_learners' AND is_active = TRUE`,
+            [schoolId, grade, stream, tt.id]
         );
 
         // Fetch learners and linked parents for this grade in THIS school with email addresses
@@ -1013,7 +560,7 @@ exports.teacherPublishToLearners = async (req, res) => {
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id INTEGER`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS grade_target INTEGER`);
             await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS stream_target VARCHAR(50)`);
-            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1`);
+            await db.query(`ALTER TABLE announcements ADD COLUMN IF NOT EXISTS school_id INTEGER`);
 
             await db.query(
                 `INSERT INTO announcements (title, content, role_target, author_id, grade_target, stream_target, school_id)
@@ -1048,18 +595,40 @@ exports.teacherPublishToLearners = async (req, res) => {
 exports.getLearnerTimetable = async (req, res) => {
     try {
         const learnerUser = req.user.id;
-        const childRes = await db.query('SELECT grade, stream, school_id FROM children WHERE learner_user_id = $1', [learnerUser]);
-        const schoolId = childRes.rows[0]?.school_id || resolveSchoolId(req);
-        const grade = childRes.rows[0]?.grade || 10;
+        const childRes = await db.query(
+            `SELECT c.grade, c.school_id, c.class_id, cl.name AS class_name, cl.school_id AS class_school_id
+             FROM children c
+             LEFT JOIN classes cl ON cl.id = c.class_id
+             WHERE c.learner_user_id = $1`,
+            [learnerUser]
+        );
+        const child = childRes.rows[0];
+        const schoolId = child && parseInt(child.school_id, 10);
+        const actorSchool = resolveSchoolId(req);
+        const grade = child && parseInt(child.grade, 10);
+        const className = child && child.class_school_id && parseInt(child.class_school_id, 10) === schoolId
+            ? child.class_name
+            : null;
+        if (!schoolId || !grade || (actorSchool && actorSchool !== schoolId)) {
+            return res.json({ timetables: [], message: 'No published timetable is available for this learner.' });
+        }
+        if (!className) {
+            return res.json({ timetables: [], message: 'No class is recorded for this learner.' });
+        }
 
         const { rows } = await db.query(
             `SELECT * FROM timetables 
-             WHERE school_id = $1 AND (grade = $2 OR grade IS NULL) AND is_active = TRUE
-             ORDER BY CASE WHEN status = 'published_to_learners' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
+             WHERE school_id = $1 AND grade = $2 AND status = 'published_to_learners' AND is_active = TRUE`,
             [schoolId, grade]
         );
-
-        res.json(rows);
+        const selected = selectPublishedClass(rows, className);
+        if (!selected.ok) {
+            const message = selected.code === 'ambiguous'
+                ? 'More than one published timetable matches this class.'
+                : 'No published timetable is available for this class.';
+            return res.json({ timetables: [], message });
+        }
+        res.json({ timetables: [selected.timetable], class_name: className });
     } catch (err) {
         console.error('Error fetching learner timetable:', err);
         res.status(500).json({ error: 'Failed to retrieve timetable.' });
@@ -1072,23 +641,35 @@ exports.getLearnerTimetable = async (req, res) => {
 exports.getChildTimetable = async (req, res) => {
     const childId = req.query.child_id || req.query.childId;
     try {
-        let grade = 10;
-        let schoolId = resolveSchoolId(req);
-        if (childId) {
-            const childRes = await db.query('SELECT grade, school_id FROM children WHERE id = $1', [childId]);
-            if (childRes.rows[0]) {
-                grade = childRes.rows[0].grade;
-                schoolId = childRes.rows[0].school_id || schoolId;
-            }
-        }
+        const parentId = req.user && req.user.id;
+        if (!childId || !parentId) return res.status(400).json({ error: 'Choose a linked child.' });
+        const childRes = await db.query(
+            `SELECT c.grade, c.school_id, cl.name AS class_name, cl.school_id AS class_school_id
+             FROM children c
+             LEFT JOIN classes cl ON cl.id = c.class_id
+             WHERE c.id = $1
+               AND (c.parent_id = $2 OR c.secondary_parent_id = $2 OR EXISTS (
+                    SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $2
+               ))`,
+            [childId, parentId]
+        );
+        const child = childRes.rows[0];
+        const schoolId = child && parseInt(child.school_id, 10);
+        const grade = child && parseInt(child.grade, 10);
+        const className = child && child.class_school_id && parseInt(child.class_school_id, 10) === schoolId
+            ? child.class_name
+            : null;
+        if (!child || !schoolId || !grade) return res.status(404).json({ error: 'Child not found.' });
+        if (!className) return res.status(404).json({ error: 'No class is recorded for this learner.' });
 
         const { rows } = await db.query(
             `SELECT * FROM timetables 
-             WHERE school_id = $1 AND (grade = $2 OR grade IS NULL) AND is_active = TRUE
-             ORDER BY CASE WHEN status = 'published_to_learners' THEN 0 ELSE 1 END, updated_at DESC LIMIT 1`,
+             WHERE school_id = $1 AND grade = $2 AND status = 'published_to_learners' AND is_active = TRUE`,
             [schoolId, grade]
         );
-        res.json(rows[0] || null);
+        const selected = selectPublishedClass(rows, className);
+        if (!selected.ok) return res.json(null);
+        res.json(selected.timetable);
     } catch (err) {
         console.error('Error fetching child timetable:', err);
         res.status(500).json({ error: 'Failed to retrieve child timetable.' });
@@ -1101,6 +682,7 @@ exports.getChildTimetable = async (req, res) => {
 exports.getTimetables = async (req, res) => {
     try {
         const schoolId = getSchoolIdFromReq(req);
+        if (missingSchool(res, schoolId)) return;
         const { rows } = await db.query('SELECT * FROM timetables WHERE school_id = $1 ORDER BY grade, created_at DESC', [schoolId]);
         res.json(rows);
     } catch (err) {
@@ -1112,6 +694,7 @@ exports.getTimetables = async (req, res) => {
 exports.getTimetableById = async (req, res) => {
     const { id } = req.params;
     const schoolId = getSchoolIdFromReq(req);
+    if (missingSchool(res, schoolId)) return;
     try {
         const { rows } = await db.query('SELECT * FROM timetables WHERE id = $1 AND school_id = $2', [id, schoolId]);
         if (rows.length === 0) return res.status(404).json({ error: 'Timetable not found for this school.' });
@@ -1140,6 +723,7 @@ exports.deleteTimetable = async (req, res) => {
     const { id } = req.params;
     const adminId = req.user ? req.user.id : null;
     const schoolId = getSchoolIdFromReq(req);
+    if (missingSchool(res, schoolId)) return;
 
     try {
         let grade = null;
@@ -1158,7 +742,11 @@ exports.deleteTimetable = async (req, res) => {
                     const data = typeof tt.timetable_data === 'string' ? JSON.parse(tt.timetable_data) : tt.timetable_data;
                     classNames = Object.keys(data || {});
                 } catch (e) {}
-                await db.query('DELETE FROM timetables WHERE id = $1 AND school_id = $2', [parseInt(id, 10), schoolId]);
+                await db.query(
+                    `UPDATE timetables SET status = 'archived', is_active = FALSE, updated_at = NOW()
+                     WHERE id = $1 AND school_id = $2 AND status <> 'archived'`,
+                    [parseInt(id, 10), schoolId]
+                );
                 deleted = true;
             }
         } else {
@@ -1166,7 +754,11 @@ exports.deleteTimetable = async (req, res) => {
             if (named.rows[0]) {
                 grade = named.rows[0].grade;
                 stream = named.rows[0].stream || '';
-                await db.query('DELETE FROM timetables WHERE id = $1 AND school_id = $2', [named.rows[0].id, schoolId]);
+                await db.query(
+                    `UPDATE timetables SET status = 'archived', is_active = FALSE, updated_at = NOW()
+                     WHERE id = $1 AND school_id = $2 AND status <> 'archived'`,
+                    [named.rows[0].id, schoolId]
+                );
                 deleted = true;
             }
         }
@@ -1224,7 +816,7 @@ exports.deleteTimetable = async (req, res) => {
 
         res.json({
             success: true,
-            message: `Timetable deleted successfully. Associated slots are now free for new generation.`
+            message: `Timetable archived. The record remains available as history.`
         });
     } catch (err) {
         console.error('Error deleting timetable:', err);
@@ -1234,19 +826,118 @@ exports.deleteTimetable = async (req, res) => {
 
 exports.updateTimetable = async (req, res) => {
     const { id } = req.params;
-    const { timetable_data, is_active, status } = req.body;
+    const schoolId = getSchoolIdFromReq(req);
+    if (missingSchool(res, schoolId)) return;
+    const { timetable_data } = req.body;
+    if (req.body && req.body.status === 'published_to_learners') {
+        return res.status(403).json({ error: 'Use the timetable publication action. A status change alone cannot publish a timetable.' });
+    }
     try {
+        const existing = await db.query(
+            `SELECT t.id, t.status, t.timetable_data, t.grade, t.created_by, r.name AS author_role
+             FROM timetables t
+             LEFT JOIN users u ON u.id = t.created_by
+             LEFT JOIN roles r ON r.id = u.role_id
+             WHERE t.id = $1 AND t.school_id = $2`,
+            [id, schoolId]
+        );
+        if (existing.rows.length === 0) return res.status(404).json({ error: 'Timetable not found for this school.' });
+        if (existing.rows[0].status !== 'draft_teachers') {
+            return res.status(409).json({ error: 'A published timetable is kept as history. Save a new draft instead of changing it.' });
+        }
+        const role = String(req.user && req.user.role || '').toLowerCase();
+        if (role === 'teacher' || role === 'class_teacher') {
+            if (existing.rows[0].created_by && String(existing.rows[0].created_by) !== String(req.user.id) && String(existing.rows[0].author_role || '').toLowerCase() === 'teacher') {
+                return res.status(403).json({ error: 'Another teacher’s draft can be changed only by that teacher or a school admin.' });
+            }
+            const data = parseTimetableData(timetable_data) || parseTimetableData(existing.rows[0].timetable_data) || {};
+            const [assignmentRes, classRes] = await Promise.all([
+                db.query(
+                    `SELECT ta.teacher_id, ta.class_name
+                     FROM teacher_assignments ta
+                     JOIN users u ON u.id = ta.teacher_id
+                     WHERE ta.teacher_id = $1 AND u.school_id = $2`,
+                    [req.user.id, schoolId]
+                ),
+                db.query('SELECT name, assigned_teacher_id, homeroom_teacher_id FROM classes WHERE school_id = $1 AND grade = $2', [schoolId, existing.rows[0].grade])
+            ]);
+            if (!teacherCanPublish({
+                role,
+                teacherId: req.user.id,
+                classNames: Object.keys(data),
+                assignments: assignmentRes.rows,
+                classRows: classRes.rows
+            })) {
+                return res.status(403).json({ error: 'You can change a timetable only for classes assigned to you.' });
+            }
+        }
         const { rows } = await db.query(
             `UPDATE timetables 
              SET timetable_data = COALESCE($1, timetable_data),
-                 is_active = COALESCE($2, is_active),
-                 status = COALESCE($3, status),
                  updated_at = NOW()
-             WHERE id = $4 RETURNING *`,
-            [timetable_data ? JSON.stringify(timetable_data) : null, is_active, status, id]
+             WHERE id = $2 AND school_id = $3 AND status = 'draft_teachers' RETURNING *`,
+            [timetable_data ? JSON.stringify(timetable_data) : null, id, schoolId]
         );
         res.json(rows[0]);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Failed to update timetable.' });
+    }
+};
+
+exports.saveTeacherDraft = async (req, res) => {
+    const schoolId = resolveSchoolId(req);
+    if (missingSchool(res, schoolId)) return;
+    const role = String(req.user && req.user.role || '').toLowerCase();
+    if (role !== 'teacher' && role !== 'class_teacher') {
+        return res.status(403).json({ error: 'Only a teacher can save a personal class draft.' });
+    }
+    const data = parseTimetableData(req.body && req.body.timetable_data);
+    const grade = parseInt(req.body && req.body.grade, 10);
+    const stream = String((req.body && req.body.stream) || '').trim();
+    const year = parseInt(req.body && req.body.academic_year, 10);
+    const classNames = data && typeof data === 'object' ? Object.keys(data) : [];
+    if (!data || !Number.isInteger(grade) || !stream || !Number.isInteger(year) || classNames.length === 0) {
+        return res.status(400).json({ error: 'A class draft needs the timetable, grade, stream, academic year, and at least one class.' });
+    }
+    try {
+        const [assignmentRes, classRes] = await Promise.all([
+            db.query('SELECT teacher_id, class_name FROM teacher_assignments WHERE teacher_id = $1', [req.user.id]),
+            db.query(
+                `SELECT name, assigned_teacher_id, homeroom_teacher_id, stream
+                 FROM classes
+                 WHERE school_id = $1 AND grade = $2 AND COALESCE(ownership_quarantine, FALSE) = FALSE`,
+                [schoolId, grade]
+            )
+        ]);
+        if (!teacherCanPublish({
+            role,
+            teacherId: req.user.id,
+            classNames,
+            assignments: assignmentRes.rows,
+            classRows: classRes.rows
+        })) {
+            return res.status(403).json({ error: 'A teacher can save a draft only for classes assigned to them.' });
+        }
+        const classesMatch = classNames.every((name) => classRes.rows.some((row) => (
+            String(row.name || '').trim().toLowerCase() === String(name).trim().toLowerCase()
+            && String(row.stream || '').trim().toLowerCase() === stream.toLowerCase()
+        )));
+        if (!classesMatch) {
+            return res.status(400).json({ error: 'Every class in the draft must belong to this school, grade, and stream.' });
+        }
+        const inserted = await db.query(
+            `INSERT INTO timetables (name, grade, stream, timetable_data, status, is_active, school_id, created_by, updated_at)
+             VALUES ($1, $2, $3, $4, 'draft_teachers', FALSE, $5, $6, NOW())
+             RETURNING id, school_id, created_by, status, grade, stream`,
+            [`Grade ${grade} ${stream} teacher draft`, grade, stream, JSON.stringify(data), schoolId, req.user.id]
+        );
+        res.status(201).json({
+            saved: true,
+            message: 'Your class draft was saved. It is not visible to learners or parents.',
+            timetable: inserted.rows[0]
+        });
+    } catch (err) {
+        console.error('Error saving teacher draft:', err);
+        res.status(500).json({ error: 'Failed to save the class draft.' });
     }
 };

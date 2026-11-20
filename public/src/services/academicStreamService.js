@@ -13,16 +13,17 @@ async function ensureSchema() {
         id SERIAL PRIMARY KEY,
         school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
         academic_year INTEGER NOT NULL,
-        grade INTEGER NOT NULL CHECK (grade BETWEEN 10 AND 12),
+        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
         subject_name VARCHAR(80) NOT NULL,
         category VARCHAR(20) NOT NULL CHECK (category IN ('language', 'mathematics', 'elective')),
         language_level VARCHAR(40) NOT NULL DEFAULT '',
+        stream_name VARCHAR(80) NOT NULL DEFAULT '',
         is_required BOOLEAN NOT NULL DEFAULT FALSE,
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE UNIQUE INDEX IF NOT EXISTS school_subject_offerings_unique
-        ON school_subject_offerings (school_id, academic_year, grade, subject_name, language_level);
+        ON school_subject_offerings (school_id, academic_year, grade, stream_name, subject_name, language_level);
       CREATE INDEX IF NOT EXISTS school_subject_offerings_lookup
         ON school_subject_offerings (school_id, academic_year, grade, is_active);
 
@@ -30,7 +31,7 @@ async function ensureSchema() {
         id SERIAL PRIMARY KEY,
         school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
         academic_year INTEGER NOT NULL,
-        grade INTEGER NOT NULL CHECK (grade BETWEEN 10 AND 12),
+        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
         name VARCHAR(80) NOT NULL,
         mathematics_option VARCHAR(40) NOT NULL,
         electives TEXT[] NOT NULL,
@@ -136,9 +137,9 @@ async function saveOfferings(schoolId, actorId, input) {
     for (const row of languages) {
       await client.query(
         `INSERT INTO school_subject_offerings
-          (school_id, academic_year, grade, subject_name, category, language_level, is_required, is_active)
-         VALUES ($1, $2, $3, $4, 'language', $5, $6, TRUE)
-         ON CONFLICT (school_id, academic_year, grade, subject_name, language_level)
+          (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_required, is_active)
+         VALUES ($1, $2, $3, '', $4, 'language', $5, $6, TRUE)
+         ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
          DO UPDATE SET is_required = EXCLUDED.is_required, is_active = TRUE`,
         [schoolId, year, grade, row.language, row.level, row.required]
       );
@@ -146,9 +147,9 @@ async function saveOfferings(schoolId, actorId, input) {
     for (const subject of mathematics) {
       await client.query(
         `INSERT INTO school_subject_offerings
-          (school_id, academic_year, grade, subject_name, category, language_level, is_active)
-         VALUES ($1, $2, $3, $4, 'mathematics', '', TRUE)
-         ON CONFLICT (school_id, academic_year, grade, subject_name, language_level)
+          (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_active)
+         VALUES ($1, $2, $3, '', $4, 'mathematics', '', TRUE)
+         ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
          DO UPDATE SET is_active = TRUE`,
         [schoolId, year, grade, subject]
       );
@@ -156,9 +157,9 @@ async function saveOfferings(schoolId, actorId, input) {
     for (const subject of electives) {
       await client.query(
         `INSERT INTO school_subject_offerings
-          (school_id, academic_year, grade, subject_name, category, language_level, is_active)
-         VALUES ($1, $2, $3, $4, 'elective', '', TRUE)
-         ON CONFLICT (school_id, academic_year, grade, subject_name, language_level)
+          (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_active)
+         VALUES ($1, $2, $3, '', $4, 'elective', '', TRUE)
+         ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
          DO UPDATE SET is_active = TRUE`,
         [schoolId, year, grade, subject]
       );

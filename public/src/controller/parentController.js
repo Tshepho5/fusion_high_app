@@ -36,20 +36,20 @@ exports.getChildren = async (req, res) => {
         const query = `
             WITH RankedProgress AS (
                 SELECT 
-                    child_id, subject, COALESCE(grade, score, 0) as mark,
+                    child_id, subject, COALESCE(grade, score) as mark,
                     ROW_NUMBER() OVER(PARTITION BY child_id ORDER BY date DESC NULLS LAST) as rn
                 FROM progress
             )
             SELECT
                 c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects, 
-                COALESCE(c.learner_number, CONCAT('2026-FHS-', LPAD(c.id::text, 3, '0'))) as learner_number,
+                c.learner_number,
                 c.home_language,
                 c.school_id,
                 COALESCE(c.is_test_record, FALSE) AS is_test_record,
                 u.email AS learner_email, 
                 COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
                 COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture_path,
-                COALESCE(u.gender, 'Male') as gender,
+                u.gender,
                 u.dob,
                 COALESCE(json_agg(json_build_object('subject', rp.subject, 'mark', rp.mark)) FILTER (WHERE rp.child_id IS NOT NULL), '[]') AS recent_marks
             FROM children c
@@ -71,8 +71,8 @@ exports.getChildren = async (req, res) => {
         const seenLearners = new Set();
         const uniqueRawChildren = [];
         for (const child of rawChildren) {
-            const ref = (child.learner_number && child.learner_number.trim() && !child.learner_number.startsWith('2026-FHS-'))
-                ? child.learner_number.trim().toUpperCase()
+            const ref = child.learner_number && String(child.learner_number).trim()
+                ? String(child.learner_number).trim().toUpperCase()
                 : `${(child.full_name || '').trim().toLowerCase()}_${(child.surname || '').trim().toLowerCase()}_${child.grade || ''}`;
             if (!seenLearners.has(ref)) {
                 seenLearners.add(ref);
@@ -847,10 +847,10 @@ async function fetchParentChildren(parentId) {
             c.stream, 
             c.subjects, 
             c.class_id, 
-            COALESCE(c.learner_number, CONCAT('2026-FHS-', LPAD(c.id::text, 3, '0'))) as learner_number,
+            c.learner_number,
             COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
             COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture_path,
-            COALESCE(u.gender, 'Male') as gender,
+            u.gender,
             u.dob
          FROM children c
          LEFT JOIN users u ON c.learner_user_id = u.id
@@ -865,8 +865,8 @@ async function fetchParentChildren(parentId) {
     const seen = new Set();
     const unique = [];
     for (const child of raw) {
-        const ref = (child.learner_number && child.learner_number.trim() && !child.learner_number.startsWith('2026-FHS-'))
-            ? child.learner_number.trim().toUpperCase()
+        const ref = child.learner_number && String(child.learner_number).trim()
+            ? String(child.learner_number).trim().toUpperCase()
             : `${(child.full_name || '').trim().toLowerCase()}_${(child.surname || '').trim().toLowerCase()}_${child.grade || ''}`;
         if (!seen.has(ref)) {
             seen.add(ref);
@@ -959,7 +959,18 @@ exports.getParentOverview = async (req, res) => {
         // Fetch dynamic upcoming timetable events from active JSONB timetable
         let upcomingEvents = [];
         try {
-            const ttRes = await db.query(`SELECT timetable_data FROM timetables WHERE is_active = TRUE LIMIT 1`);
+            const ttRes = await db.query(
+                `SELECT timetable_data FROM timetables
+                 WHERE is_active = TRUE
+                   AND status = 'published_to_learners'
+                   AND school_id IN (
+                        SELECT c.school_id FROM children c
+                        LEFT JOIN parent_children pc ON pc.child_id = c.id
+                        WHERE (c.parent_id = $1 OR c.secondary_parent_id = $1 OR pc.parent_id = $1)
+                          AND c.school_id IS NOT NULL
+                   )`,
+                [req.user.id]
+            );
             if (ttRes.rows.length > 0) {
                 const ttData = typeof ttRes.rows[0].timetable_data === 'string'
                     ? JSON.parse(ttRes.rows[0].timetable_data)
@@ -1121,7 +1132,7 @@ exports.getChildPerformanceOverview = async (req, res) => {
             `SELECT c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects, c.learner_number, c.home_language,
                     COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture,
                     COALESCE(u.profile_picture_path, u.profile_picture) as profile_picture_path,
-                    COALESCE(u.gender, 'Male') as gender,
+                    u.gender,
                     u.dob
              FROM children c
              LEFT JOIN users u ON c.learner_user_id = u.id
@@ -1649,34 +1660,64 @@ exports.getChildTimetable = async (req, res) => {
             childId = availableChildren[0].id;
         }
 
-        const childRes = await db.query(`SELECT id, full_name, surname, grade, stream, subjects, class_id FROM children WHERE id = $1`, [childId]);
+        const childRes = await db.query(
+            `SELECT c.id, c.full_name, c.surname, c.grade, c.stream, c.subjects, c.class_id, c.school_id,
+                    cl.name AS class_name, cl.school_id AS class_school_id
+             FROM children c
+             LEFT JOIN classes cl ON cl.id = c.class_id
+             WHERE c.id = $1
+               AND (c.parent_id = $2 OR c.secondary_parent_id = $2 OR EXISTS (
+                    SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $2
+               ))`,
+            [childId, parentId]
+        );
         if (childRes.rows.length === 0) return res.status(404).json({ error: 'Child not found.' });
 
         const child = childRes.rows[0];
-
-        const ttRes = await db.query(
-            `SELECT id, name, grade, stream, timetable_data, status, updated_at FROM timetables 
-             WHERE (grade = $1 OR grade IS NULL) AND is_active = TRUE 
-             ORDER BY updated_at DESC LIMIT 1`,
-            [child.grade]
-        );
-
-        if (ttRes.rows.length === 0 || !ttRes.rows[0].timetable_data) {
+        if (!child.school_id || !child.grade) {
             return res.json({
                 timetable: [],
                 timetable_data: null,
                 is_published: false,
-                message: `No active timetable published for Grade ${child.grade} yet. Once the Principal generates and publishes the schedule, it will appear here.`
+                message: 'This learner has no school or grade on record, so a timetable cannot be shown.'
             });
         }
 
-        const ttRow = ttRes.rows[0];
+        const className = child.class_name && parseInt(child.class_school_id, 10) === parseInt(child.school_id, 10)
+            ? child.class_name
+            : null;
+        if (!className) {
+            return res.json({
+                timetable: [],
+                timetable_data: null,
+                is_published: false,
+                message: 'No class is recorded for this learner.'
+            });
+        }
+
+        const ttRes = await db.query(
+            `SELECT id, name, grade, stream, timetable_data, status, is_active, updated_at FROM timetables 
+             WHERE school_id = $1 AND grade = $2 AND status = 'published_to_learners' AND is_active = TRUE`,
+            [child.school_id, child.grade]
+        );
+        const published = ttRes.rows.filter((row) => {
+            const data = typeof row.timetable_data === 'string' ? JSON.parse(row.timetable_data) : row.timetable_data;
+            return data && Object.keys(data).some((name) => name.trim().toLowerCase() === className.trim().toLowerCase());
+        });
+        if (published.length !== 1) {
+            return res.json({
+                timetable: [],
+                timetable_data: null,
+                is_published: false,
+                message: published.length > 1
+                    ? 'More than one published timetable matches this class.'
+                    : 'No published timetable is available for this class.'
+            });
+        }
+
+        const ttRow = published[0];
         const rawTtData = typeof ttRow.timetable_data === 'string' ? JSON.parse(ttRow.timetable_data) : ttRow.timetable_data;
-
-        // Extract class schedule matching child
-        const classNames = Object.keys(rawTtData);
-        let matchingClassName = classNames.find(cn => cn.includes(`${child.grade}A`) || cn.includes(`${child.grade}`)) || classNames[0];
-
+        const matchingClassName = Object.keys(rawTtData).find((name) => name.trim().toLowerCase() === className.trim().toLowerCase());
         const classSchedule = rawTtData[matchingClassName] || {};
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         let timetable = [];
@@ -1691,8 +1732,8 @@ exports.getChildTimetable = async (req, res) => {
                             period: periodKey,
                             time: periodKey,
                             subject: entry.subject || entry.subject_name,
-                            teacher: entry.teacher || 'Subject Teacher',
-                            room: entry.room || `Room ${child.grade || 10}A`
+                            teacher: entry.teacher || null,
+                            room: entry.room || null
                         });
                     }
                 }
@@ -1701,7 +1742,7 @@ exports.getChildTimetable = async (req, res) => {
 
         res.json({
             timetable,
-            timetable_data: rawTtData,
+            timetable_data: { [matchingClassName]: classSchedule },
             is_published: true,
             grade: child.grade,
             class_name: matchingClassName,

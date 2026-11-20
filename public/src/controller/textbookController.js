@@ -23,7 +23,7 @@ async function ensureTextbookSchema() {
         total_copies INTEGER DEFAULT 50,
         available_copies INTEGER DEFAULT 50,
         unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00,
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         stream VARCHAR(50) DEFAULT 'General',
         barcode_prefix VARCHAR(50),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -42,7 +42,7 @@ async function ensureTextbookSchema() {
         condition_on_return VARCHAR(30),
         replacement_fee NUMERIC(10, 2) DEFAULT 0.00,
         status VARCHAR(30) DEFAULT 'issued',
-        school_id INTEGER DEFAULT 1,
+        school_id INTEGER,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -54,7 +54,7 @@ async function ensureTextbookSchema() {
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00;
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS total_copies INTEGER DEFAULT 50;
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS available_copies INTEGER DEFAULT 50;
-      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS school_id INTEGER;
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS stream VARCHAR(50) DEFAULT 'General';
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS isbn VARCHAR(50);
       ALTER TABLE textbook_inventory ADD COLUMN IF NOT EXISTS barcode_prefix VARCHAR(50);
@@ -67,7 +67,7 @@ async function ensureTextbookSchema() {
       ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS condition_on_return VARCHAR(30);
       ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS replacement_fee NUMERIC(10, 2) DEFAULT 0.00;
       ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'issued';
-      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER DEFAULT 1;
+      ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS school_id INTEGER;
       ALTER TABLE textbook_allocations ADD COLUMN IF NOT EXISTS copy_barcode VARCHAR(100);
     `);
 

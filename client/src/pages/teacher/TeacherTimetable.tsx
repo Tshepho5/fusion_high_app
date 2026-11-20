@@ -102,6 +102,31 @@ export const TeacherTimetable: React.FC = () => {
     fetchSwapRequests();
   }, []);
 
+  const handleSaveOwnDraft = async () => {
+    if (!selectedTimetable || !parsedData) return;
+    const className = selectedClass || Object.keys(parsedData)[0];
+    if (!className || !parsedData[className]) {
+      setError('Choose your class before saving a draft.');
+      return;
+    }
+    setPublishing(true);
+    setError(null);
+    try {
+      const res = await teacherService.saveClassDraft({
+        grade: selectedTimetable.grade,
+        stream: selectedTimetable.stream,
+        academic_year: new Date().getFullYear(),
+        timetable_data: { [className]: parsedData[className] }
+      });
+      setStatusMessage(res.message || 'Your class draft was saved.');
+      fetchTimetables();
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || 'Failed to save your class draft.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const handlePublishToLearners = async () => {
     if (!selectedTimetable) return;
     setPublishing(true);
@@ -143,7 +168,10 @@ export const TeacherTimetable: React.FC = () => {
       : selectedTimetable.timetable_data;
 
     const targetSlotData = tData?.[selectedClass]?.[targetSwapDay]?.[targetSwapPeriod];
-    const targetTeacherName = targetSlotData?.teacher || 'Colleague Educator';
+    if (!targetSlotData || !targetSlotData.teacher_id) {
+      setError('That period has no assigned teacher record, so it cannot be swapped by name.');
+      return;
+    }
 
     setSendingSwap(true);
     setError(null);
@@ -155,7 +183,7 @@ export const TeacherTimetable: React.FC = () => {
         requester_day: swapSourceSlot.day,
         requester_period: swapSourceSlot.period,
         requester_subject: swapSourceSlot.data?.subject || 'Subject Period',
-        target_teacher_name: targetTeacherName,
+        target_teacher_id: targetSlotData.teacher_id,
         target_day: targetSwapDay,
         target_period: targetSwapPeriod,
         target_subject: targetSlotData?.subject || 'Subject Period',
@@ -248,6 +276,16 @@ export const TeacherTimetable: React.FC = () => {
               </span>
             )}
           </button>
+
+          {selectedTimetable && (
+            <button
+              onClick={handleSaveOwnDraft}
+              disabled={publishing}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold transition-all disabled:opacity-50"
+            >
+              <span>Save my class draft</span>
+            </button>
+          )}
 
           {selectedTimetable && (
             <button

@@ -155,7 +155,7 @@ const TOOL_HANDLERS = {
         const userId = context.user.id;
         // Resolve learner class
         const childRes = await db.query(
-            `SELECT c.id, c.grade, c.stream, c.class_id, cl.name as class_name 
+            `SELECT c.id, c.grade, c.stream, c.class_id, c.school_id, cl.name as class_name, cl.school_id as class_school_id
              FROM children c
              LEFT JOIN classes cl ON c.class_id = cl.id
              WHERE c.learner_user_id = $1 OR c.id::text = $1::text
@@ -168,37 +168,58 @@ const TOOL_HANDLERS = {
         }
 
         const child = childRes.rows[0];
+        const schoolId = parseInt(child.school_id, 10);
+        const actorSchool = parseInt(context.user && context.user.school_id, 10);
+        if (!Number.isInteger(schoolId) || schoolId <= 0) {
+            return { error: 'This learner is not attached to a school.' };
+        }
+        if (Number.isInteger(actorSchool) && actorSchool > 0 && actorSchool !== schoolId) {
+            return { error: 'Learner profile not found for timetable lookup.' };
+        }
+        if (child.class_school_id && parseInt(child.class_school_id, 10) !== schoolId) {
+            return { error: 'Learner profile not found for timetable lookup.' };
+        }
         const ttRes = await db.query(
             `SELECT name, grade, stream, timetable_data 
              FROM timetables 
-             WHERE is_active = TRUE AND (grade = $1 OR stream = $2)
-             ORDER BY id DESC LIMIT 1`,
-            [child.grade, child.stream]
+             WHERE is_active = TRUE AND status = 'published_to_learners' AND school_id = $1 AND grade = $2`,
+            [schoolId, child.grade]
         );
 
-        if (ttRes.rows.length === 0) {
+        if (!child.class_name || parseInt(child.class_school_id, 10) !== schoolId) {
+            return { error: 'No class is recorded for this learner.' };
+        }
+        const matches = ttRes.rows.filter((row) => {
+            const data = typeof row.timetable_data === 'string' ? JSON.parse(row.timetable_data) : row.timetable_data;
+            return data && Object.keys(data).some((name) => name.trim().toLowerCase() === child.class_name.trim().toLowerCase());
+        });
+        if (matches.length !== 1) {
             return {
                 grade: child.grade,
                 className: child.class_name,
-                message: 'No published timetable found for your grade. Contact your administrator.'
+                message: matches.length > 1
+                    ? 'More than one published timetable matches this class.'
+                    : 'No published timetable is available for this class.'
             };
         }
 
-        const data = ttRes.rows[0].timetable_data;
-        if (args.day && typeof data === 'object') {
-            const dayKey = Object.keys(data).find(k => k.toLowerCase() === args.day.toLowerCase());
+        const stored = typeof matches[0].timetable_data === 'string' ? JSON.parse(matches[0].timetable_data) : matches[0].timetable_data;
+        const classKey = Object.keys(stored).find((name) => name.trim().toLowerCase() === child.class_name.trim().toLowerCase());
+        const classSchedule = stored[classKey] || {};
+        if (args.day && typeof classSchedule === 'object') {
+            const dayKey = Object.keys(classSchedule).find((key) => key.toLowerCase() === String(args.day).toLowerCase());
             return {
                 grade: child.grade,
-                className: child.class_name,
+                className: classKey,
                 day: args.day,
-                schedule: dayKey ? data[dayKey] : `No lessons scheduled for ${args.day}`
+                schedule: dayKey ? classSchedule[dayKey] : null
             };
         }
 
         return {
             grade: child.grade,
-            className: child.class_name,
-            schedule: data
+            className: classKey,
+            schedule: { [classKey]: classSchedule }
         };
     },
 

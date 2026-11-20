@@ -421,6 +421,8 @@ export const teacherService = {
     api.get('/api/teacher/marks/history', { params }).then(res => res.data),
   recordMark: (payload: any) => api.post('/api/teacher/record-mark', payload).then(res => res.data),
   getTimetables: () => api.get('/api/teacher/timetables').then(res => res.data),
+  saveClassDraft: (payload: { grade: number; stream: string; academic_year: number; timetable_data: any }) =>
+    api.post('/api/teacher/class-drafts', payload).then(res => res.data),
   publishToLearners: (payload: { timetable_id: number; timetable_data?: any }) => 
     api.post('/api/teacher/publish-to-learners', payload).then(res => res.data),
   generateLessonPlan: (payload: { subject: string; grade: number; topic: string; duration?: string }) => 
@@ -524,6 +526,8 @@ export const adminService = {
   applyProgression: (year: number) =>
     api.post('/api/admin/progression/apply', { year, confirm: 'apply-enrolments' }).then(res => res.data),
   createLearner: (payload: any) => api.post('/api/admin/learners', payload).then(res => res.data),
+  transferLearner: (id: number | string, payload: { destination_class_id: number; effective_on: string; reason: string }) =>
+    api.post(`/api/admin/learners/${id}/class-transfer`, payload).then(res => res.data),
   deleteLearner: (id: number | string) => api.delete(`/api/admin/learners/${id}`).then(res => res.data),
   deleteAdmission: (id: number | string) => api.delete(`/api/admin/admissions/${id}`).then(res => res.data),
   getRecycleBin: () => api.get('/api/admin/recycle-bin').then(res => res.data),
@@ -540,7 +544,7 @@ export const adminService = {
   getSchoolMetadata: () => api.get('/api/admin/metadata').then(res => res.data),
   getTimetables: () => api.get('/api/admin/timetables').then(res => res.data),
   generateTimetable: (payload: any) => api.post('/api/admin/generate-timetable', payload).then(res => res.data),
-  generateSchoolWideTimetable: () => api.post('/api/admin/generate-school-wide-timetable').then(res => res.data),
+  generateSchoolWideTimetable: (payload: { academic_year: number }) => api.post('/api/admin/generate-school-wide-timetable', payload).then(res => res.data),
   publishToTeachers: (payload: { timetable_id?: number; timetable_data?: any; generation_details?: any; name?: string; [key: string]: any }) => 
     api.post('/api/admin/publish-to-teachers', payload).then(res => res.data),
   publishTimetable: (payload: { timetable_id?: number; timetable_data?: any; generation_details?: any; name?: string; [key: string]: any }) => 

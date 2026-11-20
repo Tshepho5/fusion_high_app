@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminService, parentApplicationService, classStaffService } from '../../services/api';
+import { ClassTransferPanel } from './ClassTransferPanel';
 import { useSchool } from '../../context/SchoolContext';
 import { dashboardRole, startDashboardView } from '../../utils/dashboardView';
 import { useAuth } from '../../context/AuthContext';
@@ -1192,6 +1193,7 @@ export const AdminUsers: React.FC = () => {
                 : 'School Directory'}
           </h2>
         </div>
+        {!platformDirectory && <ClassTransferPanel />}
 
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">

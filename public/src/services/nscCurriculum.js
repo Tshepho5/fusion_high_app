@@ -80,7 +80,8 @@ function validateOfferings(input) {
   const year = Number(input.academic_year);
   const grade = Number(input.grade);
   if (!Number.isInteger(year) || year < 2020 || year > 2100) errors.push('Select a valid academic year.');
-  if (![10, 11, 12].includes(grade)) errors.push('Subject streams are configured for Grades 10, 11 and 12.');
+  if (![8, 9, 10, 11, 12].includes(grade)) errors.push('Subject offerings are configured for Grades 8 to 12.');
+  const seniorPhase = grade === 8 || grade === 9;
 
   const languages = Array.isArray(input.languages) ? input.languages : [];
   const normalisedLanguages = [];
@@ -102,30 +103,49 @@ function validateOfferings(input) {
 
   const homeLanguages = normalisedLanguages.filter((row) => row.level === HOME_LANGUAGE);
   const additionalLanguages = normalisedLanguages.filter((row) => row.level === FIRST_ADDITIONAL);
-  if (!homeLanguages.length) errors.push('Offer at least one Home Language.');
-  if (!additionalLanguages.length) errors.push('Offer at least one First Additional Language.');
-  if (additionalLanguages.filter((row) => row.required).length > 1) {
-    errors.push('Only one First Additional Language can be required by the school.');
-  }
-  homeLanguages.forEach((home) => {
-    if (!additionalLanguages.some((extra) => !sameName(extra.language, home.language))) {
-      errors.push(`${home.language} Home Language needs a different First Additional Language.`);
+  if (!seniorPhase) {
+    if (!homeLanguages.length) errors.push('Offer at least one Home Language.');
+    if (!additionalLanguages.length) errors.push('Offer at least one First Additional Language.');
+    if (additionalLanguages.filter((row) => row.required).length > 1) {
+      errors.push('Only one First Additional Language can be required by the school.');
     }
-  });
+    homeLanguages.forEach((home) => {
+      if (!additionalLanguages.some((extra) => !sameName(extra.language, home.language))) {
+        errors.push(`${home.language} Home Language needs a different First Additional Language.`);
+      }
+    });
+  }
 
   const mathematics = (Array.isArray(input.mathematics) ? input.mathematics : [])
     .map((item) => clean(item, 40))
     .filter((item) => item === MATHEMATICS || item === MATHEMATICAL_LITERACY);
   const uniqueMathematics = [...new Set(mathematics)];
-  if (!uniqueMathematics.length) errors.push('Offer Mathematics, Mathematical Literacy, or both as alternative options.');
+  if (!seniorPhase && !uniqueMathematics.length) errors.push('Offer Mathematics, Mathematical Literacy, or both as alternative options.');
 
   const electives = [];
   (Array.isArray(input.electives) ? input.electives : []).forEach((item) => {
     const name = clean(item, 80);
-    const problem = assertElectiveName(name);
-    if (problem) errors.push(problem);
-    else if (!electives.some((existing) => sameName(existing, name))) electives.push(name);
+    if (!name) return;
+    if (!seniorPhase) {
+      const problem = assertElectiveName(name);
+      if (problem) {
+        errors.push(problem);
+        return;
+      }
+    }
+    if (!electives.some((existing) => sameName(existing, name))) electives.push(name);
   });
+
+  if (seniorPhase) {
+    const named = normalisedLanguages.length + uniqueMathematics.length + electives.length;
+    if (!named) errors.push('Name at least one subject this school offers for this grade.');
+    return {
+      ok: errors.length === 0,
+      errors: [...new Set(errors)],
+      value: { academic_year: year, grade, languages: normalisedLanguages, mathematics: uniqueMathematics, electives }
+    };
+  }
+
   if (electives.length < 3) errors.push('Offer at least three elective subjects before creating a stream.');
 
   return {

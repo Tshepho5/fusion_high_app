@@ -277,14 +277,14 @@ CREATE TABLE children
    class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
    stream VARCHAR(50) CHECK (grade < 10 OR stream IN ('Science','Commerce','Tourism')), 
    subjects TEXT[] NOT NULL DEFAULT '{}',
-   school_id INTEGER DEFAULT 1,
+   school_id INTEGER,
    home_language VARCHAR(50) DEFAULT 'English',
    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 
 -- Parent-Educator Consultations (PTC slots & direct consultations)
 CREATE TABLE IF NOT EXISTS teacher_consultations (
   id SERIAL PRIMARY KEY,
-  school_id INTEGER DEFAULT 1,
+  school_id INTEGER,
   teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   parent_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   child_id INTEGER REFERENCES children(id) ON DELETE SET NULL,
@@ -315,14 +315,14 @@ CREATE TABLE IF NOT EXISTS inter_school_competitions (
   trophy_title VARCHAR(255),
   highlights TEXT,
   created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  school_id INTEGER DEFAULT 1,
+  school_id INTEGER,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Official CAPS Term Academic Report Cards
 CREATE TABLE IF NOT EXISTS report_cards (
   id SERIAL PRIMARY KEY,
-  school_id INTEGER DEFAULT 1,
+  school_id INTEGER,
   child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
   grade INTEGER NOT NULL,
   term INTEGER NOT NULL,
@@ -867,7 +867,7 @@ CREATE TABLE IF NOT EXISTS textbook_inventory (
   total_copies INTEGER DEFAULT 50,
   available_copies INTEGER DEFAULT 50,
   unit_cost_zar NUMERIC(10, 2) DEFAULT 250.00,
-  school_id INTEGER DEFAULT 1,
+  school_id INTEGER,
   stream VARCHAR(50) DEFAULT 'General',
   barcode_prefix VARCHAR(50),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -886,7 +886,7 @@ CREATE TABLE IF NOT EXISTS textbook_allocations (
   condition_on_return VARCHAR(50),
   replacement_fee NUMERIC(10, 2) DEFAULT 0.00,
   status VARCHAR(30) DEFAULT 'issued',
-  school_id INTEGER DEFAULT 1,
+  school_id INTEGER,
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

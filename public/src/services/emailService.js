@@ -4,6 +4,8 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 const { refuseExternalService } = require('../../../lib/testSafety');
 
 const tls = require('tls');
@@ -519,6 +521,13 @@ const emailService = {
     }
 
     let targetRecipient = to.trim().toLowerCase();
+    const captureDir = String(process.env.GELEZA_STAGING_MAIL_DIR || '').trim();
+    if (captureDir) {
+      fs.mkdirSync(captureDir, { recursive: true });
+      const stamp = `${Date.now()}-${targetRecipient.replace(/[^a-z0-9]+/gi, '_')}`;
+      fs.writeFileSync(path.join(captureDir, `${stamp}.html`), String(body || text || ''));
+      return { success: true, provider: 'staging-capture', recipient: targetRecipient };
+    }
 
     // Portal-only learner logins have no mailbox. School addresses such as @gelezasa.co.za are real inboxes and must be delivered.
     if (targetRecipient.endsWith('@fusion.high') || targetRecipient.endsWith('@fusionhigh.co.za')) {

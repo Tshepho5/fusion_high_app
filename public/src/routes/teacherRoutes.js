@@ -130,6 +130,7 @@ const timetableController = require('../controller/timetableController');
 
 // Missing Teacher & Timetable Endpoints
 router.get('/timetables', timetableController.getTeacherTimetables);
+router.post('/class-drafts', timetableController.saveTeacherDraft);
 router.post('/publish-to-learners', timetableController.teacherPublishToLearners);
 router.post('/publish-timetable', timetableController.teacherPublishToLearners);
 router.put('/timetables/:id', timetableController.updateTimetable);
