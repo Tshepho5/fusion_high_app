@@ -106,6 +106,8 @@ export const AdminDashboard: React.FC = () => {
         return 'User Support Desk & Application Corrections';
       case 'subjects':
         return 'School Curriculum & Subject Registers';
+      case 'academic-streams':
+        return 'Subject Offerings & Academic Streams (Grades 10–12)';
       case 'reports':
         return 'CAPS Official Report Card Studio & Publishing';
       case 'marks':

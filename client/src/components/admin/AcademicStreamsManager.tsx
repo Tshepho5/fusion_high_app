@@ -139,8 +139,11 @@ export const AcademicStreamsManager: React.FC = () => {
     <section className="space-y-6 text-slate-900 dark:text-slate-100">
       <header className="flex flex-col gap-4 border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-950 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Grades 10–12</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Grades 10–12 • Admissions &amp; Registration</p>
           <h2 className="text-2xl font-semibold">Subject offerings and academic streams</h2>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+            Languages (Home Language &amp; First Additional Language), mathematical options, electives, and streams saved here populate the public Learner Admission Application Form and integrated Dashboard Registration for your school.
+          </p>
         </div>
         <div className="flex gap-3">
           <label className="text-sm">Year

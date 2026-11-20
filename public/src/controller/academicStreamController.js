@@ -33,18 +33,39 @@ exports.catalogue = (req, res) => {
 exports.published = async (req, res) => {
   try {
     const schoolId = parseInt(req.params.id, 10);
-    const year = parseInt(req.query.year, 10);
-    const grade = parseInt(req.query.grade, 10);
-    if (!schoolId || !year || ![10, 11, 12].includes(grade)) {
-      return res.status(400).json({ error: 'Choose the school, academic year and Grade 10, 11 or 12.' });
+    const requestedYear = parseInt(req.query.year, 10) || new Date().getFullYear();
+    const rawGrade = req.query.grade !== undefined && req.query.grade !== '' ? parseInt(req.query.grade, 10) : null;
+
+    if (!schoolId) {
+      return res.status(400).json({ error: 'Choose a valid school.' });
     }
-    const available = await streams.streamsForApplicants(schoolId, year, grade);
-    const offerings = await streams.readOfferings(schoolId, available.year, grade);
+    if (rawGrade !== null && ![8, 9, 10, 11, 12].includes(rawGrade)) {
+      return res.status(400).json({ error: 'Choose Grade 8, 9, 10, 11 or 12.' });
+    }
+
+    const isFet = rawGrade !== null && [10, 11, 12].includes(rawGrade);
+    if (!isFet) {
+      const langData = await streams.readApplicantLanguages(schoolId, requestedYear, rawGrade);
+      return res.json({
+        academic_year: langData.year || requestedYear,
+        requested_year: requestedYear,
+        grade: rawGrade,
+        languages: langData.languages,
+        language_source: langData.source,
+        mathematics: langData.mathematics || [],
+        streams: [],
+        empty: false
+      });
+    }
+
+    const available = await streams.streamsForApplicants(schoolId, requestedYear, rawGrade);
+    const offerings = await streams.readApplicantLanguages(schoolId, available.year, rawGrade);
     res.json({
-      academic_year: available.year,
-      requested_year: year,
-      grade,
+      academic_year: available.year || offerings.year || requestedYear,
+      requested_year: requestedYear,
+      grade: rawGrade,
       languages: offerings.languages,
+      language_source: offerings.source,
       mathematics: offerings.mathematics,
       streams: available.streams,
       empty: available.streams.length === 0

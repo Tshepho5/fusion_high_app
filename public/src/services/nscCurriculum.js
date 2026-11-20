@@ -239,6 +239,48 @@ function packageElectives(subjects) {
   ));
 }
 
+function parseSchoolOfferedLanguages(rawLanguages) {
+  let list = [];
+  if (Array.isArray(rawLanguages)) {
+    list = rawLanguages;
+  } else if (typeof rawLanguages === 'string' && rawLanguages.trim()) {
+    try {
+      const parsed = JSON.parse(rawLanguages);
+      list = Array.isArray(parsed) ? parsed : rawLanguages.split(',');
+    } catch (_) {
+      list = rawLanguages.split(',');
+    }
+  }
+  const results = [];
+  const seen = new Set();
+  const add = (language, level) => {
+    const key = `${language.toLowerCase()}|${level.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push({ language, level, required: false });
+  };
+
+  for (const entry of list) {
+    const raw = clean(entry, 120);
+    if (!raw) continue;
+    const lower = raw.toLowerCase();
+    const matchedOfficial = OFFICIAL_LANGUAGES.find((lang) => {
+      const l = lang.toLowerCase();
+      return lower === l || lower.startsWith(`${l} `) || lower.includes(l);
+    });
+    if (!matchedOfficial) continue;
+    const isHL = /\b(home\s*language|hl|huistaal)\b/i.test(raw);
+    const isFAL = /\b(first\s*additional\s*language|fal|additional\s*language)\b/i.test(raw);
+    if (isHL) add(matchedOfficial, HOME_LANGUAGE);
+    if (isFAL) add(matchedOfficial, FIRST_ADDITIONAL);
+    if (!isHL && !isFAL) {
+      add(matchedOfficial, HOME_LANGUAGE);
+      add(matchedOfficial, FIRST_ADDITIONAL);
+    }
+  }
+  return results;
+}
+
 module.exports = {
   LIFE_ORIENTATION,
   MATHEMATICS,
@@ -252,5 +294,6 @@ module.exports = {
   validateLanguageChoice,
   buildPackage,
   packageElectives,
+  parseSchoolOfferedLanguages,
   sameName
 };

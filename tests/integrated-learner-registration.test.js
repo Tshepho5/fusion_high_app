@@ -504,3 +504,23 @@ test('Additive SQL migration and backend controllers uphold security, no-plainte
   );
   assert.match(teacherLearnersCtrl, /COALESCE\(c\.is_active,\s*TRUE\)\s*=\s*TRUE/);
 });
+
+test('Application form school language parser and public/client application.js sync work cleanly', () => {
+  const { parseSchoolOfferedLanguages } = require('../public/src/services/nscCurriculum');
+  const parsed = parseSchoolOfferedLanguages([
+    'Sepedi Home Language',
+    'English FAL',
+    'Afrikaans First Additional Language',
+    'isiZulu'
+  ]);
+  assert.ok(parsed.some((r) => r.language === 'Sepedi' && r.level === 'Home Language'));
+  assert.ok(parsed.some((r) => r.language === 'English' && r.level === 'First Additional Language'));
+  assert.ok(parsed.some((r) => r.language === 'Afrikaans' && r.level === 'First Additional Language'));
+  assert.ok(parsed.some((r) => r.language === 'isiZulu' && r.level === 'Home Language'));
+  assert.ok(parsed.some((r) => r.language === 'isiZulu' && r.level === 'First Additional Language'));
+
+  const pubAppJs = fs.readFileSync(path.join(__dirname, '../public/js/application.js'), 'utf8');
+  const clientAppJs = fs.readFileSync(path.join(__dirname, '../client/public/js/application.js'), 'utf8');
+  assert.equal(pubAppJs, clientAppJs, 'public/js/application.js and client/public/js/application.js must stay synchronized');
+  assert.match(pubAppJs, /schoolSelect\.dispatchEvent\(new Event\('change'\)\)/);
+});

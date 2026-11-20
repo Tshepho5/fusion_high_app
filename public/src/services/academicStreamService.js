@@ -99,6 +99,81 @@ async function readOfferings(schoolId, year, grade) {
   return groupOfferings(result.rows);
 }
 
+const { parseSchoolOfferedLanguages } = rules;
+
+/**
+ * Reads languages offered by a school for applicants, cascading cleanly:
+ * 1. school_subject_offerings for exact (schoolId, year, grade)
+ * 2. school_subject_offerings for latest configured year of (schoolId, grade)
+ * 3. school_subject_offerings for latest configured year across any grade of schoolId
+ * 4. schools.offered_languages saved during school registration / curriculum setup
+ */
+async function readApplicantLanguages(schoolId, year, grade) {
+  await ensureSchema();
+  const sId = Number(schoolId);
+  const yNum = Number(year) || null;
+  const gNum = Number(grade) || null;
+
+  if (yNum && gNum) {
+    const exact = await readOfferings(sId, yNum, gNum);
+    if (exact.languages.length > 0) {
+      return { languages: exact.languages, mathematics: exact.mathematics, source: 'offerings_exact', year: yNum };
+    }
+  }
+
+  if (gNum) {
+    const sameGradeAnyYear = await db.query(
+      `SELECT academic_year, subject_name, category, language_level, is_required, is_active
+       FROM school_subject_offerings
+       WHERE school_id = $1 AND grade = $2 AND is_active = TRUE
+       ORDER BY academic_year DESC, category, subject_name, language_level`,
+      [sId, gNum]
+    );
+    if (sameGradeAnyYear.rows.length > 0) {
+      const latestYear = Number(sameGradeAnyYear.rows[0].academic_year);
+      const grouped = groupOfferings(sameGradeAnyYear.rows.filter((r) => Number(r.academic_year) === latestYear));
+      if (grouped.languages.length > 0) {
+        return { languages: grouped.languages, mathematics: grouped.mathematics, source: 'offerings_latest_year', year: latestYear };
+      }
+    }
+  }
+
+  const anyGrade = await db.query(
+    `SELECT academic_year, subject_name, category, language_level, is_required, is_active
+     FROM school_subject_offerings
+     WHERE school_id = $1 AND is_active = TRUE AND category = 'language'
+     ORDER BY academic_year DESC, subject_name, language_level`,
+    [sId]
+  );
+  if (anyGrade.rows.length > 0) {
+    const latestYear = Number(anyGrade.rows[0].academic_year);
+    const dedup = [];
+    const seen = new Set();
+    for (const row of anyGrade.rows.filter((r) => Number(r.academic_year) === latestYear)) {
+      const key = `${String(row.subject_name).toLowerCase()}|${String(row.language_level).toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push({ language: row.subject_name, level: row.language_level, required: Boolean(row.is_required) });
+    }
+    if (dedup.length > 0) {
+      return { languages: dedup, mathematics: [], source: 'offerings_school_wide', year: latestYear };
+    }
+  }
+
+  try {
+    const schoolRes = await db.query(
+      'SELECT offered_languages FROM schools WHERE id = $1 LIMIT 1',
+      [sId]
+    );
+    const parsed = parseSchoolOfferedLanguages(schoolRes.rows[0]?.offered_languages);
+    if (parsed.length > 0) {
+      return { languages: parsed, mathematics: [], source: 'school_profile', year: yNum };
+    }
+  } catch (_) {}
+
+  return { languages: [], mathematics: [], source: 'unconfigured', year: yNum };
+}
+
 async function saveOfferings(schoolId, actorId, input) {
   const checked = rules.validateOfferings(input);
   if (!checked.ok) {
@@ -342,7 +417,11 @@ async function resolveApplicantPackage(input) {
     error.status = 400;
     throw error;
   }
-  const offerings = await readOfferings(schoolId, Number(stream.academic_year) || available.year, grade);
+  let offerings = await readOfferings(schoolId, Number(stream.academic_year) || available.year, grade);
+  if (!offerings.languages.length) {
+    const fallbackLangs = await readApplicantLanguages(schoolId, Number(stream.academic_year) || available.year, grade);
+    offerings = { ...offerings, languages: fallbackLangs.languages };
+  }
   const languages = rules.validateLanguageChoice(input.homeLanguage, input.additionalLanguage, offerings);
   if (!languages.ok) {
     const error = new Error(languages.errors[0]);
@@ -405,6 +484,8 @@ async function configurationSummary(schoolId, year) {
 module.exports = {
   ensureSchema,
   readOfferings,
+  readApplicantLanguages,
+  parseSchoolOfferedLanguages,
   saveOfferings,
   listStreams,
   streamsForApplicants,
