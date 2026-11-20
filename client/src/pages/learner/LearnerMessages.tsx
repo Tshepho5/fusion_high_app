@@ -5,6 +5,7 @@ import api, { userService, getApiBaseUrl } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
+import { UserAvatar } from '../../components/common/UserAvatar';
 import {
   Search,
   Send,
@@ -1016,14 +1017,8 @@ export const LearnerMessages: React.FC<LearnerMessagesProps> = ({ onBack }) => {
                     }`}
                   >
                     <div className="relative shrink-0">
-                      {pfp ? (
-                        <img src={pfp} alt={contact.full_name} className="w-11 h-11 rounded-full object-cover border border-white/10" />
-                      ) : (
-                        <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-emerald-600 to-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow-sm">
-                          {(contact.full_name || 'U')[0]}{(contact.surname || '')[0]}
-                        </div>
-                      )}
-                      <span className={`w-3 h-3 rounded-full ${contact.is_online ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-500'} border-2 border-[#111b21] absolute bottom-0 right-0`} />
+                      <UserAvatar user={contact} size="md" className="w-11 h-11" />
+                      <span className={`w-3 h-3 rounded-full ${contact.is_online ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-500'} border-2 border-white dark:border-[#111b21] absolute bottom-0 right-0`} />
                     </div>
 
                     <div className="flex-1 min-w-0">

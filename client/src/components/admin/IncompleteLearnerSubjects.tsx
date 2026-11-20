@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/api';
+import { UserAvatar } from '../common/UserAvatar';
 
 type IncompleteLearner = {
   id: number;
@@ -89,9 +90,12 @@ export const IncompleteLearnerSubjects: React.FC = () => {
           const choices = choicesFor(learner);
           return (
             <div key={learner.id} className="border-t border-slate-200 pt-3 dark:border-white/10">
-              <p className="text-sm font-semibold text-[#101820] dark:text-white">
-                {learner.name} <span className="font-normal text-slate-500">Grade {learner.grade} {learner.learner_number || ''}</span>
-              </p>
+              <div className="flex items-center gap-2.5">
+                <UserAvatar user={learner} size="xs" />
+                <p className="text-sm font-semibold text-[#101820] dark:text-white">
+                  {learner.name} <span className="font-normal text-slate-500">Grade {learner.grade} {learner.learner_number || ''}</span>
+                </p>
+              </div>
               <p className="text-xs text-slate-500">Current: {learner.stored_subjects.length ? learner.stored_subjects.join(', ') : 'none'}</p>
               {choices.length === 0 ? (
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Save this grade’s subjects for the school before adding one.</p>

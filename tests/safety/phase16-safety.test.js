@@ -529,4 +529,20 @@ describe('staging runtime isolation', () => {
       () => assertStagingApiConfig({ VITE_API_URL: 'http://127.0.0.1:4000', VITE_FIREBASE_PROJECT_ID: 'geleza-staging-disabled' })
     );
   });
+
+  test('profile picture upload rejects executive inspection, invalid images, and never overwrites parent children', () => {
+    const userControllerSource = fs.readFileSync(
+      path.join(root, 'public', 'src', 'controller', 'userController.js'),
+      'utf8'
+    );
+    assert.match(userControllerSource, /if \(req\.executive\)/);
+    assert.match(userControllerSource, /function detectImageSignature/);
+    assert.equal(
+      /WHERE learner_user_id::text = \$2::text OR parent_id::text = \$2::text/.test(userControllerSource),
+      false,
+      'Parent profile picture upload must never overwrite children.profile_picture via parent_id'
+    );
+    const serverSource = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+    assert.match(serverSource, /ALLOWED_PFP_MIMES/);
+  });
 });

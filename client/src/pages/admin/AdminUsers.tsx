@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { UserAvatar } from '../../components/common/UserAvatar';
 import {
   Users,
   Search,
@@ -65,7 +66,8 @@ interface UserRecord {
   phone?: string;
   id_number?: string;
   role: string;
-  profile_picture_path?: string;
+  profile_picture?: string | null;
+  profile_picture_path?: string | null;
   profile_edit_unlocked?: boolean;
   created_at?: string;
 }
@@ -77,6 +79,8 @@ interface EmployeeRecord {
   surname: string;
   email: string;
   phone?: string;
+  profile_picture?: string | null;
+  profile_picture_path?: string | null;
   profile_edit_unlocked?: boolean;
   department_name?: string;
   employee_role?: string;
@@ -95,6 +99,8 @@ interface LearnerRecord {
   surname: string;
   email: string;
   phone?: string;
+  profile_picture?: string | null;
+  profile_picture_path?: string | null;
   profile_edit_unlocked?: boolean;
   learner_number?: string;
   id_number?: string;
@@ -119,6 +125,8 @@ interface ParentRecord {
   gender?: string;
   parent_type?: string;
   physical_address?: string;
+  profile_picture?: string | null;
+  profile_picture_path?: string | null;
   profile_edit_unlocked?: boolean;
   created_at?: string;
   linked_children_count?: number;
@@ -379,6 +387,12 @@ export const AdminUsers: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
+    // Clear prior school/scope records immediately to prevent cross-school avatar/user flash
+    setUsers([]);
+    setEmployees([]);
+    setLearners([]);
+    setParents([]);
+    setSchoolAdmins([]);
     try {
       if (platformDirectory) {
         const adminsData = await adminService.getSchoolAdmins();
@@ -1277,7 +1291,15 @@ export const AdminUsers: React.FC = () => {
       )}
 
       {/* Directory Category Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+      {platformDirectory && (
+        <div className="p-3.5 rounded-2xl bg-[#168BFF]/10 border border-[#168BFF]/25 text-xs text-slate-700 dark:text-slate-200 flex items-start gap-2.5">
+          <Shield className="w-4 h-4 text-[#168BFF] shrink-0 mt-0.5" />
+          <span>
+            <strong>Platform Executive Scope:</strong> Only Geleza SA platform executives are listed here. To view a school&apos;s administrators, teachers, learners, or parents, open that specific campus from the <strong>Registered Partner Schools Directory</strong>.
+          </span>
+        </div>
+      )}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-4">
         <div className="flex items-center gap-2 overflow-x-auto">
           {/* Main Admin Only: School SubAdmins Tab */}
           {isSuperAdmin && (
@@ -1749,8 +1771,13 @@ export const AdminUsers: React.FC = () => {
                 {filteredEmployees.map((e) => (
                   <tr key={e.employee_id} className="hover:bg-slate-50/80 dark:hover:bg-white/5 transition-colors">
                     <td className="py-3.5 px-3">
-                      <p className="font-bold text-slate-900 dark:text-white text-sm">{e.full_name} {e.surname}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{e.email}</p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar user={e} size="sm" />
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white text-sm truncate">{e.full_name} {e.surname}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">{e.email}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3.5 px-3">
                       <p className="font-semibold text-cyan-600 dark:text-cyan-400">{e.employee_role || 'Teacher'}</p>
@@ -1852,10 +1879,15 @@ export const AdminUsers: React.FC = () => {
                 {filteredParents.map((p) => (
                   <tr key={p.id} className="hover:bg-white/5 transition-colors">
                     <td className="py-3.5 px-3">
-                      <p className="font-bold text-white text-sm">{p.full_name} {p.surname || ''}</p>
-                      <p className="text-[11px] text-amber-400 font-medium">{p.gender || 'Parent'}</p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar user={p} size="sm" />
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white text-sm truncate">{p.full_name} {p.surname || ''}</p>
+                          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">{p.gender || 'Parent'}</p>
+                        </div>
+                      </div>
                     </td>
-                    <td className="py-3.5 px-3 text-slate-300 font-mono">{p.email}</td>
+                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-300 font-mono">{p.email}</td>
                     <td className="py-3.5 px-3 text-slate-400 font-mono">{p.phone || '-'}</td>
                     <td className="py-3.5 px-3 text-slate-400 font-mono">{p.id_number || '-'}</td>
                     <td className="py-3.5 px-3">
@@ -1941,8 +1973,13 @@ export const AdminUsers: React.FC = () => {
                 {filteredLearners.map((l) => (
                   <tr key={l.child_id || l.learner_id || l.user_id} className="hover:bg-white/5 transition-colors">
                     <td className="py-3.5 px-3">
-                      <p className="font-bold text-white text-sm">{l.full_name} {l.surname}</p>
-                      <p className="text-[11px] text-slate-400 font-mono">{l.email || '-'}</p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar user={l} size="sm" />
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white text-sm truncate">{l.full_name} {l.surname}</p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">{l.email || '-'}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3.5 px-3 font-mono font-bold text-cyan-400">
                       {l.learner_number}
@@ -2278,8 +2315,13 @@ export const AdminUsers: React.FC = () => {
                 {filteredSchoolAdmins.map((adm) => (
                   <tr key={adm.id} className="hover:bg-white/5 transition-colors">
                     <td className="py-3.5 px-3">
-                      <p className="font-bold text-white text-sm">{adm.full_name} {adm.surname}</p>
-                      <span className="text-[10px] font-mono text-slate-400">Account ID: {adm.id}</span>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar user={adm} size="sm" />
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white text-sm truncate">{adm.full_name} {adm.surname}</p>
+                          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">Account ID: {adm.id}</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3.5 px-3">
                       <Badge variant={adm.is_superadmin ? 'rose' : 'indigo'} size="sm">
@@ -2350,8 +2392,11 @@ export const AdminUsers: React.FC = () => {
               <tbody className="divide-y divide-white/5">
                 {filteredAllUsers.map((u) => (
                   <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                    <td className="py-3.5 px-3 font-bold text-white">
-                      {u.full_name} {u.surname}
+                    <td className="py-3.5 px-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <UserAvatar user={u} size="sm" />
+                        <span className="font-bold text-slate-900 dark:text-white truncate">{u.full_name} {u.surname}</span>
+                      </div>
                     </td>
                     <td className="py-3.5 px-3">
                       <Badge variant={u.role === 'admin' ? 'rose' : u.role === 'teacher' ? 'cyan' : u.role === 'parent' ? 'amber' : 'indigo'} size="sm">

@@ -3,6 +3,7 @@ import { parentService } from '../../services/api';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ParentOverviewSkeleton } from '../../components/parent/ParentOverviewSkeleton';
 import { FavoriteModulesSection } from '../../components/common/FavoriteModulesSection';
+import { UserAvatar } from '../../components/common/UserAvatar';
 import { HomeGreeting } from '../../components/layout/WorkspaceChrome';
 import { DashboardWelcomeBanner } from '../../components/layout/DashboardWelcomeBanner';
 import { useSchool } from '../../context/SchoolContext';
@@ -391,9 +392,7 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
                     </div>
 
                     <div className={`flex items-center gap-3 ${solo ? 'xl:flex-1 xl:min-w-[200px]' : ''}`}>
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#168BFF] to-cyan-400 border border-white/20 flex items-center justify-center text-white font-bold text-lg overflow-hidden shrink-0 shadow-xs">
-                        {pfp ? <img src={pfp} alt={fullName} className="w-full h-full object-cover" /> : fullName.charAt(0)}
-                      </div>
+                      <UserAvatar user={child} size="lg" />
                       <div>
                         <h3
                           onClick={() => onNavigateTab('reports', child.id)}

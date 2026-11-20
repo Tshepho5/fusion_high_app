@@ -21,13 +21,14 @@ let auth: Auth | null = null;
 
 const runtimeMode = String(env.MODE || env.NODE_ENV || '');
 const isStagingMode = runtimeMode === 'staging' || String(env.VITE_STAGING_MODE || '') === 'true';
+const onLocalLoopback = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 if (runtimeMode === 'test' && firebaseConfig.projectId === 'fusion-high-app' && env.VITE_FIREBASE_EMULATOR !== 'true') {
   throw new Error('Refusing to initialise the production Firebase project fusion-high-app during tests.');
 }
 
-if (isStagingMode && env.VITE_FIREBASE_EMULATOR !== 'true' && (!firebaseConfig.projectId || firebaseConfig.projectId === 'fusion-high-app' || firebaseConfig.projectId === 'geleza-staging-disabled')) {
-  console.info('[FIREBASE STAGING GUARD] Production Firebase project fusion-high-app is disabled in staging mode.');
+if ((isStagingMode || onLocalLoopback) && env.VITE_FIREBASE_EMULATOR !== 'true' && (!firebaseConfig.projectId || firebaseConfig.projectId === 'fusion-high-app' || firebaseConfig.projectId === 'geleza-staging-disabled')) {
+  console.info('[FIREBASE STAGING GUARD] Production Firebase project fusion-high-app is disabled in local/staging mode.');
 } else {
   try {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

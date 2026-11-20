@@ -623,12 +623,10 @@ export const AdminOverview: React.FC<AdminOverviewProps> = ({ onNavigateTab }) =
     });
   }, [masterSubjects, selectedGrade, selectedCategory, subjectSearch]);
 
-  // Registered schools only (active verified partner campuses on Geleza SA)
+  // Registered schools strictly from the active backend database (never fabricated defaults)
   const registeredSchools = useMemo(() => {
-    const raw = (Array.isArray(schoolsList) && schoolsList.length > 0) ? schoolsList : DEFAULT_SCHOOLS;
-    const filtered = raw.filter(s => s && s.id !== 0 && s.is_active !== false && String(s.is_active) !== 'false');
-    if (filtered.length > 0) return filtered;
-    return DEFAULT_SCHOOLS.filter(s => s && s.id !== 0);
+    if (!Array.isArray(schoolsList) || schoolsList.length === 0) return [];
+    return schoolsList.filter(s => s && s.id !== 0 && s.is_active !== false && String(s.is_active) !== 'false');
   }, [schoolsList]);
 
   const filteredRegisteredSchools = useMemo(() => {

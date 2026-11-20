@@ -13,10 +13,15 @@ const isLoopbackApiUrl = (value: string) => (
   /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(value)
 );
 
-export const getApiBaseUrl = (): string => {
-  const env = import.meta.env;
+export const resolveApiBaseUrl = (
+  env: { PROD?: boolean; MODE?: string; VITE_API_URL?: string; VITE_STAGING_MODE?: string; VITE_USE_LOCAL_BACKEND?: string },
+  hostname?: string
+): string => {
   const configured = String(env.VITE_API_URL || '').trim();
   const isStaging = env.MODE === 'staging' || String(env.VITE_STAGING_MODE || '') === 'true';
+  const host = String(hostname || '').trim().toLowerCase();
+  const onLocalHost = host === 'localhost' || host === '127.0.0.1';
+
   if (isStaging) {
     if (configured && configured.startsWith(PRODUCTION_API_URL)) {
       throw new Error('Refusing to target production API from staging mode.');
@@ -24,18 +29,27 @@ export const getApiBaseUrl = (): string => {
     if (configured && isLoopbackApiUrl(configured)) return configured;
     return '';
   }
+
+  // When served directly from the local Express server (e.g. http://localhost:4000) or Vite dev on loopback,
+  // ALWAYS route API calls to the local same-origin backend instead of production Render.
+  if (onLocalHost) {
+    return '';
+  }
+
   if (env.PROD) {
     return isHostedApiUrl(configured) ? configured : PRODUCTION_API_URL;
   }
-  const onLocalHost = typeof window !== 'undefined'
-    && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const localBackendFlag = env.VITE_USE_LOCAL_BACKEND;
-  if (localBackendFlag === 'true' || (onLocalHost && localBackendFlag !== 'false')) {
+  if (localBackendFlag === 'true') {
     return '';
   }
   if (isHostedApiUrl(configured)) return configured;
-  if (onLocalHost) return '';
   return PRODUCTION_API_URL;
+};
+
+export const getApiBaseUrl = (): string => {
+  const host = typeof window !== 'undefined' ? window.location.hostname : '';
+  return resolveApiBaseUrl(import.meta.env, host);
 };
 
 export const API_URL = getApiBaseUrl();

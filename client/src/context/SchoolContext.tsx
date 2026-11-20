@@ -146,18 +146,8 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const isSuperAdmin = Boolean(user?.is_superadmin);
   const [workspaceSchoolId, setWorkspaceSchoolId] = useState<number | null>(readWorkspaceId);
   const [schoolsList, setSchoolsList] = useState<SchoolProfile[]>(() => {
-    if (user && !isSuperAdmin) return [];
-    try {
-      const saved = localStorage.getItem('cached_schools_list');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const hasWalters = parsed.some((s: any) => s.name?.toLowerCase().includes('walters') || s.slug === 'walters-high-school');
-          if (hasWalters) return parsed;
-          return [...parsed, ...DEFAULT_SCHOOLS.filter(d => !parsed.some((p: any) => p.id === d.id || p.slug === d.slug))];
-        }
-      }
-    } catch (_) {}
+    // Authenticated users (including Superadmin) always load real schools from the active environment's API
+    if (user) return [];
     return DEFAULT_SCHOOLS;
   });
 
@@ -229,7 +219,9 @@ export const SchoolProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           if (!exists) merged.push(defSchool);
         });
       }
-      const nextList = merged.length > 0 ? merged : DEFAULT_SCHOOLS;
+      // Never inject hardcoded DEFAULT_SCHOOLS for an authenticated Superadmin:
+      // if the active database (local or live) has 0 schools, show an honest empty state.
+      const nextList = user ? merged : (merged.length > 0 ? merged : DEFAULT_SCHOOLS);
       setSchoolsList(nextList);
       try {
         localStorage.setItem('cached_schools_list', JSON.stringify(nextList));

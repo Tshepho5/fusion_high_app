@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { userService } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
+import { validateProfileImageFile } from '../../utils/profilePhotoCrop';
+import { ProfilePhotoCropModal } from '../../components/common/ProfilePhotoCropModal';
 import { DigitalStudentIDCard } from '../../components/learner/DigitalStudentIDCard';
 import {
   User,
@@ -77,6 +79,7 @@ export const LearnerProfile: React.FC = () => {
   };
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -96,27 +99,37 @@ export const LearnerProfile: React.FC = () => {
       .catch(() => {});
   }, [isExecutiveInspection, user]);
 
-  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isExecutiveInspection) return;
     const file = e.target.files?.[0];
+    // Reset input value so selecting the same file again still triggers onChange
+    e.target.value = '';
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      setStatusMsg({ type: 'error', text: 'Picture must be smaller than 5MB.' });
+    const validation = validateProfileImageFile(file);
+    if (!validation.valid) {
+      setStatusMsg({ type: 'error', text: validation.error || 'Unsupported image file.' });
       return;
     }
 
+    setStatusMsg(null);
+    setPendingCropFile(file);
+  };
+
+  const handleUploadCroppedPhoto = async (croppedFile: File) => {
+    if (isExecutiveInspection) return;
     setUploadingPhoto(true);
     setStatusMsg(null);
 
     const formData = new FormData();
-    formData.append('profilePicture', file);
+    formData.append('profilePicture', croppedFile);
 
     try {
       const res = await userService.uploadProfilePicture(formData);
       const newPath = res.profile_picture || res.profile_picture_path || res.user?.profile_picture || res.user?.profile_picture_path;
       setProfile((prev: any) => ({ ...prev, profile_picture: newPath, profile_picture_path: newPath }));
       updateUser({ ...user, profile_picture: newPath, profile_picture_path: newPath });
+      setPendingCropFile(null);
       setStatusMsg({ type: 'success', text: 'Profile picture updated permanently across all portals!' });
     } catch (err: any) {
       console.error('Error uploading photo:', err);
@@ -741,6 +754,15 @@ export const LearnerProfile: React.FC = () => {
             <DigitalStudentIDCard learner={profile} />
           </div>
         </>
+      )}
+      {!isExecutiveInspection && (
+        <ProfilePhotoCropModal
+          isOpen={Boolean(pendingCropFile)}
+          imageFile={pendingCropFile}
+          uploading={uploadingPhoto}
+          onCancel={() => setPendingCropFile(null)}
+          onSave={handleUploadCroppedPhoto}
+        />
       )}
     </div>
   );

@@ -103,32 +103,63 @@ exports.getProfile = async (req, res) => {
     }
 };
 
+const ALLOWED_PFP_MIMES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+const MAX_PFP_BYTES = 5 * 1024 * 1024;
+
+function detectImageSignature(buffer) {
+    if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg';
+    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return 'image/png';
+    if (
+        buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+        buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+    ) {
+        return 'image/webp';
+    }
+    return null;
+}
+
 /**
  * Handles profile picture upload and saves path to database.
  */
 exports.uploadProfilePicture = async (req, res) => {
+    if (req.executive) {
+        if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
+        return res.status(403).json({ success: false, error: 'Profile picture uploads are disabled during executive inspection.' });
+    }
     const userId = req.user.id;
     try {
-        let filePath = '';
-        let base64Data = '';
+        let permanentPicture = '';
         if (req.file) {
-            filePath = `/uploads/pfp/${req.file.filename}`;
             try {
                 const fileBuffer = fs.readFileSync(req.file.path);
-                const mime = req.file.mimetype || 'image/jpeg';
-                base64Data = `data:${mime};base64,${fileBuffer.toString('base64')}`;
-            } catch (readErr) {
-                console.warn('Could not convert uploaded image to base64:', readErr.message);
+                if (fileBuffer.length === 0 || fileBuffer.length > MAX_PFP_BYTES) {
+                    return res.status(400).json({ success: false, error: 'Profile picture must be non-empty and 5 MB or smaller.' });
+                }
+                const declaredMime = String(req.file.mimetype || '').toLowerCase();
+                const detectedMime = detectImageSignature(fileBuffer);
+                if (!ALLOWED_PFP_MIMES.has(declaredMime) || !detectedMime) {
+                    return res.status(400).json({ success: false, error: 'Only valid JPEG, PNG, or WEBP images are allowed.' });
+                }
+                permanentPicture = `data:${detectedMime};base64,${fileBuffer.toString('base64')}`;
+            } finally {
+                // Clean up temporary disk upload after converting to permanent Data URI storage
+                if (req.file.path) fs.promises.unlink(req.file.path).catch(() => {});
             }
         } else if (req.body.profile_picture_url || req.body.profile_picture) {
-            filePath = req.body.profile_picture_url || req.body.profile_picture;
-            base64Data = filePath;
+            const raw = String(req.body.profile_picture_url || req.body.profile_picture).trim();
+            const dataMatch = raw.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/=\s]+)$/i);
+            if (!dataMatch) {
+                return res.status(400).json({ success: false, error: 'Only valid JPEG, PNG, or WEBP image payloads are allowed.' });
+            }
+            const decoded = Buffer.from(dataMatch[2].replace(/\s+/g, ''), 'base64');
+            if (decoded.length === 0 || decoded.length > MAX_PFP_BYTES || !detectImageSignature(decoded)) {
+                return res.status(400).json({ success: false, error: 'Invalid or oversized image payload.' });
+            }
+            permanentPicture = `data:${detectImageSignature(decoded)};base64,${decoded.toString('base64')}`;
         } else {
             return res.status(400).json({ success: false, error: 'No image file or URL provided.' });
         }
-
-        // Store permanent Data URI in PostgreSQL so it persists indefinitely across server restarts and deployments
-        const permanentPicture = base64Data || filePath;
 
         let result;
         try {
@@ -163,11 +194,11 @@ exports.uploadProfilePicture = async (req, res) => {
             }
         }
 
-        // Also sync learner's child record if applicable
+        // Sync ONLY the learner's own child record (never overwrite children when a parent uploads their own photo)
         await db.query(
             `UPDATE children 
              SET profile_picture = $1, profile_picture_path = $1 
-             WHERE learner_user_id::text = $2::text OR parent_id::text = $2::text`,
+             WHERE learner_user_id::text = $2::text`,
             [permanentPicture, userId]
         ).catch(async (childErr) => {
             if (childErr.code === '22001' || (childErr.message && childErr.message.includes('varying(255)'))) {
@@ -176,7 +207,7 @@ exports.uploadProfilePicture = async (req, res) => {
                 await db.query(
                     `UPDATE children 
                      SET profile_picture = $1, profile_picture_path = $1 
-                     WHERE learner_user_id::text = $2::text OR parent_id::text = $2::text`,
+                     WHERE learner_user_id::text = $2::text`,
                     [permanentPicture, userId]
                 ).catch(() => {});
             }
@@ -662,7 +693,7 @@ exports.getCommunicationContacts = async (req, res) => {
 
         if (role === 'teacher') {
             query = `
-                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
+                SELECT u.id, u.full_name, u.surname, u.email, COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
                        ${onlineSelect}
                        CASE 
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'parent' THEN 'Parent' || CASE WHEN COUNT(c.id) > 0 THEN ' (' || STRING_AGG(DISTINCT c.full_name, ', ') || ')' ELSE '' END
@@ -691,7 +722,7 @@ exports.getCommunicationContacts = async (req, res) => {
                 WHERE u.id::text != $1::text AND (
                     LOWER(COALESCE(r.name, u.role_id::text, '')) IN ('admin', 'teacher', 'parent', 'learner')
                 )
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id${groupByPresence}
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture, u.profile_picture_path, r.name, u.role_id${groupByPresence}
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         } else if (role === 'learner') {
@@ -699,7 +730,7 @@ exports.getCommunicationContacts = async (req, res) => {
             const learnerGrade = gradeRes.rows[0]?.grade || null;
 
             query = `
-                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
+                SELECT u.id, u.full_name, u.surname, u.email, COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
                        ${onlineSelect}
                        CASE 
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
@@ -729,13 +760,13 @@ exports.getCommunicationContacts = async (req, res) => {
                     OR (LOWER(COALESCE(r.name, u.role_id::text, '')) = 'learner' AND ($2::text IS NULL OR c.grade::text = $2::text))
                     OR (LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' AND ($2::int IS NULL OR $2::int = ANY(e.grades_taught) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}'))
                 )
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id${groupByPresence}
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture, u.profile_picture_path, r.name, u.role_id${groupByPresence}
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
             params = [userId, learnerGrade ? String(learnerGrade) : null];
         } else if (role === 'parent') {
             query = `
-                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'teacher') as role_name,
+                SELECT u.id, u.full_name, u.surname, u.email, COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'teacher') as role_name,
                        ${onlineSelect}
                        CASE 
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
@@ -759,12 +790,12 @@ exports.getCommunicationContacts = async (req, res) => {
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN employees e ON e.user_id::text = u.id::text
                 WHERE u.id::text != $1::text AND (LOWER(COALESCE(r.name, u.role_id::text, '')) IN ('admin', 'teacher'))
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id${groupByPresence}
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture, u.profile_picture_path, r.name, u.role_id${groupByPresence}
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         } else {
             query = `
-                SELECT u.id, u.full_name, u.surname, u.email, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
+                SELECT u.id, u.full_name, u.surname, u.email, COALESCE(u.profile_picture, u.profile_picture_path) AS profile_picture, u.profile_picture_path, COALESCE(r.name, u.role_id::text, 'learner') as role_name,
                        ${onlineSelect}
                        CASE 
                            WHEN LOWER(COALESCE(r.name, u.role_id::text, '')) = 'teacher' THEN COALESCE(MAX(e.subjects[1]), 'Teacher') || ' Teacher'
@@ -790,7 +821,7 @@ exports.getCommunicationContacts = async (req, res) => {
                 LEFT JOIN roles r ON (u.role_id::text = r.id::text OR LOWER(r.name) = LOWER(u.role_id::text))
                 LEFT JOIN employees e ON e.user_id::text = u.id::text
                 WHERE u.id::text != $1::text
-                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture_path, r.name, u.role_id${groupByPresence}
+                GROUP BY u.id, u.full_name, u.surname, u.email, u.profile_picture, u.profile_picture_path, r.name, u.role_id${groupByPresence}
                 ORDER BY last_activity DESC NULLS LAST, u.full_name ASC;
             `;
         }

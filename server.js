@@ -162,14 +162,15 @@ const pfpStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/pfp/'),
   filename: (req, file, cb) => cb(null, `${req.user ? req.user.id : 'user'}-${Date.now()}${path.extname(file.originalname)}`)
 });
+const ALLOWED_PFP_MIMES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 const uploadPfp = multer({ 
   storage: pfpStorage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (ALLOWED_PFP_MIMES.has(String(file.mimetype || '').toLowerCase())) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files (JPEG, PNG, WEBP) are allowed for profile pictures.'));
+      cb(new Error('Only JPEG, PNG, and WEBP image files are allowed for profile pictures.'));
     }
   }
 });

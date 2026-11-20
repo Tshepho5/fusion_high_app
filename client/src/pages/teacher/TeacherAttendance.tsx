@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { teacherService } from '../../services/api';
 import { Badge } from '../../components/common/Badge';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { UserAvatar } from '../../components/common/UserAvatar';
 import { TeacherQRScannerModal } from '../../components/teacher/TeacherQRScannerModal';
 import { 
   CalendarCheck, 
@@ -485,7 +486,12 @@ export const TeacherAttendance: React.FC<TeacherAttendanceProps> = ({ initialCla
                         <tr key={learner.id} className="hover:bg-white/5 transition-colors">
                           <td className="py-3.5 px-3 text-slate-400 font-mono">{index + 1}</td>
                           <td className="py-3.5 px-3 font-mono font-bold text-cyan-400">{learner.learner_number}</td>
-                          <td className="py-3.5 px-3 font-bold text-white text-sm">{displayName}</td>
+                          <td className="py-3.5 px-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <UserAvatar user={learner} size="sm" />
+                              <span className="font-bold text-slate-900 dark:text-white text-sm truncate">{displayName}</span>
+                            </div>
+                          </td>
                           <td className="py-3.5 px-3">
                             <div className="flex items-center gap-1.5">
                               <button

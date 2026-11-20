@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { adminService, classStaffService } from '../../services/api';
+import { UserAvatar } from '../common/UserAvatar';
 
 type LearnerRow = {
   child_id: number;
   name: string;
   learner_number?: string;
+  profile_picture?: string | null;
+  profile_picture_path?: string | null;
   grade: number;
   results_complete: boolean;
   missing_terms: number[];
@@ -134,7 +137,15 @@ export const YearEndReview: React.FC = () => {
           <tbody>
             {learners.map((learner) => (
               <tr key={learner.child_id} className="border-t border-slate-200 dark:border-white/10">
-                <td className="py-2 text-[#101820] dark:text-white">{learner.name}<span className="block text-xs text-slate-500">{learner.learner_number}</span></td>
+                <td className="py-2 text-[#101820] dark:text-white">
+                  <div className="flex items-center gap-2.5">
+                    <UserAvatar user={learner} size="xs" />
+                    <div>
+                      <span>{learner.name}</span>
+                      <span className="block text-xs text-slate-500">{learner.learner_number}</span>
+                    </div>
+                  </div>
+                </td>
                 <td>{learner.grade}</td>
                 <td>{learner.results_complete ? 'All four terms' : `Missing ${learner.missing_terms.join(', ') || 'terms'}`}</td>
                 <td>
