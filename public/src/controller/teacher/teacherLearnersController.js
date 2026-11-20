@@ -123,6 +123,7 @@ exports.getMyLearners = async (req, res) => {
             LEFT JOIN progress p ON p.child_id = c.id
             LEFT JOIN attendance att ON att.child_id = c.id
             WHERE c.school_id = $1
+              AND COALESCE(c.is_active, TRUE) = TRUE
             ${subjectCondition}
             GROUP BY c.id, cl.name, u.full_name, u.surname, u.phone, u.email, u_child.profile_picture_path, u_child.profile_picture, u_child.gender
             ORDER BY c.id, c.grade, c.surname, c.full_name;
@@ -181,7 +182,7 @@ exports.getClassList = async (req, res) => {
 
     try {
         const params = [subjectParam, schoolId];
-        let conditions = [`(c.school_id = $2 OR $2 IS NULL)`];
+        let conditions = [`(c.school_id = $2 OR $2 IS NULL)`, `COALESCE(c.is_active, TRUE) = TRUE`];
 
         if (targetGrade) {
             params.push(targetGrade);
@@ -263,6 +264,7 @@ exports.getClassList = async (req, res) => {
                 FROM children c
                 LEFT JOIN classes cl ON c.class_id = cl.id
                 WHERE (c.school_id = $1 OR $1 IS NULL)
+                  AND COALESCE(c.is_active, TRUE) = TRUE
                 ORDER BY c.id, c.grade ASC, c.surname ASC, c.full_name ASC
             `, [schoolId]);
         }

@@ -19,6 +19,7 @@ import { SchoolFeesManager } from '../../components/finance/SchoolFeesManager';
 import { BursaryScholarshipHub } from '../../components/learner/BursaryScholarshipHub';
 import { ParentMoreHub } from './ParentMoreHub';
 import { ModulePageHeader } from '../../components/layout/WorkspaceChrome';
+import { LearnerRegistrationPanel } from '../../components/registration/LearnerRegistrationPanel';
 
 const CHILD_SCOPED_TABS = new Set(['children', 'marks', 'reports', 'attendance', 'timetable', 'finance']);
 
@@ -53,7 +54,9 @@ export const ParentDashboard: React.FC = () => {
     }
     setActiveTab(tabId);
     const nextParams: Record<string, string> = { tab: tabId };
-    if (nextChild && CHILD_SCOPED_TABS.has(tabId)) {
+    if (tabId === 'registration' && (typeof childOrParams === 'string' || typeof childOrParams === 'number') && String(childOrParams).trim()) {
+      nextParams.applicationId = String(childOrParams);
+    } else if (nextChild && CHILD_SCOPED_TABS.has(tabId)) {
       nextParams.child = nextChild;
     }
     setSearchParams(nextParams);
@@ -80,6 +83,7 @@ export const ParentDashboard: React.FC = () => {
       messages: 'Messages',
       settings: 'Settings',
       profile: 'Profile',
+      registration: 'Registration',
     };
     return names[tabId] || 'Menu';
   };
@@ -127,6 +131,7 @@ export const ParentDashboard: React.FC = () => {
       case 'messages': return 'Teacher Communications';
       case 'settings': return 'App & Technical Settings';
       case 'profile': return 'Parent Profile';
+      case 'registration': return 'Learner Registration & Transfers';
       case 'more': return 'Main Navigation Menu';
       case 'overview':
       default: return 'Family Learning Hub';
@@ -186,6 +191,12 @@ export const ParentDashboard: React.FC = () => {
       {activeTab === 'messages' && <LearnerMessages onBack={handleBack} />}
       {activeTab === 'profile' && <LearnerProfile />}
       {activeTab === 'settings' && <LearnerSettings />}
+      {activeTab === 'registration' && (
+        <LearnerRegistrationPanel
+          initialApplicationId={searchParams.get('applicationId')}
+          roleLabel="Parent"
+        />
+      )}
     </DashboardLayout>
   );
 };

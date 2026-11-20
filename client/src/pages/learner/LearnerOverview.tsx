@@ -54,6 +54,7 @@ import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { getSubjectMetadata } from '../../utils/subjectImages';
 import { Subject3DCoverFlow } from '../../components/subject/Subject3DCoverFlow';
 import { LearnerAIQuizModal } from '../../components/learner/LearnerAIQuizModal';
+import { RegistrationActionBanner } from '../../components/registration/RegistrationActionBanner';
 
 export type SubjectViewMode = '3d-flow' | 'carousel' | 'visual' | 'grid' | 'compact' | 'list';
 
@@ -329,6 +330,10 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
         onOpenProfile={() => onNavigateTab('profile')}
         onOpenAllModules={() => onNavigateTab('more')}
         allModulesLabel="All Modules"
+      />
+
+      <RegistrationActionBanner
+        onOpenRegistration={(appId) => onNavigateTab('registration', appId ? String(appId) : undefined)}
       />
 
       {/* 1. ENROLLED SUBJECTS HUB - CUSTOMIZABLE PRESENTATION & PICTURES */}

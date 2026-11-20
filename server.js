@@ -591,6 +591,7 @@ app.use('/api/leave-relief', require('./public/src/routes/leaveReliefRoutes'));
 app.use('/api/matric-analytics', require('./public/src/routes/matricAnalyticsRoutes'));
 app.use('/api/matric', require('./public/src/routes/matricAnalyticsRoutes'));
 app.use('/api/applications', applicationRoutes);
+app.use('/api/registrations', require('./public/src/routes/learnerRegistrationRoutes'));
 app.use('/api/finance', require('./public/src/routes/financeRoutes'));
 app.use('/api/bursaries', require('./public/src/routes/bursaryRoutes'));
 app.use('/api/assignments', require('./public/src/routes/assignmentRoutes'));

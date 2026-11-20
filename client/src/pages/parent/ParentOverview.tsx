@@ -43,6 +43,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getProfilePictureUrl } from '../../utils/imageUrl';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
 import { ParentAIAcademicSummaryModal } from '../../components/parent/ParentAIAcademicSummaryModal';
+import { RegistrationActionBanner } from '../../components/registration/RegistrationActionBanner';
 
 type ChildrenViewMode = 'carousel' | 'grid' | 'compact' | 'list';
 
@@ -220,6 +221,10 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
         onOpenAllModules={() => onNavigateTab('more')}
       />
 
+      <RegistrationActionBanner
+        onOpenRegistration={(appId) => onNavigateTab('registration', appId)}
+      />
+
       {/* PARENT COMPANION BANNER */}
       <section className="p-4 md:p-5 rounded-3xl bg-white/85 dark:bg-[#0D1520]/85 border border-emerald-500/30 dark:border-emerald-500/25 shadow-sm relative overflow-hidden backdrop-blur-md">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -267,6 +272,17 @@ export const ParentOverview: React.FC<ParentOverviewProps> = ({ onNavigateTab })
           </div>
           
           <div className="flex items-center gap-2 self-start sm:self-center">
+            {/* Registration & Transfers Button */}
+            <button
+              type="button"
+              onClick={() => onNavigateTab('registration')}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 shrink-0"
+              title="Complete learner registration, download acceptance letters, or request deregistration"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Registration</span>
+            </button>
+
             {/* Link Child Button */}
             <button
               type="button"

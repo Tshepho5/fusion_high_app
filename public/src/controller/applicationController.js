@@ -1191,12 +1191,9 @@ exports.reviewApplication = async (req, res) => {
           : []
       }).subjects;
       
-      const learnerInitialPw = (app.id_number && app.id_number.trim().length >= 6) ? generateLearnerPasswordFromID(app.id_number.trim()) : '123456';
-      const defaultPassword = learnerInitialPw;
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
       const schoolId = app.school_id;
 
-      // (a) Create or link Parent User Account
+      // (a) Create or link Parent User Account safely without plaintext passwords
       let parentUserId = null;
       if (app.primary_parent_email) {
         const parentEmailClean = app.primary_parent_email.trim().toLowerCase();
@@ -1204,18 +1201,16 @@ exports.reviewApplication = async (req, res) => {
         if (parentUserRes.rows.length > 0) {
           parentUserId = parentUserRes.rows[0].id;
         } else {
-          // Resolve parent role_id
           const parentRoleRes = await db.query("SELECT id FROM roles WHERE name = 'parent' LIMIT 1");
           const parentRoleId = parentRoleRes.rows[0]?.id || 4;
 
           const newParentRes = await db.query(
             `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
+             VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, NOW()) RETURNING id`,
             [
               app.primary_parent_name,
               app.primary_parent_surname,
               parentEmailClean,
-              hashedPassword,
               app.primary_parent_phone || null,
               app.primary_parent_id_number || null,
               parentRoleId,
@@ -1226,7 +1221,7 @@ exports.reviewApplication = async (req, res) => {
         }
       }
 
-      // (b) Create Learner User Account
+      // (b) Create Learner User Account safely without plaintext passwords
       let learnerUserId = null;
       const learnerEmail = app.email ? app.email.trim().toLowerCase() : `${provNumber.toLowerCase()}@fusionhigh.co.za`;
       const learnerUserRes = await db.query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [learnerEmail]);
@@ -1238,12 +1233,11 @@ exports.reviewApplication = async (req, res) => {
 
         const newLearnerRes = await db.query(
           `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
+           VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, NOW()) RETURNING id`,
           [
             app.first_name,
             app.surname,
             learnerEmail,
-            hashedPassword,
             app.phone || null,
             app.id_number || null,
             learnerRoleId,
@@ -1308,27 +1302,11 @@ exports.reviewApplication = async (req, res) => {
         );
       }
 
-      // (f) Send Official Welcome Email with Credentials to Parent
-      if (app.primary_parent_email) {
-        try {
-          await emailService.sendParentWelcome({
-            email: app.primary_parent_email,
-            parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
-            childName: `${app.first_name} ${app.surname}`,
-            learnerNumber: provNumber,
-            temporaryPassword: defaultPassword
-          });
-        } catch (emailErr) {
-          console.warn('[ENROLLMENT WELCOME EMAIL ERROR]:', emailErr.message);
-        }
-      }
-
       enrollmentDetails = {
         learner_number: provNumber,
         learner_user_id: learnerUserId,
         parent_user_id: parentUserId,
-        child_id: childId,
-        temporary_password: defaultPassword
+        child_id: childId
       };
     }
 
@@ -1344,11 +1322,11 @@ exports.reviewApplication = async (req, res) => {
       WHERE id = $5
     `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, app.id]);
 
-    // Send Rejection or Approval Email
+    // Send Rejection or Integrated Acceptance Package (PDF + Secure Email + In-App Notification)
     const baseUrl = getRequestBaseUrl(req);
     const parentFullName = `${app.primary_parent_name} ${app.primary_parent_surname}`;
     const learnerFullName = `${app.first_name} ${app.surname}`;
-    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(app.application_number)}`;
+    let acceptancePackage = null;
 
     if (status === 'rejected') {
       try {
@@ -1365,23 +1343,15 @@ exports.reviewApplication = async (req, res) => {
       }
     } else if (status === 'approved') {
       try {
-        const appFeeUnpaid = (app.application_fee_status !== 'paid');
-        await emailService.sendApplicationApprovedWithFeeNotice({
-          parentEmail: app.primary_parent_email,
-          parentName: parentFullName,
-          learnerName: learnerFullName,
-          schoolName: app.school_name || 'Fusion High School',
-          applicationNumber: app.application_number,
-          grade: app.grade_applied,
-          stream: app.stream,
-          assignedClass: null,
-          appFeeUnpaid,
-          appFeeAmount: app.application_fee_amount || 250,
-          regFeeAmount: app.registration_fee_amount || 1500,
-          registrationUrl
+        const learnerRegistrationService = require('../services/learnerRegistrationService');
+        acceptancePackage = await learnerRegistrationService.handleApplicationApproved({
+          applicationId: app.id,
+          actor: req.user,
+          baseUrl,
+          assignedClassId: assigned_class_id || app.assigned_class_id || null
         });
       } catch (err) {
-        console.warn('Approval email notice failed:', err.message);
+        console.warn('Integrated acceptance processing notice:', err.message);
       }
     }
 
@@ -1404,10 +1374,11 @@ exports.reviewApplication = async (req, res) => {
     res.json({
       success: true,
       message: status === 'approved'
-        ? `Application approved. The learner is placed in a class after the R1,500 registration fee is paid.`
+        ? 'Application approved. Official Acceptance Letter generated and Parent/Learner dashboard registration is now enabled.'
         : `Application status updated to ${status}. Notification email dispatched.`,
       status: finalStatus,
-      enrollment: enrollmentDetails
+      enrollment: enrollmentDetails,
+      acceptance: acceptancePackage
     });
   } catch (err) {
     console.error('[ADMIN REVIEW ERROR]:', err);

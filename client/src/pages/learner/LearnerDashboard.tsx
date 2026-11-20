@@ -28,6 +28,7 @@ import { LearnerDiscoverHub } from './LearnerDiscoverHub';
 import { GelezaAIStudyHubModule } from '../../components/learner/GelezaAIStudyHubModule';
 import { useSchool } from '../../context/SchoolContext';
 import { moduleAllowed } from '../../utils/schoolModules';
+import { LearnerRegistrationPanel } from '../../components/registration/LearnerRegistrationPanel';
 
 export const LearnerDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,7 +74,9 @@ export const LearnerDashboard: React.FC = () => {
       setTabHistory((prev) => [...prev, activeTab].slice(-24));
     }
     setActiveTab(tabId);
-    if (subjectName) {
+    if (tabId === 'registration' && subjectName) {
+      setSearchParams({ tab: tabId, applicationId: subjectName });
+    } else if (subjectName) {
       setSearchParams({ tab: tabId, subject: subjectName });
     } else {
       setSearchParams({ tab: tabId });
@@ -134,6 +137,8 @@ export const LearnerDashboard: React.FC = () => {
         return 'App & Technical Settings';
       case 'profile':
         return 'My Profile & Digital Student ID Card';
+      case 'registration':
+        return 'Learner Registration & Transfers';
       default:
         return 'Learner Workspace';
     }
@@ -165,6 +170,7 @@ export const LearnerDashboard: React.FC = () => {
       messages: 'Messages',
       settings: 'Settings',
       profile: 'Profile',
+      registration: 'Registration',
     };
     return names[tabId] || 'Menu';
   };
@@ -278,6 +284,12 @@ export const LearnerDashboard: React.FC = () => {
       {activeTab === 'timetable' && <LearnerTimetable />}
       {activeTab === 'announcements' && <AnnouncementsFeed />}
       {activeTab === 'settings' && <LearnerSettings />}
+      {activeTab === 'registration' && (
+        <LearnerRegistrationPanel
+          initialApplicationId={searchParams.get('applicationId')}
+          roleLabel="Learner"
+        />
+      )}
     </DashboardLayout>
   );
 };

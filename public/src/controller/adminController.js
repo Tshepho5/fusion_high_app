@@ -2418,22 +2418,24 @@ exports.updateAdmissionStatus = async (req, res) => {
         const learnerFullName = `${app.first_name} ${app.surname}`;
         const parentFullName = `${app.primary_parent_name} ${app.primary_parent_surname}`;
 
-        // Trigger email notification based on status
-        if (app.primary_parent_email) {
+        let acceptancePackage = null;
+        if (status === 'approved') {
+            try {
+                const learnerRegistrationService = require('../services/learnerRegistrationService');
+                const requestOrigin = req.headers?.origin || `${req.protocol}://${req.get('host')}`;
+                acceptancePackage = await learnerRegistrationService.handleApplicationApproved({
+                    applicationId: app.id,
+                    actor: req.user,
+                    baseUrl: requestOrigin,
+                    assignedClassId: req.body?.assigned_class_id || app.assigned_class_id || null
+                });
+            } catch (accErr) {
+                console.warn('[ADMIN ADMISSION ACCEPTANCE PACKAGE NOTICE]:', accErr.message);
+            }
+        } else if (app.primary_parent_email) {
             setImmediate(async () => {
                 try {
-                    if (status === 'approved') {
-                        const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(app.application_number)}`;
-                        await emailService.sendApplicationAccepted({
-                            parentEmail: app.primary_parent_email,
-                            parentName: parentFullName,
-                            learnerName: learnerFullName,
-                            grade: app.grade_applied,
-                            stream: app.stream,
-                            applicationNumber: app.application_number,
-                            registrationUrl
-                        });
-                    } else if (status === 'waitlisted') {
+                    if (status === 'waitlisted') {
                         await emailService.sendApplicationWaitlisted({
                             parentEmail: app.primary_parent_email,
                             parentName: parentFullName,
@@ -2467,7 +2469,13 @@ exports.updateAdmissionStatus = async (req, res) => {
             });
         }
 
-        res.json({ message: 'Admission status updated successfully and notification email dispatched.', application: app });
+        res.json({
+            message: status === 'approved'
+                ? 'Admission approved. Official Acceptance Letter generated and integrated dashboard registration enabled.'
+                : 'Admission status updated successfully and notification email dispatched.',
+            application: app,
+            acceptance: acceptancePackage
+        });
     } catch (err) {
         console.error('Error updating admission status:', err);
         res.status(500).json({ error: 'Failed to update application status.' });

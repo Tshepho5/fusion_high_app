@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminService, parentApplicationService, classStaffService } from '../../services/api';
 import { ClassTransferPanel } from './ClassTransferPanel';
+import { AdminRegistrationOversightPanel } from '../../components/registration/AdminRegistrationOversightPanel';
 import { useSchool } from '../../context/SchoolContext';
 import { dashboardRole, startDashboardView } from '../../utils/dashboardView';
 import { useAuth } from '../../context/AuthContext';
@@ -2153,6 +2154,7 @@ export const AdminUsers: React.FC = () => {
             {filteredAdmissions.length === 0 && (
               <div className="p-8 text-center text-slate-400 text-xs">No admission applications found.</div>
             )}
+            <AdminRegistrationOversightPanel />
           </div>
         ) : activeTab === 'parent-applications' ? (
           /* Parent Portal Access Applications Table */

@@ -359,11 +359,20 @@ async function resolveGoogleScriptUrl() {
   return '';
 }
 
-async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = 'Geleza SA', googleScriptUrl = '', skipGoogle = false, onlyGoogle = false }) {
+async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = 'Geleza SA', googleScriptUrl = '', skipGoogle = false, onlyGoogle = false, attachments = null }) {
   const errors = [];
   const resendKey = process.env.RESEND_API_KEY;
   const brevoKey = process.env.BREVO_API_KEY;
   if (!skipGoogle && !googleScriptUrl) googleScriptUrl = await resolveGoogleScriptUrl();
+
+  const normalizedAttachments = Array.isArray(attachments) && attachments.length > 0
+    ? attachments
+        .filter((a) => a && a.filename && a.content)
+        .map((a) => ({
+          filename: String(a.filename),
+          content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : String(a.content)
+        }))
+    : null;
 
   if (!onlyGoogle && resendKey) {
     try {
@@ -373,7 +382,8 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
         subject,
         html,
         text: text || undefined,
-        reply_to: replyTo
+        reply_to: replyTo,
+        ...(normalizedAttachments ? { attachments: normalizedAttachments } : {})
       });
       const resp = await httpsJson('https://api.resend.com/emails', {
         headers: {
@@ -514,7 +524,8 @@ const emailService = {
   /**
    * High-speed email sender with automatic fast failover and HTTPS cloud bypass.
    */
-  send: async (to, subject, body, replyTo = null, text = null) => {
+  send: async (to, subject, body, replyTo = null, text = null, options = {}) => {
+    const attachments = Array.isArray(options?.attachments) ? options.attachments : null;
     if (!to || typeof to !== 'string' || !to.includes('@')) {
       console.error('[EMAIL ERROR] Invalid recipient email address:', to);
       return { success: false, error: `Invalid recipient email address: '${to}'` };
@@ -524,9 +535,29 @@ const emailService = {
     const captureDir = String(process.env.GELEZA_STAGING_MAIL_DIR || '').trim();
     if (captureDir) {
       fs.mkdirSync(captureDir, { recursive: true });
-      const stamp = `${Date.now()}-${targetRecipient.replace(/[^a-z0-9]+/gi, '_')}`;
+      const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${targetRecipient.replace(/[^a-z0-9]+/gi, '_')}`;
       fs.writeFileSync(path.join(captureDir, `${stamp}.html`), String(body || text || ''));
-      return { success: true, provider: 'staging-capture', recipient: targetRecipient };
+      const savedAttachments = [];
+      if (Array.isArray(attachments)) {
+        for (const att of attachments) {
+          if (!att || !att.filename || !att.content) continue;
+          const safeName = String(att.filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+          const attPath = path.join(captureDir, `${stamp}-${safeName}`);
+          const buf = Buffer.isBuffer(att.content) ? att.content : Buffer.from(String(att.content), 'base64');
+          fs.writeFileSync(attPath, buf);
+          savedAttachments.push({ filename: att.filename, path: attPath, bytes: buf.length, contentType: att.contentType || null });
+        }
+      }
+      fs.writeFileSync(
+        path.join(captureDir, `${stamp}.json`),
+        JSON.stringify({
+          to: targetRecipient,
+          subject,
+          captured_at: new Date().toISOString(),
+          attachments: savedAttachments
+        }, null, 2)
+      );
+      return { success: true, provider: 'staging-capture', recipient: targetRecipient, attachments: savedAttachments };
     }
 
     // Portal-only learner logins have no mailbox. School addresses such as @gelezasa.co.za are real inboxes and must be delivered.
@@ -625,7 +656,8 @@ const emailService = {
           text,
           replyTo: replyTo || senderUser,
           fromName: 'Geleza SA',
-          skipGoogle: true
+          skipGoogle: true,
+          attachments
         });
         console.log(`[EMAIL DISPATCH SUCCESS] Delivered via ${httpResult.provider} HTTPS API`);
         if (keepOutOfQueue && /activate\?token=/i.test(rawMessage)) await emailService.forgetDeliveredInvitation(targetRecipient);
@@ -662,7 +694,8 @@ const emailService = {
         subject: subject,
         text: text || undefined,
         html: body,
-        replyTo: replyTo || senderUser
+        replyTo: replyTo || senderUser,
+        ...(attachments && attachments.length > 0 ? { attachments } : {})
       });
 
       console.log(`[EMAIL DISPATCH SUCCESS] SMTP delivered.`);
@@ -1693,6 +1726,73 @@ const emailService = {
           contentHtml,
           ctaText: 'Complete Registration & Issue Learner ID',
           ctaLink: registrationUrl
+        })
+      };
+    },
+
+    // 11b. Integrated Dashboard Admission Acceptance Letter & Secure Onboarding Notice (No Plaintext Passwords)
+    integratedAcceptanceLetter: ({
+      parentName,
+      learnerName,
+      schoolName,
+      grade,
+      academicYear,
+      applicationNumber,
+      acceptanceReference,
+      className,
+      classTeacherName,
+      dashboardRegistrationUrl,
+      activationUrl
+    }) => {
+      const title = `Official Admission Acceptance — ${schoolName || 'Geleza SA'}`;
+      const classLine = className
+        ? `${className}${classTeacherName ? ` (Class Teacher: ${classTeacherName})` : ''}`
+        : 'Pending school administration allocation';
+      const onboardingSection = activationUrl
+        ? `
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 16px; margin: 18px 0;">
+            <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px; font-weight: 700;">First-Time Account Activation</h4>
+            <p style="margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+              Your parent portal account has been prepared securely. Set your own password using the one-time activation link below, then sign in to complete learner registration.
+            </p>
+            <a href="${activationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Activate Account &amp; Set Password</a>
+          </div>
+        `
+        : '';
+
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Congratulations! School Administration at <strong>${schoolName}</strong> has formally approved the admission application for <strong>${learnerName}</strong> for <strong>Grade ${grade} (${academicYear})</strong>.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 18px 22px; margin: 18px 0;">
+          <table role="presentation" width="100%" style="font-size: 13px; border-collapse: collapse;">
+            <tr><td style="color: #94a3b8; padding: 4px 0; width: 42%;">Accepting School:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${schoolName}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Learner Name:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${learnerName}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Grade &amp; Year:</td><td style="color: #38bdf8; font-weight: 700; padding: 4px 0;">Grade ${grade} (${academicYear})</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Application Reference:</td><td style="color: #e2e8f0; font-family: monospace; font-weight: 700; padding: 4px 0;">${applicationNumber}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Acceptance Letter Ref:</td><td style="color: #34d399; font-family: monospace; font-weight: 700; padding: 4px 0;">${acceptanceReference}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Class Allocation:</td><td style="color: #e2e8f0; padding: 4px 0;">${classLine}</td></tr>
+          </table>
+        </div>
+        ${onboardingSection}
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 16px; margin: 18px 0;">
+          <h4 style="margin: 0 0 6px 0; color: #38bdf8; font-size: 14px; font-weight: 700;">Next Step: Complete Integrated Learner Registration</h4>
+          <p style="margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+            Sign in to your Geleza SA Parent or Learner Dashboard to download your official Acceptance Letter PDF at any time, confirm learner details, select subjects from ${schoolName}'s curriculum offerings, review your school-allocated class and Class Teacher, and accept the registration Terms &amp; Conditions.
+          </p>
+        </div>
+      `;
+
+      return {
+        subject: `[Geleza SA] Admission Approved — ${learnerName} (${schoolName}, Grade ${grade})`,
+        body: createBaseEmailTemplate({
+          preheader: `Admission accepted for ${learnerName} at ${schoolName} (Grade ${grade})`,
+          title,
+          subtitle: 'Official Acceptance Letter & Dashboard Registration',
+          contentHtml,
+          ctaText: 'Open Dashboard & Complete Learner Registration',
+          ctaLink: dashboardRegistrationUrl
         })
       };
     },
@@ -2825,6 +2925,25 @@ const emailService = {
   sendApplicationAccepted: async (params) => {
     const template = emailService.templates.applicationAccepted(params);
     return await emailService.send(params.parentEmail, template.subject, template.body);
+  },
+
+  sendIntegratedAcceptanceLetter: async (params) => {
+    const template = emailService.templates.integratedAcceptanceLetter(params);
+    const attachments = params.pdfBuffer
+      ? [{
+          filename: params.pdfFilename || 'Official_Acceptance_Letter.pdf',
+          content: params.pdfBuffer,
+          contentType: 'application/pdf'
+        }]
+      : [];
+    return await emailService.send(
+      params.parentEmail,
+      template.subject,
+      template.body,
+      null,
+      null,
+      { attachments }
+    );
   },
 
   sendApplicationWaitlisted: async (params) => {

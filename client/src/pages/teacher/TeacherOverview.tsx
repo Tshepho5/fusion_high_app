@@ -49,6 +49,7 @@ import { useAuth } from '../../context/AuthContext';
 import { DashboardWelcomeBanner } from '../../components/layout/DashboardWelcomeBanner';
 import { Building2, GraduationCap } from 'lucide-react';
 import { useSchool } from '../../context/SchoolContext';
+import { TeacherDeregistrationReviewBanner } from '../../components/registration/TeacherDeregistrationReviewBanner';
 
 export type SubjectViewMode = 'carousel' | 'grid' | 'compact' | 'list';
 
@@ -483,6 +484,8 @@ export const TeacherOverview: React.FC<TeacherOverviewProps> = ({ onNavigateTab 
         onOpenProfile={() => onNavigateTab('profile')}
         onOpenAllModules={() => onNavigateTab('more')}
       />
+
+      <TeacherDeregistrationReviewBanner />
 
       {/* GELEZA AI EDUCATOR COPILOT QUICK LAUNCHER */}
       <section className="p-4 md:p-5 rounded-3xl bg-white/85 dark:bg-[#0D1520]/85 border border-[#C7D1DC]/90 dark:border-white/10 shadow-sm backdrop-blur-md">

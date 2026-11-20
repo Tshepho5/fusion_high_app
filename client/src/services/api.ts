@@ -1053,3 +1053,25 @@ export const systemControlService = {
     api.post('/api/system/tester-invites/accept', payload).then(res => res.data),
 };
 
+// Integrated School Admission, Learner Registration & Controlled Deregistration API
+export const learnerRegistrationService = {
+  getMyRegistrations: () =>
+    api.get('/api/registrations/my').then(res => res.data),
+  getRegistrationContext: (applicationId: number | string) =>
+    api.get(`/api/registrations/applications/${applicationId}/context`).then(res => res.data),
+  completeRegistration: (applicationId: number | string, payload: Record<string, any>) =>
+    api.post(`/api/registrations/applications/${applicationId}/complete`, payload).then(res => res.data),
+  downloadAcceptanceLetterBlob: (applicationId: number | string) =>
+    api.get(`/api/registrations/applications/${applicationId}/acceptance-letter`, { responseType: 'blob' }).then(res => res.data),
+  getSchoolDashboard: () =>
+    api.get('/api/registrations/school').then(res => res.data),
+  listDeregistrations: () =>
+    api.get('/api/registrations/deregistrations').then(res => res.data),
+  createDeregistration: (payload: { child_id: number; request_type?: 'deregistration' | 'transfer'; reason: string; target_school_name?: string }) =>
+    api.post('/api/registrations/deregistrations', payload).then(res => res.data),
+  teacherReviewDeregistration: (id: number | string, notes?: string) =>
+    api.post(`/api/registrations/deregistrations/${id}/teacher-review`, { notes }).then(res => res.data),
+  adminDecideDeregistration: (id: number | string, decision: 'approve' | 'reject', notes?: string) =>
+    api.post(`/api/registrations/deregistrations/${id}/decision`, { decision, notes }).then(res => res.data),
+};
+

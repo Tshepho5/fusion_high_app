@@ -117,7 +117,7 @@ export const LEARNER_MODULES: SchoolModuleOption[] = [
 
 const ALWAYS_ON: Record<'teacher' | 'learner', string[]> = {
   teacher: ['overview', 'home', 'settings', 'profile', 'more', 'subjects', 'classes', 'workload', 'parent', 'my-children', 'lesson-planning'],
-  learner: ['overview', 'home', 'settings', 'profile', 'more', 'subjects'],
+  learner: ['overview', 'home', 'settings', 'profile', 'more', 'subjects', 'registration'],
 };
 
 /** Learner portal items that open because a teacher module sends something to learners. */
