@@ -12,9 +12,17 @@ function createToken() {
 }
 
 async function ensureColumns(runner) {
+  const existing = await runner.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'users'
+       AND column_name IN ('activation_token_hash', 'activation_expires_at')`
+  );
+  if (existing.rows.length >= 2) return;
   await runner.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS activation_token_hash VARCHAR(64)');
   await runner.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS activation_expires_at TIMESTAMPTZ');
-  await runner.query('ALTER TABLE school_applications ADD COLUMN IF NOT EXISTS authority_review JSONB');
+  await runner.query('ALTER TABLE IF EXISTS school_applications ADD COLUMN IF NOT EXISTS authority_review JSONB');
 }
 
 /**

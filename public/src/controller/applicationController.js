@@ -15,7 +15,12 @@ const academicStreams = require('../services/academicStreamService');
 const { resolveEnrolmentSubjects } = require('../../../lib/learnerSubjectAllocation');
 const paymentHold = require('../services/paymentHold');
 const paymentAccess = require('../services/paymentAccess');
-const { generateLearnerPasswordFromID } = require('./authController');
+const applicationLifecycleService = require('../services/applicationLifecycleService');
+const {
+  validateApplicationTransition,
+  normalizeApplicationStatus,
+  matchesAllowedMagicBytes
+} = require('../../../lib/applicationLifecycle');
 const { isControlLocked } = require('./systemController');
 const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
 
@@ -29,24 +34,34 @@ try {
   // Read-only filesystem in serverless
 }
 
+const ALLOWED_DOC_MIMES = Object.freeze({
+  'application/pdf': '.pdf',
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp'
+});
+const ALLOWED_DOC_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp']);
+
 // Multer Storage Configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, appUploadDir);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const sanitizedName = file.fieldname.replace(/[^a-zA-Z0-9_-]/g, '');
-    cb(null, `app-${Date.now()}-${sanitizedName}${ext}`);
+    const canonicalExt = ALLOWED_DOC_MIMES[file.mimetype] || '.bin';
+    const sanitizedName = String(file.fieldname || 'document').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'document';
+    cb(null, `app-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${sanitizedName}${canonicalExt}`);
   }
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-  if (allowedMimes.includes(file.mimetype)) {
+  const rawExt = path.extname(String(file.originalname || '')).toLowerCase();
+  const mimeAllowed = Object.prototype.hasOwnProperty.call(ALLOWED_DOC_MIMES, file.mimetype);
+  const extAllowed = !rawExt || ALLOWED_DOC_EXTENSIONS.has(rawExt);
+  if (mimeAllowed && extAllowed) {
     cb(null, true);
   } else {
-    cb(new Error(`Unsupported file type: ${file.mimetype}. Please upload PDF, JPG, or PNG files.`));
+    cb(new Error(`Unsupported file type or extension (${file.mimetype}${rawExt ? ` / ${rawExt}` : ''}). Please upload PDF, JPG, PNG, or WebP files.`));
   }
 };
 
@@ -65,6 +80,40 @@ exports.uploadApplicationDocs = upload.fields([
   { name: 'report_card', maxCount: 1 },
   { name: 'clinic_card', maxCount: 1 }
 ]);
+
+// Middleware for uploading a single requested document from Applicant / Parent Dashboard
+exports.uploadSingleApplicationDoc = (req, res, next) => {
+  upload.single('document')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          success: false,
+          error: 'Document exceeds the maximum allowed size of 15MB.'
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        error: err.message || 'Invalid document upload. Please upload a PDF, JPG, PNG, or WebP file.'
+      });
+    }
+    if (req.file && Number(req.file.size) === 0) {
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.status(400).json({
+        success: false,
+        error: 'Uploaded document is empty (0 bytes). Please upload a valid non-empty file.'
+      });
+    }
+    if (req.file && !matchesAllowedMagicBytes(req.file.path, req.file.mimetype)) {
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.status(400).json({
+        success: false,
+        error: 'Uploaded file content does not match a valid PDF, JPG, PNG, or WebP document.'
+      });
+    }
+    return next();
+  });
+};
+exports._matchesAllowedMagicBytes = matchesAllowedMagicBytes;
 
 // Helper Validation Functions
 const NAME_REGEX = /^[\p{L}\s\-']+$/u;
@@ -647,33 +696,19 @@ exports.submitApplication = async (req, res) => {
       });
     }
 
-    // 7. Trigger Appropriate Email Workflow
+    // 7. Trigger Secure Onboarding, Status Timeline & Email 1 (Application Received Confirmation)
     const learnerFullName = `${body.first_name} ${body.surname}`;
     const primaryParentFullName = `${body.primary_parent_name} ${body.primary_parent_surname}`;
-    const resumptionUrl = `${baseUrl}/application.html?resume=${correctionToken}`;
-    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(applicationNumber)}`;
-
     const bankingInfo = hold.banking_details;
-    const paymentUrl = resumptionUrl;
-    const dueDateStr = feeDueDate ? feeDueDate.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Fee Waived / Not Applicable';
+    let submissionLifecycle = null;
 
     try {
-      await emailService.sendApplicationReceivedWithBanking({
-        parentEmail: body.primary_parent_email,
-        parentName: primaryParentFullName,
-        learnerName: learnerFullName,
-        grade: gradeApplied,
-        stream,
-        homeLanguage,
-        schoolName,
-        applicationNumber,
-        feeAmount: appFeeAmount,
-        dueDateStr,
-        bankDetails: {},
-        paymentUrl
+      submissionLifecycle = await applicationLifecycleService.handleApplicationSubmitted({
+        applicationId,
+        baseUrl
       });
     } catch (mailErr) {
-      console.warn('[EMAIL WARNING sendApplicationReceivedWithBanking]:', mailErr.message);
+      console.warn('[EMAIL/LIFECYCLE WARNING handleApplicationSubmitted]:', mailErr.message);
     }
 
     if (applicationStatus === 'waitlisted') {
@@ -692,10 +727,14 @@ exports.submitApplication = async (req, res) => {
       return res.status(200).json({
         success: true,
         status: 'waitlisted',
+        applicationId,
         applicationNumber,
+        academic_year: academicYear,
         application_fee_status: feeStatus,
         application_fee_amount: appFeeAmount,
         banking_details: paymentHold.publicBank(bankingInfo),
+        tracking_enabled: true,
+        activation_required: Boolean(submissionLifecycle?.parentActivationRequired),
         message: `Application received! Grade ${gradeApplied} is currently at maximum capacity (< 30 per class). The applicant has been placed on the priority waiting list.`
       });
     }
@@ -704,7 +743,9 @@ exports.submitApplication = async (req, res) => {
     return res.status(201).json({
       success: true,
       status: 'submitted',
+      applicationId,
       applicationNumber,
+      academic_year: academicYear,
       assignedClass: null,
       registrationUrl: null,
       application_fee_status: feeStatus,
@@ -714,7 +755,9 @@ exports.submitApplication = async (req, res) => {
       payment_url: null,
       payment_held: false,
       payment_method: 'fee_waived',
-      message: 'Admissions application and documents submitted successfully! Your application has been accepted and is now awaiting review and approval by the school administration.'
+      tracking_enabled: true,
+      activation_required: Boolean(submissionLifecycle?.parentActivationRequired),
+      message: 'Application submitted successfully! Submission confirms receipt only and is now awaiting review by the School Principal / Administration. Check your email for your application reference and tracking instructions.'
     });
 
   } catch (err) {
@@ -910,18 +953,17 @@ exports.resubmitApplication = async (req, res) => {
     }
     const assignedClass = await applicationService.allocateAvailableClass(gradeApplied, stream);
 
-    let newStatus = 'submitted';
-    let provNumber = application.provisional_learner_number;
+    // Resubmission NEVER auto-approves an application; it returns to school administration for review.
+    const currentStatus = normalizeApplicationStatus(application.status);
+    let newStatus = (currentStatus === 'documents_requested' || currentStatus === 'action_required')
+      ? 'documents_submitted'
+      : 'submitted';
+    const provNumber = application.provisional_learner_number || null;
 
     if (!aiVerification.isValid) {
-      newStatus = 'action_required';
-    } else if (capacityStatus.isSchoolFull || !assignedClass) {
+      newStatus = 'documents_requested';
+    } else if (capacityStatus.isSchoolFull && !assignedClass) {
       newStatus = 'waitlisted';
-    } else {
-      newStatus = 'approved';
-      if (!provNumber) {
-        provNumber = await applicationService.generateProvisionalLearnerNumber(gradeApplied);
-      }
     }
 
     // Update Application Record
@@ -1048,38 +1090,25 @@ exports.resubmitApplication = async (req, res) => {
       ]);
     }
 
-    const learnerFullName = `${merged.first_name} ${merged.surname}`;
-    const primaryParentFullName = `${merged.primary_parent_name} ${merged.primary_parent_surname}`;
-    const registrationUrl = `${baseUrl}/register?appRef=${encodeURIComponent(application.application_number)}`;
-
-    if (newStatus === 'approved') {
-      await emailService.sendApplicationAccepted({
-        parentEmail: merged.primary_parent_email,
-        parentName: primaryParentFullName,
-        learnerName: learnerFullName,
-        grade: gradeApplied,
-        stream,
-        applicationNumber: application.application_number,
-        learnerNumber: provNumber,
-        registrationUrl
-      });
-
-      return res.json({
-        success: true,
-        status: 'approved',
-        applicationNumber: application.application_number,
-        learnerNumber: provNumber,
-        message: 'Resubmission approved! Acceptance email sent.'
-      });
-    }
+    await applicationLifecycleService.recordStatusHistory(db, {
+      applicationId: application.id,
+      schoolId: application.school_id,
+      fromStatus: application.status,
+      toStatus: newStatus,
+      actorId: null,
+      actorRole: 'applicant',
+      reason: uploadedDocs.length > 0
+        ? `Applicant resubmitted application with ${uploadedDocs.length} updated document(s).`
+        : 'Applicant updated application details for school review.'
+    }).catch(() => {});
 
     res.json({
       success: aiVerification.isValid,
       status: newStatus,
       issues: aiVerification.issues,
-      message: aiVerification.isValid 
-        ? 'Application updated successfully.' 
-        : 'Some issues are still outstanding. Please check your inputs.'
+      message: aiVerification.isValid
+        ? 'Updated application and documents received. Your application is now back with school administration for review.'
+        : 'Some issues are still outstanding. Please review the highlighted items.'
     });
 
   } catch (err) {
@@ -1121,10 +1150,17 @@ exports.listApplications = async (req, res) => {
     `;
     const params = [];
 
-    const targetSchoolId = school_id || req.headers['x-school-id'] || (req.user && req.user.school_id && req.user.role !== 'superadmin' ? req.user.school_id : null);
+    const isSuperadmin = Boolean(req.user?.is_superadmin);
+    const targetSchoolId = isSuperadmin
+      ? (school_id || req.headers['x-school-id'] || null)
+      : (req.user?.school_id || null);
+
+    if (!isSuperadmin && !targetSchoolId) {
+      return res.status(403).json({ error: 'This administrator account is not assigned to a school.' });
+    }
     if (targetSchoolId && targetSchoolId !== 'all') {
       params.push(parseInt(targetSchoolId, 10));
-      query += ` AND (a.school_id = $${params.length} OR a.school_id IS NULL)`;
+      query += ` AND a.school_id = $${params.length}`;
     }
 
     if (status) {
@@ -1151,13 +1187,65 @@ exports.listApplications = async (req, res) => {
 };
 
 /**
- * Admin: Manual Decision / Review & 1-Click Autonomous Enrollment
+ * Admin: Authoritative Decision / Review (State-Machine Enforced)
  */
 exports.reviewApplication = async (req, res) => {
   const { id } = req.params;
-  const { status, admin_notes, assigned_class_id } = req.body;
+  const { status, admin_notes, assigned_class_id, reason, required_documents, instructions, deadline } = req.body;
+  const baseUrl = getRequestBaseUrl(req);
+  const canonicalTarget = normalizeApplicationStatus(status);
 
   try {
+    if (canonicalTarget === 'approved') {
+      const result = await applicationLifecycleService.approveApplication({
+        applicationId: id,
+        actor: req.user,
+        baseUrl,
+        assignedClassId: assigned_class_id || null,
+        adminNotes: admin_notes || null
+      });
+      return res.json({
+        success: true,
+        message: `Application approved. Learner Number ${result.learnerNumber} persisted, Acceptance Letter generated, and dashboard registration enabled.`,
+        status: 'approved',
+        learner_number: result.learnerNumber,
+        application: result.application,
+        acceptance: result
+      });
+    }
+
+    if (canonicalTarget === 'rejected') {
+      const result = await applicationLifecycleService.declineApplication({
+        applicationId: id,
+        actor: req.user,
+        baseUrl,
+        reason: reason || admin_notes || 'Admission criteria or school grade capacity not met.'
+      });
+      return res.json({
+        success: true,
+        message: 'Application declined. Decision recorded and notification email dispatched.',
+        status: 'rejected',
+        application: result.application,
+        email_dispatched: result.emailDispatched
+      });
+    }
+
+    if (canonicalTarget === 'documents_requested' && Array.isArray(required_documents) && required_documents.length > 0) {
+      const result = await applicationLifecycleService.createDocumentRequest({
+        applicationId: id,
+        actor: req.user,
+        baseUrl,
+        body: { required_documents, instructions: instructions || admin_notes || reason, deadline }
+      });
+      return res.json({
+        success: true,
+        message: 'Additional documentation requested and applicant notified.',
+        status: 'documents_requested',
+        application: result.application,
+        document_request: result.request
+      });
+    }
+
     const appRes = await db.query(
       'SELECT * FROM applications WHERE id::text = $1::text OR application_number = $1::text',
       [id]
@@ -1170,230 +1258,64 @@ exports.reviewApplication = async (req, res) => {
     if (!canDecideApplication(req.user, app.school_id)) {
       return res.status(404).json({ error: 'Application not found.' });
     }
-    let provNumber = app.provisional_learner_number;
 
-    if ((status === 'enrolled') && (app.school_id === null || app.school_id === undefined || app.school_id === '')) {
-      return res.status(400).json({ error: 'This application is not linked to a school.' });
-    }
-
-    if ((status === 'approved' || status === 'enrolled') && !provNumber) {
-      provNumber = await applicationService.generateProvisionalLearnerNumber(app.grade_applied);
-    }
-
-    if (status === 'enrolled' && app.registration_fee_status !== 'paid') {
-      return res.status(400).json({
-        error: 'The learner is placed in a class only after the R1,500 registration fee is paid.'
+    const transition = validateApplicationTransition({
+      fromStatus: app.status,
+      toStatus: canonicalTarget,
+      actorRole: req.user?.role,
+      isSuperadmin: Boolean(req.user?.is_superadmin)
+    });
+    if (!transition.allowed) {
+      return res.status(transition.code === 'UNAUTHORIZED_STATUS_CHANGE' ? 403 : 409).json({
+        error: transition.reason,
+        code: transition.code
       });
     }
 
-    // Approval records the decision and asks for the registration fee.
-    // Class, accounts, and subjects are created when that fee is paid.
-    let enrollmentDetails = null;
-    if (status === 'enrolled' && app.registration_fee_status === 'paid') {
-      const gradeApplied = parseInt(app.grade_applied, 10) || 10;
-      const stream = app.stream || 'General';
-      const homeLanguage = (app.home_language || 'Sepedi').trim();
-      const subjects = resolveEnrolmentSubjects({
-        grade: gradeApplied,
-        subjectPackage: app.subject_package,
-        selectedSubjects: app.selected_subjects,
-        grade89Catalogue: gradeApplied < 10
-          ? curriculumService.getSubjectsForGradeAndStream(gradeApplied, 'General', homeLanguage)
-          : []
-      }).subjects;
-      
-      const schoolId = app.school_id;
-
-      // (a) Create or link Parent User Account safely without plaintext passwords
-      let parentUserId = null;
-      if (app.primary_parent_email) {
-        const parentEmailClean = app.primary_parent_email.trim().toLowerCase();
-        const parentUserRes = await db.query('SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1', [parentEmailClean]);
-        if (parentUserRes.rows.length > 0) {
-          parentUserId = parentUserRes.rows[0].id;
-        } else {
-          const parentRoleRes = await db.query("SELECT id FROM roles WHERE name = 'parent' LIMIT 1");
-          const parentRoleId = parentRoleRes.rows[0]?.id || 4;
-
-          const newParentRes = await db.query(
-            `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
-             VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, NOW()) RETURNING id`,
-            [
-              app.primary_parent_name,
-              app.primary_parent_surname,
-              parentEmailClean,
-              app.primary_parent_phone || null,
-              app.primary_parent_id_number || null,
-              parentRoleId,
-              schoolId
-            ]
-          );
-          parentUserId = newParentRes.rows[0].id;
-        }
-      }
-
-      // (b) Create Learner User Account safely without plaintext passwords
-      let learnerUserId = null;
-      const learnerEmail = app.email ? app.email.trim().toLowerCase() : `${provNumber.toLowerCase()}@fusionhigh.co.za`;
-      const learnerUserRes = await db.query('SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1', [learnerEmail]);
-      if (learnerUserRes.rows.length > 0) {
-        learnerUserId = learnerUserRes.rows[0].id;
-      } else {
-        const learnerRoleRes = await db.query("SELECT id FROM roles WHERE name = 'learner' LIMIT 1");
-        const learnerRoleId = learnerRoleRes.rows[0]?.id || 3;
-
-        const newLearnerRes = await db.query(
-          `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
-           VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, NOW()) RETURNING id`,
-          [
-            app.first_name,
-            app.surname,
-            learnerEmail,
-            app.phone || null,
-            app.id_number || null,
-            learnerRoleId,
-            schoolId
-          ]
-        );
-        learnerUserId = newLearnerRes.rows[0].id;
-      }
-
-      // (c) Create or Update record in children table
-      let childId;
-      const existingChild = await db.query('SELECT id FROM children WHERE learner_number = $1 OR application_number = $2 LIMIT 1', [provNumber, app.application_number]);
-      if (existingChild.rows.length > 0) {
-        childId = existingChild.rows[0].id;
-        await db.query(
-          `UPDATE children SET
-             full_name = $1, surname = $2, grade = $3, stream = $4, home_language = $5,
-             subjects = $6, parent_id = $7, learner_user_id = $8, is_active = TRUE,
-             school_id = $9
-           WHERE id = $10`,
-          [app.first_name, app.surname, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.school_id, childId]
-        );
-      } else {
-        const childInsert = await db.query(
-          `INSERT INTO children (full_name, surname, learner_number, grade, stream, home_language, subjects, parent_id, learner_user_id, application_number, school_id, is_active, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, NOW()) RETURNING id`,
-          [app.first_name, app.surname, provNumber, gradeApplied, stream, homeLanguage, subjects, parentUserId, learnerUserId, app.application_number, app.school_id]
-        );
-        childId = childInsert.rows[0].id;
-      }
-
-      // (d) Link in parent_children table
-      if (parentUserId && childId) {
-        try {
-          await db.query(
-            `INSERT INTO parent_children (parent_id, child_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-            [parentUserId, childId]
-          );
-        } catch (_) {}
-      }
-
-      // (e) Create Term 1 Tuition Fee Invoice
-      const invoiceNum = `INV-TERM1-${provNumber}`;
-      const feeCheck = await db.query('SELECT id FROM fee_invoices WHERE invoice_number = $1 LIMIT 1', [invoiceNum]);
-      if (feeCheck.rows.length === 0) {
-        const breakdown = [
-          { item: `CAPS Grade ${gradeApplied} Term 1 Tuition Fee`, amount: 4000.00 },
-          { item: 'Digital Curriculum, Past Papers & AI Tutor License', amount: 300.00 },
-          { item: 'Sports & Extracurricular Facilities Levy', amount: 200.00 }
-        ];
-        await db.query(
-          `INSERT INTO fee_invoices (learner_id, parent_id, invoice_number, title, description, category, term, amount, paid_amount, balance, status, due_date, itemized_breakdown, created_at)
-           VALUES ($1, $2, $3, $4, $5, 'Tuition', 'Term 1 2026', 4500.00, 0.00, 4500.00, 'pending', '2026-03-31', $6, NOW())`,
-          [
-            childId,
-            parentUserId,
-            invoiceNum,
-            `Term 1 School Fees — Grade ${gradeApplied}`,
-            `Official tuition invoice for newly enrolled learner ${app.first_name} ${app.surname}.`,
-            JSON.stringify(breakdown)
-          ]
-        );
-      }
-
-      enrollmentDetails = {
-        learner_number: provNumber,
-        learner_user_id: learnerUserId,
-        parent_user_id: parentUserId,
-        child_id: childId
-      };
-    }
-
-    const finalStatus = status;
-
-    await db.query(`
+    const updatedRes = await db.query(`
       UPDATE applications SET
         status = $1,
-        admin_notes = $2,
-        assigned_class_id = $3,
-        provisional_learner_number = $4,
+        admin_notes = COALESCE($2, admin_notes),
+        assigned_class_id = COALESCE($3, assigned_class_id),
+        reviewed_by = $4,
+        reviewed_at = NOW(),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $5
-    `, [finalStatus, admin_notes || app.admin_notes, assigned_class_id || app.assigned_class_id, provNumber, app.id]);
+      RETURNING *
+    `, [canonicalTarget, admin_notes || null, assigned_class_id || null, req.user?.id || null, app.id]);
 
-    // Send Rejection or Integrated Acceptance Package (PDF + Secure Email + In-App Notification)
-    const baseUrl = getRequestBaseUrl(req);
-    const parentFullName = `${app.primary_parent_name} ${app.primary_parent_surname}`;
-    const learnerFullName = `${app.first_name} ${app.surname}`;
-    let acceptancePackage = null;
+    await applicationLifecycleService.recordStatusHistory(db, {
+      applicationId: app.id,
+      schoolId: app.school_id,
+      fromStatus: app.status,
+      toStatus: canonicalTarget,
+      actorId: req.user?.id || null,
+      actorRole: req.user?.role || 'admin',
+      reason: admin_notes || reason || `Application status updated to ${canonicalTarget}.`
+    }).catch(() => {});
 
-    if (status === 'rejected') {
-      try {
-        await emailService.sendApplicationUnsuccessful({
-          parentEmail: app.primary_parent_email,
-          parentName: parentFullName,
-          learnerName: learnerFullName,
-          grade: app.grade_applied,
-          applicationNumber: app.application_number,
-          reason: admin_notes || 'School capacity constraints or admission criteria not met.'
-        });
-      } catch (err) {
-        console.warn('Rejection email notice failed:', err.message);
-      }
-    } else if (status === 'approved') {
-      try {
-        const learnerRegistrationService = require('../services/learnerRegistrationService');
-        acceptancePackage = await learnerRegistrationService.handleApplicationApproved({
-          applicationId: app.id,
-          actor: req.user,
-          baseUrl,
-          assignedClassId: assigned_class_id || app.assigned_class_id || null
-        });
-      } catch (err) {
-        console.warn('Integrated acceptance processing notice:', err.message);
-      }
+    if (canonicalTarget === 'waitlisted' && app.primary_parent_email) {
+      await emailService.sendApplicationWaitlisted({
+        parentEmail: app.primary_parent_email,
+        parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`.trim(),
+        learnerName: `${app.first_name} ${app.surname}`.trim(),
+        grade: app.grade_applied,
+        applicationNumber: app.application_number
+      }).catch(() => {});
     }
 
-    // Update status in Firebase Cloud Firestore
-    if (firestore) {
-      setImmediate(async () => {
-        try {
-          await firestore.collection('applications').doc(String(id)).set({
-            status: finalStatus,
-            admin_notes: admin_notes || app.admin_notes || null,
-            provisional_learner_number: provNumber || null,
-            updated_at: new Date()
-          }, { merge: true });
-        } catch (fbStatusErr) {
-          console.warn('[FIREBASE APPLICATION STATUS UPDATE WARNING]:', fbStatusErr.message);
-        }
-      });
-    }
-
-    res.json({
+    return res.json({
       success: true,
-      message: status === 'approved'
-        ? 'Application approved. Official Acceptance Letter generated and Parent/Learner dashboard registration is now enabled.'
-        : `Application status updated to ${status}. Notification email dispatched.`,
-      status: finalStatus,
-      enrollment: enrollmentDetails,
-      acceptance: acceptancePackage
+      message: `Application status updated to ${canonicalTarget}.`,
+      status: canonicalTarget,
+      application: updatedRes.rows[0]
     });
   } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({ error: err.message, code: err.code || undefined });
+    }
     console.error('[ADMIN REVIEW ERROR]:', err);
-    res.status(500).json({ error: 'Failed to process application enrollment.' });
+    res.status(500).json({ error: 'Failed to process application decision.' });
   }
 };
 
@@ -1612,45 +1534,33 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
         : []
     }).subjects;
 
-    // 4. Create Parent User if doesn't exist
-    let parentUserId = null;
+    // 4. Create Parent User safely without plaintext passwords
     const parentEmailClean = app.primary_parent_email.trim().toLowerCase();
-    const parentInitialPw = 'Parent@2026';
-    const hashedParentPw = await bcrypt.hash(parentInitialPw, 10);
+    const ensuredParent = await applicationLifecycleService.ensurePasswordlessAccount(db, {
+      email: parentEmailClean,
+      fullName: app.primary_parent_name,
+      surname: app.primary_parent_surname,
+      phone: app.primary_parent_phone || null,
+      idNumber: app.primary_parent_id_number || null,
+      roleName: 'parent',
+      fallbackRoleId: 4,
+      schoolId: app.school_id
+    });
+    const parentUserId = ensuredParent.user?.id || null;
 
-    const existingParent = await db.query('SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1', [parentEmailClean]);
-    if (existingParent.rows.length > 0) {
-      parentUserId = existingParent.rows[0].id;
-    } else {
-      const parentRoleRes = await db.query("SELECT id FROM roles WHERE name = 'parent' LIMIT 1");
-      const parentRoleId = parentRoleRes.rows[0]?.id || 4;
-      const newParentRes = await db.query(
-        `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
-        [app.primary_parent_name, app.primary_parent_surname, parentEmailClean, hashedParentPw, app.primary_parent_phone || null, app.primary_parent_id_number || null, parentRoleId, app.school_id]
-      );
-      parentUserId = newParentRes.rows[0].id;
-    }
-
-    // 5. Create Learner User if doesn't exist
-    let learnerUserId = null;
-    const learnerInitialPw = (app.id_number && app.id_number.trim().length >= 6) ? generateLearnerPasswordFromID(app.id_number.trim()) : '123456';
-    const hashedLearnerPw = await bcrypt.hash(learnerInitialPw, 10);
+    // 5. Create Learner User safely without plaintext passwords
     const learnerEmail = app.email ? app.email.trim().toLowerCase() : `${officialLearnerNo.toLowerCase()}@fusionhigh.co.za`;
-
-    const existingLearner = await db.query('SELECT id, email FROM users WHERE LOWER(email) = $1 LIMIT 1', [learnerEmail]);
-    if (existingLearner.rows.length > 0) {
-      learnerUserId = existingLearner.rows[0].id;
-    } else {
-      const learnerRoleRes = await db.query("SELECT id FROM roles WHERE name = 'learner' LIMIT 1");
-      const learnerRoleId = learnerRoleRes.rows[0]?.id || 3;
-      const newLearnerRes = await db.query(
-        `INSERT INTO users (full_name, surname, email, password_hash, phone, id_number, role_id, school_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id`,
-        [app.first_name, app.surname, learnerEmail, hashedLearnerPw, app.phone || null, app.id_number || null, learnerRoleId, app.school_id]
-      );
-      learnerUserId = newLearnerRes.rows[0].id;
-    }
+    const ensuredLearner = await applicationLifecycleService.ensurePasswordlessAccount(db, {
+      email: learnerEmail,
+      fullName: app.first_name,
+      surname: app.surname,
+      phone: app.phone || null,
+      idNumber: app.id_number || null,
+      roleName: 'learner',
+      fallbackRoleId: 3,
+      schoolId: app.school_id
+    });
+    const learnerUserId = ensuredLearner.user?.id || null;
 
     // 6. Create or update children record
     let childId;
@@ -1703,23 +1613,26 @@ exports.payRegistrationFeeAndFinalize = async (req, res) => {
       `${app.primary_parent_name} ${app.primary_parent_surname}`, app.primary_parent_email
     ]);
 
-    // 9. Send Final Enrollment Email with Grade, Class, Subjects, and Credentials!
+    // 9. Send Final Enrollment Email (NO plaintext passwords — secure passwordless activation link if needed)
     const baseUrl = getRequestBaseUrl(req);
-    await emailService.sendRegistrationSuccessWithAllocation({
-      parentEmail: app.primary_parent_email,
-      parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
+    const parentActivationUrl = ensuredParent.activationToken
+      ? `${baseUrl}/activate?token=${encodeURIComponent(ensuredParent.activationToken)}`
+      : null;
+    await emailService.sendRegistrationCompletedConfirmation({
+      recipientEmail: app.primary_parent_email,
+      recipientName: `${app.primary_parent_name} ${app.primary_parent_surname}`,
       learnerName: `${app.first_name} ${app.surname}`,
-      schoolName: app.school_name || 'Fusion High School',
       learnerNumber: officialLearnerNo,
+      applicationNumber: app.application_number,
+      schoolName: app.school_name || 'School',
       grade: gradeApplied,
+      academicYear: Number(app.academic_year || new Date().getFullYear()),
       stream,
-      assignedClass: assignedClassName,
-      subjects: allocatedSubjects,
-      parentEmail: app.primary_parent_email,
-      parentPassword: parentInitialPw,
-      learnerEmail: learnerEmail,
-      learnerPassword: learnerInitialPw,
-      portalUrl: `${baseUrl}/login`
+      className: assignedClassName,
+      classTeacherName: null,
+      selectedSubjects: allocatedSubjects,
+      dashboardUrl: `${baseUrl}/login`,
+      activationUrl: parentActivationUrl
     });
 
     res.json({
@@ -1823,6 +1736,81 @@ exports.triggerFeeReminders = async (req, res) => {
   } catch (err) {
     console.error('Error triggering fee reminders:', err);
     res.status(500).json({ success: false, error: 'Failed to process fee reminders.' });
+  }
+};
+
+exports.getMyApplications = async (req, res) => {
+  try {
+    const data = await applicationLifecycleService.getMyTrackedApplications(req.user);
+    return res.json({ success: true, ...data });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Failed to load application tracking records.' });
+  }
+};
+
+exports.createDocumentRequest = async (req, res) => {
+  try {
+    const result = await applicationLifecycleService.createDocumentRequest({
+      applicationId: req.params.id,
+      actor: req.user,
+      baseUrl: getRequestBaseUrl(req),
+      body: req.body || {}
+    });
+    return res.status(201).json({
+      success: true,
+      message: 'Documentation request created and applicant notified.',
+      application: result.application,
+      request: result.request,
+      email_dispatched: result.emailDispatched
+    });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Failed to create documentation request.', code: err.code || undefined });
+  }
+};
+
+exports.uploadRequestedDocument = async (req, res) => {
+  try {
+    const result = await applicationLifecycleService.uploadApplicationDocument({
+      applicationId: req.params.id,
+      actor: req.user,
+      file: req.file,
+      documentType: req.body?.document_type || req.body?.documentType || 'supporting_document',
+      requestId: req.body?.request_id || req.body?.requestId || null,
+      baseUrl: getRequestBaseUrl(req)
+    });
+    return res.status(201).json({
+      success: true,
+      message: 'Document uploaded securely and school reviewers have been notified.',
+      application: result.application,
+      document: result.document,
+      email_dispatched: result.emailDispatched
+    });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Failed to upload document.' });
+  }
+};
+
+exports.reviewDocumentRequest = async (req, res) => {
+  try {
+    const result = await applicationLifecycleService.reviewDocumentRequest({
+      applicationId: req.params.id,
+      requestId: req.params.requestId,
+      actor: req.user,
+      outcome: req.body?.outcome || req.body?.decision,
+      notes: req.body?.notes || req.body?.review_notes || '',
+      baseUrl: getRequestBaseUrl(req)
+    });
+    return res.json({
+      success: true,
+      message: result.request.review_outcome === 'approved'
+        ? 'Submitted documentation accepted. Application returned to school review.'
+        : 'Resubmission requested and applicant notified.',
+      application: result.application,
+      request: result.request,
+      email_dispatched: result.emailDispatched
+    });
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message || 'Failed to review documentation request.' });
   }
 };
 

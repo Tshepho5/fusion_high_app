@@ -18,12 +18,29 @@ async function sendInvitation(req, user, token) {
   const school = user.school_id
     ? await db.query('SELECT name, emis_number FROM schools WHERE id = $1', [user.school_id])
     : { rows: [] };
+  const roleRes = user.role_id
+    ? await db.query('SELECT LOWER(name) AS name FROM roles WHERE id::text = $1::text LIMIT 1', [String(user.role_id)])
+    : { rows: [] };
+  const roleName = roleRes.rows[0]?.name || 'admin';
+  const activationUrl = invitationLink(req, token);
+
+  if (roleName === 'parent' || roleName === 'learner' || roleName === 'student') {
+    await emailService.sendAccountActivationNotice({
+      recipientEmail: user.email,
+      recipientName: `${user.full_name || ''} ${user.surname || ''}`.trim() || 'User',
+      schoolName: school.rows[0]?.name || '',
+      roleLabel: roleName === 'parent' ? 'Parent / Guardian' : 'Learner / Applicant',
+      activationUrl
+    });
+    return;
+  }
+
   await emailService.sendSchoolApplicationApprovedNotice({
     principalEmail: user.email,
     principalName: `${user.full_name || ''} ${user.surname || ''}`.trim() || 'Principal',
     schoolName: school.rows[0]?.name || 'your school',
     emisNumber: school.rows[0]?.emis_number || '',
-    activationUrl: invitationLink(req, token)
+    activationUrl
   });
 }
 
@@ -105,14 +122,14 @@ exports.resendPublic = async (req, res) => {
   if (!email.includes('@') || email.length > 200) return res.json(generic);
   try {
     const found = await db.query(
-      `SELECT id, email, full_name, surname, school_id, password_hash, is_superadmin
+      `SELECT id, email, full_name, surname, role_id, school_id, password_hash, is_superadmin
        FROM users
        WHERE LOWER(email) = LOWER($1)
        LIMIT 1`,
       [email]
     );
     const user = found.rows[0];
-    if (user && !user.password_hash && !user.is_superadmin && user.school_id) {
+    if (user && !user.password_hash && !user.is_superadmin) {
       const token = await activation.issue(db, user.id);
       await sendInvitation(req, user, token).catch(() => {});
     }

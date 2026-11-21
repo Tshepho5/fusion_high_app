@@ -18,6 +18,7 @@ import {
   Lock
 } from 'lucide-react';
 import { learnerRegistrationService } from '../../services/api';
+import { ApplicantTrackingPanel } from '../applications/ApplicantTrackingPanel';
 
 interface LearnerRegistrationPanelProps {
   initialApplicationId?: string | number | null;
@@ -366,6 +367,12 @@ export const LearnerRegistrationPanel: React.FC<LearnerRegistrationPanelProps> =
         )}
       </section>
 
+      {/* Full Application Tracking & Documentation Uploads Across All Statuses */}
+      <ApplicantTrackingPanel
+        roleLabel={roleLabel}
+        onStartRegistration={(appId) => setSelectedAppId(Number(appId))}
+      />
+
       {/* Accepted Applications Cards */}
       <section className="space-y-3">
         <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
@@ -411,7 +418,9 @@ export const LearnerRegistrationPanel: React.FC<LearnerRegistrationPanelProps> =
                         <span>&bull; Grade {app.grade} ({app.academic_year})</span>
                       </p>
                       <p className="mt-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                        App Ref: {app.application_number} &bull; Letter Ref: {app.acceptance_reference}
+                        App Ref: {app.application_number}
+                        {app.learner_number ? ` • Learner No: ${app.learner_number}` : ''}
+                        {` • Letter Ref: ${app.acceptance_reference}`}
                       </p>
                       <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                         Class Allocation:{' '}

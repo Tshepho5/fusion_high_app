@@ -1,10 +1,30 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 
+const ACTIVATION_TOKEN_SESSION_KEY = 'geleza_pending_activation_token';
+let cachedActivationToken = '';
+
+function readInitialActivationToken(searchParams: URLSearchParams): string {
+  const fromUrl = searchParams.get('token') || new URLSearchParams(window.location.search).get('token') || '';
+  if (fromUrl) {
+    cachedActivationToken = fromUrl;
+    try {
+      sessionStorage.setItem(ACTIVATION_TOKEN_SESSION_KEY, fromUrl);
+    } catch (_) {}
+    return fromUrl;
+  }
+  if (cachedActivationToken) return cachedActivationToken;
+  try {
+    return sessionStorage.getItem(ACTIVATION_TOKEN_SESSION_KEY) || '';
+  } catch (_) {
+    return '';
+  }
+}
+
 export const ActivateAccountPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const token = useMemo(() => searchParams.get('token') || '', [searchParams]);
+  const [token] = useState(() => readInitialActivationToken(searchParams));
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +34,9 @@ export const ActivateAccountPage: React.FC = () => {
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   React.useEffect(() => {
-    if (token) window.history.replaceState({}, '', '/activate');
+    if (token && window.location.search.includes('token=')) {
+      window.history.replaceState({}, '', '/activate');
+    }
   }, [token]);
 
   const submit = async (event: React.FormEvent) => {
@@ -31,6 +53,10 @@ export const ActivateAccountPage: React.FC = () => {
     setBusy(true);
     try {
       await api.post('/api/activate', { token, password, confirm_password: confirm });
+      cachedActivationToken = '';
+      try {
+        sessionStorage.removeItem(ACTIVATION_TOKEN_SESSION_KEY);
+      } catch (_) {}
       setDone(true);
     } catch (err: any) {
       setError(err.response?.data?.error || 'The password could not be saved.');
@@ -54,13 +80,13 @@ export const ActivateAccountPage: React.FC = () => {
     <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
       <section className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6 space-y-5">
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-cyan-300">Geleza SA</p>
+          <p className="text-[11px] uppercase tracking-wider text-cyan-300">Geleza SA Secure Onboarding</p>
           <h1 className="text-2xl font-black mt-1">Create your password</h1>
-          <p className="text-sm text-slate-400 mt-2">This invitation works once and only for the principal account it was sent to.</p>
+          <p className="text-sm text-slate-400 mt-2">This secure activation link works once and is valid for 72 hours for the invited Geleza SA account (Parent, Learner, Applicant, or School Administrator).</p>
         </div>
         {done ? (
           <div className="space-y-4">
-            <p className="text-sm text-emerald-300">Your password is ready. Sign in with the principal email address.</p>
+            <p className="text-sm text-emerald-300">Your password is ready. Sign in with your registered email address to access your dashboard.</p>
             <Link to="/login" className="inline-flex rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-950">Go to sign in</Link>
           </div>
         ) : (
@@ -81,9 +107,9 @@ export const ActivateAccountPage: React.FC = () => {
           </form>
         )}
         <form onSubmit={resend} className="space-y-2 border-t border-slate-800 pt-4">
-          <p className="text-xs text-slate-400">Need a new link? Enter the principal email. A new link replaces the old one.</p>
-          <input type="email" value={resendEmail} onChange={(event) => setResendEmail(event.target.value)} placeholder="Principal email" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm" />
-          <button type="submit" className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-bold">Send a new invitation</button>
+          <p className="text-xs text-slate-400">Need a new activation link? Enter your registered email address. A new link replaces the old one.</p>
+          <input type="email" value={resendEmail} onChange={(event) => setResendEmail(event.target.value)} placeholder="Your registered email address" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm" />
+          <button type="submit" className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-bold">Send a new activation link</button>
           {resendMessage && <p className="text-xs text-slate-300">{resendMessage}</p>}
         </form>
       </section>

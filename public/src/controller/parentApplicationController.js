@@ -666,19 +666,21 @@ exports.decideParentApplication = async (req, res) => {
 
         const linkedChildren = [];
         for (const childObj of childrenToProcess) {
-            const first = (childObj.firstName || childObj.first_name || '').trim();
-            const sur = (childObj.surname || childObj.last_name || '').trim();
             const cleanChildId = (childObj.idNumber || childObj.id_number || '').replace(/\D/g, '').trim();
+            const exactLearnerNo = String(childObj.learnerNumber || childObj.learner_number || childObj.idNumber || childObj.id_number || '').trim();
+            if (!cleanChildId && !exactLearnerNo) continue;
 
             const learnerMatchRes = await db.query(`
                 SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.learner_number, c.grade, c.stream, c.parent_id
                 FROM children c
                 LEFT JOIN users u ON c.learner_user_id = u.id
-                WHERE (u.id_number = $1 AND $1 != '')
-                   OR (c.learner_number = $1 AND $1 != '')
-                   OR (LOWER(c.full_name) ILIKE LOWER($2) AND LOWER(c.surname) ILIKE LOWER($3))
+                WHERE ($3::int IS NULL OR c.school_id = $3)
+                  AND (
+                    ($1 != '' AND u.id_number = $1)
+                    OR ($2 != '' AND LOWER(TRIM(COALESCE(c.learner_number, ''))) = LOWER($2))
+                  )
                 LIMIT 1
-            `, [cleanChildId, `%${first}%`, `%${sur}%`]);
+            `, [cleanChildId, exactLearnerNo, app.school_id || null]);
 
             if (learnerMatchRes.rows.length > 0) {
                 const child = learnerMatchRes.rows[0];

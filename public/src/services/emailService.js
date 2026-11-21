@@ -404,7 +404,8 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
           subject,
           html,
           text: text || undefined,
-          reply_to: replyTo
+          reply_to: replyTo,
+          ...(normalizedAttachments ? { attachments: normalizedAttachments } : {})
         });
         const sandbox = await httpsJson('https://api.resend.com/emails', {
           headers: {
@@ -437,7 +438,10 @@ async function sendViaHttpsRest({ to, subject, html, text, replyTo, fromName = '
         subject,
         htmlContent: html,
         textContent: text || undefined,
-        replyTo: { email: replyTo || getFromAddress() }
+        replyTo: { email: replyTo || getFromAddress() },
+        ...(normalizedAttachments
+          ? { attachment: normalizedAttachments.map((a) => ({ name: a.filename, content: a.content })) }
+          : {})
       });
       const resp = await httpsJson('https://api.brevo.com/v3/smtp/email', {
         headers: {
@@ -1730,13 +1734,24 @@ const emailService = {
       };
     },
 
-    // 11b. Integrated Dashboard Admission Acceptance Letter & Secure Onboarding Notice (No Plaintext Passwords)
+    // 11b. Integrated Dashboard Admission Acceptance Letter & Secure Onboarding Notice (Email 5 — No Plaintext Passwords)
     integratedAcceptanceLetter: ({
       parentName,
+      parentContact,
       learnerName,
+      learnerNumber,
       schoolName,
+      schoolEmail,
+      schoolPhone,
+      schoolAddress,
+      schoolEmis,
       grade,
       academicYear,
+      stream,
+      homeLanguage,
+      firstAdditionalLanguage,
+      selectedSubjects = [],
+      approvedAt,
       applicationNumber,
       acceptanceReference,
       className,
@@ -1748,30 +1763,54 @@ const emailService = {
       const classLine = className
         ? `${className}${classTeacherName ? ` (Class Teacher: ${classTeacherName})` : ''}`
         : 'Pending school administration allocation';
+      const approvedDateDisplay = approvedAt
+        ? new Date(approvedAt).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })
+        : new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+      const schoolContactBits = [
+        schoolAddress,
+        schoolPhone ? `Tel: ${schoolPhone}` : null,
+        schoolEmail ? `Email: ${schoolEmail}` : null,
+        schoolEmis ? `EMIS: ${schoolEmis}` : null
+      ].filter(Boolean);
+      const subjectsLine = Array.isArray(selectedSubjects) && selectedSubjects.length > 0
+        ? selectedSubjects.join(', ')
+        : [homeLanguage ? `${homeLanguage} (HL)` : null, firstAdditionalLanguage ? `${firstAdditionalLanguage} (FAL)` : null].filter(Boolean).join(', ');
       const onboardingSection = activationUrl
         ? `
           <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 16px; margin: 18px 0;">
-            <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px; font-weight: 700;">First-Time Account Activation</h4>
+            <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px; font-weight: 700;">Secure Account Activation (Set Your Password)</h4>
             <p style="margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
-              Your parent portal account has been prepared securely. Set your own password using the one-time activation link below, then sign in to complete learner registration.
+              Your Geleza SA portal account has been prepared securely without a shared password. Use the single-use link below (valid for 72 hours) to create your private password, then sign in to complete learner registration.
             </p>
             <a href="${activationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Activate Account &amp; Set Password</a>
           </div>
         `
-        : '';
+        : `
+          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 14px 16px; margin: 18px 0;">
+            <p style="margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+              <strong>Portal Sign-In:</strong> Sign in with your existing Geleza SA email and password (or use <em>Forgot Password</em> on the login page if you need to reset access).
+            </p>
+          </div>
+        `;
 
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Congratulations! School Administration at <strong>${schoolName}</strong> has formally approved the admission application for <strong>${learnerName}</strong> for <strong>Grade ${grade} (${academicYear})</strong>.
+          Congratulations! School Administration at <strong>${schoolName}</strong> has formally <strong>APPROVED</strong> the admission application for <strong>${learnerName}</strong> into <strong>Grade ${grade} (${academicYear} Academic Year)</strong>.
         </p>
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 18px 22px; margin: 18px 0;">
           <table role="presentation" width="100%" style="font-size: 13px; border-collapse: collapse;">
             <tr><td style="color: #94a3b8; padding: 4px 0; width: 42%;">Accepting School:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${schoolName}</td></tr>
-            <tr><td style="color: #94a3b8; padding: 4px 0;">Learner Name:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${learnerName}</td></tr>
-            <tr><td style="color: #94a3b8; padding: 4px 0;">Grade &amp; Year:</td><td style="color: #38bdf8; font-weight: 700; padding: 4px 0;">Grade ${grade} (${academicYear})</td></tr>
+            ${schoolContactBits.length ? `<tr><td style="color: #94a3b8; padding: 4px 0;">School Contact:</td><td style="color: #cbd5e1; padding: 4px 0;">${schoolContactBits.join(' &bull; ')}</td></tr>` : ''}
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Learner Full Name:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${learnerName}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Official Learner Number:</td><td style="color: #38bdf8; font-family: monospace; font-size: 15px; font-weight: 900; padding: 4px 0;">${learnerNumber}</td></tr>
             <tr><td style="color: #94a3b8; padding: 4px 0;">Application Reference:</td><td style="color: #e2e8f0; font-family: monospace; font-weight: 700; padding: 4px 0;">${applicationNumber}</td></tr>
             <tr><td style="color: #94a3b8; padding: 4px 0;">Acceptance Letter Ref:</td><td style="color: #34d399; font-family: monospace; font-weight: 700; padding: 4px 0;">${acceptanceReference}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Approved Grade &amp; Year:</td><td style="color: #38bdf8; font-weight: 700; padding: 4px 0;">Grade ${grade} (${academicYear})</td></tr>
+            ${stream ? `<tr><td style="color: #94a3b8; padding: 4px 0;">Academic Stream:</td><td style="color: #e2e8f0; padding: 4px 0;">${stream}</td></tr>` : ''}
+            ${subjectsLine ? `<tr><td style="color: #94a3b8; padding: 4px 0;">Subject / Language Selection:</td><td style="color: #e2e8f0; padding: 4px 0;">${subjectsLine}</td></tr>` : ''}
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Date of Approval:</td><td style="color: #e2e8f0; padding: 4px 0;">${approvedDateDisplay}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Parent / Guardian:</td><td style="color: #e2e8f0; padding: 4px 0;">${parentName || 'Parent / Guardian'}${parentContact ? ` (${parentContact})` : ''}</td></tr>
             <tr><td style="color: #94a3b8; padding: 4px 0;">Class Allocation:</td><td style="color: #e2e8f0; padding: 4px 0;">${classLine}</td></tr>
           </table>
         </div>
@@ -1779,20 +1818,309 @@ const emailService = {
         <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 16px; margin: 18px 0;">
           <h4 style="margin: 0 0 6px 0; color: #38bdf8; font-size: 14px; font-weight: 700;">Next Step: Complete Integrated Learner Registration</h4>
           <p style="margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
-            Sign in to your Geleza SA Parent or Learner Dashboard to download your official Acceptance Letter PDF at any time, confirm learner details, select subjects from ${schoolName}'s curriculum offerings, review your school-allocated class and Class Teacher, and accept the registration Terms &amp; Conditions.
+            Sign in to your Geleza SA dashboard to download your official Acceptance Letter PDF, verify learner details, confirm your subjects from ${schoolName}'s offerings, review your class allocation, and accept the registration Terms &amp; Conditions. Full Learner Dashboard access unlocks automatically once registration is completed.
           </p>
         </div>
       `;
 
       return {
-        subject: `[Geleza SA] Admission Approved — ${learnerName} (${schoolName}, Grade ${grade})`,
+        subject: `[Geleza SA] Admission Approved — ${learnerName} (${schoolName}, Grade ${grade} | Learner No: ${learnerNumber})`,
         body: createBaseEmailTemplate({
-          preheader: `Admission accepted for ${learnerName} at ${schoolName} (Grade ${grade})`,
+          preheader: `Admission accepted for ${learnerName} at ${schoolName} (Grade ${grade}, Learner No: ${learnerNumber})`,
           title,
-          subtitle: 'Official Acceptance Letter & Dashboard Registration',
+          subtitle: `Official Acceptance Letter • Learner No: ${learnerNumber}`,
           contentHtml,
           ctaText: 'Open Dashboard & Complete Learner Registration',
           ctaLink: dashboardRegistrationUrl
+        })
+      };
+    },
+
+    // 11c. Email 1 — Immediate Application Submission Confirmation (No fake fees, explicit pending-review notice)
+    applicationReceivedConfirmation: ({
+      recipientName,
+      learnerName,
+      parentName,
+      parentContact,
+      schoolName,
+      schoolEmail,
+      schoolPhone,
+      schoolAddress,
+      applicationNumber,
+      learnerNumber,
+      grade,
+      academicYear,
+      stream,
+      homeLanguage,
+      firstAdditionalLanguage,
+      selectedSubjects = [],
+      submittedAt,
+      statusLabel,
+      dashboardUrl,
+      activationUrl
+    }) => {
+      const submittedDisplay = submittedAt
+        ? new Date(submittedAt).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })
+        : new Date().toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
+      const schoolContacts = [
+        schoolAddress,
+        schoolPhone ? `Tel: ${schoolPhone}` : null,
+        schoolEmail ? `Email: ${schoolEmail}` : null
+      ].filter(Boolean);
+      const subjectsLine = Array.isArray(selectedSubjects) && selectedSubjects.length > 0
+        ? selectedSubjects.join(', ')
+        : [homeLanguage ? `${homeLanguage} (Home Language)` : null, firstAdditionalLanguage ? `${firstAdditionalLanguage} (FAL)` : null].filter(Boolean).join(', ');
+
+      const activationBlock = activationUrl
+        ? `
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 16px; margin: 18px 0;">
+            <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px; font-weight: 700;">Activate Your Application Tracking Account</h4>
+            <p style="margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+              Create your private password using this single-use link (valid for 72 hours) to track your application progress, view school messages, and upload any requested documents securely.
+            </p>
+            <a href="${activationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Set Password &amp; Track Application</a>
+          </div>
+        `
+        : '';
+
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName || parentName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Your admission application for <strong>${learnerName}</strong> to <strong>${schoolName}</strong> has been received and queued for review by the School Principal / Admissions Administration.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 18px 22px; margin: 18px 0;">
+          <table role="presentation" width="100%" style="font-size: 13px; border-collapse: collapse;">
+            <tr><td style="color: #94a3b8; padding: 4px 0; width: 42%;">School Applied To:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${schoolName}</td></tr>
+            ${schoolContacts.length ? `<tr><td style="color: #94a3b8; padding: 4px 0;">School Contact:</td><td style="color: #cbd5e1; padding: 4px 0;">${schoolContacts.join(' &bull; ')}</td></tr>` : ''}
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Application Reference:</td><td style="color: #38bdf8; font-family: monospace; font-size: 15px; font-weight: 800; padding: 4px 0;">${applicationNumber}</td></tr>
+            ${learnerNumber ? `<tr><td style="color: #94a3b8; padding: 4px 0;">Provisional Learner No:</td><td style="color: #34d399; font-family: monospace; font-weight: 700; padding: 4px 0;">${learnerNumber}</td></tr>` : ''}
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Learner Full Name:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${learnerName}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Parent / Guardian:</td><td style="color: #e2e8f0; padding: 4px 0;">${parentName || 'Parent / Guardian'}${parentContact ? ` (${parentContact})` : ''}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Grade &amp; Academic Year:</td><td style="color: #e2e8f0; font-weight: 700; padding: 4px 0;">Grade ${grade} (${academicYear})</td></tr>
+            ${stream ? `<tr><td style="color: #94a3b8; padding: 4px 0;">Academic Stream:</td><td style="color: #e2e8f0; padding: 4px 0;">${stream}</td></tr>` : ''}
+            ${subjectsLine ? `<tr><td style="color: #94a3b8; padding: 4px 0;">Subjects / Languages:</td><td style="color: #e2e8f0; padding: 4px 0;">${subjectsLine}</td></tr>` : ''}
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Submission Date:</td><td style="color: #e2e8f0; padding: 4px 0;">${submittedDisplay}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Current Status:</td><td style="color: #fbbf24; font-weight: 700; padding: 4px 0;">${statusLabel || 'Submitted — Awaiting School Review'}</td></tr>
+          </table>
+        </div>
+        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 14px 16px; margin: 16px 0;">
+          <p style="margin: 0; font-size: 13px; color: #fde68a; line-height: 1.5;">
+            <strong>Important Notice:</strong> Submitting an application confirms receipt only and <strong>does not mean admission has been approved</strong>. The school Principal or authorized School Administrator will review your application and notify you if additional documentation is needed or once a formal decision is made.
+          </p>
+        </div>
+        ${activationBlock}
+      `;
+
+      return {
+        subject: `[Geleza SA] Application Received [${applicationNumber}] — ${schoolName} (Grade ${grade})`,
+        body: createBaseEmailTemplate({
+          preheader: `Application ${applicationNumber} received by ${schoolName} — awaiting school review.`,
+          title: 'Application Received',
+          subtitle: `${schoolName} • Grade ${grade} (${academicYear})`,
+          contentHtml,
+          ctaText: 'Open Application Tracking Dashboard',
+          ctaLink: dashboardUrl
+        })
+      };
+    },
+
+    // 11d. Email 2 — Documentation Requested
+    documentationRequested: ({
+      recipientName,
+      learnerName,
+      schoolName,
+      schoolEmail,
+      schoolPhone,
+      applicationNumber,
+      grade,
+      academicYear,
+      requiredDocuments = [],
+      instructions,
+      deadline,
+      dashboardUrl
+    }) => {
+      const docsHtml = (Array.isArray(requiredDocuments) ? requiredDocuments : [])
+        .map((d) => `<li style="padding: 3px 0; color: #e2e8f0;"><strong>${d.label || d.document_type || d}</strong>${d.description ? ` — ${d.description}` : ''}</li>`)
+        .join('');
+      const deadlineDisplay = deadline
+        ? new Date(deadline).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })
+        : null;
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          <strong>${schoolName}</strong> requires additional supporting documentation before finalizing the admission review for <strong>${learnerName}</strong> (Grade ${grade}, ${academicYear} | Ref: <code style="color: #38bdf8;">${applicationNumber}</code>).
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #f59e0b; border-radius: 12px; padding: 18px 22px; margin: 18px 0;">
+          <h4 style="margin: 0 0 8px 0; color: #fbbf24; font-size: 14px;">Required Documents</h4>
+          <ul style="margin: 0 0 12px 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">${docsHtml}</ul>
+          <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.5;"><strong>School Instructions:</strong> ${instructions}</p>
+          ${deadlineDisplay ? `<p style="margin: 8px 0 0 0; color: #f87171; font-size: 13px;"><strong>Requested By:</strong> ${deadlineDisplay}</p>` : ''}
+        </div>
+        ${(schoolEmail || schoolPhone) ? `<p style="color: #94a3b8; font-size: 12px;">School Contact: ${[schoolPhone, schoolEmail].filter(Boolean).join(' • ')}</p>` : ''}
+      `;
+      return {
+        subject: `[Geleza SA] Additional Documents Required [${applicationNumber}] — ${schoolName}`,
+        body: createBaseEmailTemplate({
+          preheader: `${schoolName} requested additional documents for ${learnerName} (${applicationNumber})`,
+          title: 'Documentation Requested',
+          subtitle: `${schoolName} • Ref ${applicationNumber}`,
+          contentHtml,
+          ctaText: 'Upload Requested Documents Securely',
+          ctaLink: dashboardUrl
+        })
+      };
+    },
+
+    // 11e. Email 3 — Documentation Submitted (Notification to School Reviewer)
+    documentationSubmittedReviewer: ({
+      schoolName,
+      learnerName,
+      applicationNumber,
+      grade,
+      documentType,
+      fileName,
+      reviewUrl
+    }) => {
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${schoolName} Admissions Team</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          The applicant/guardian for <strong>${learnerName}</strong> (Grade ${grade} | Ref: <code style="color: #38bdf8;">${applicationNumber}</code>) has uploaded requested supporting documentation for review.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 16px 20px; margin: 18px 0; font-size: 13px; color: #e2e8f0;">
+          <p style="margin: 0 0 6px 0;"><strong>Document Category:</strong> ${documentType}</p>
+          <p style="margin: 0;"><strong>File Name:</strong> ${fileName}</p>
+        </div>
+        <p style="color: #94a3b8; font-size: 13px;">Sign in to your School Administration dashboard to inspect the document securely and record your review decision.</p>
+      `;
+      return {
+        subject: `[Geleza SA] Requested Document Submitted [${applicationNumber}] — ${learnerName}`,
+        body: createBaseEmailTemplate({
+          preheader: `New document uploaded for ${learnerName} (${applicationNumber})`,
+          title: 'Requested Documentation Received',
+          subtitle: `${schoolName} • Admissions Review Queue`,
+          contentHtml,
+          ctaText: 'Review Submitted Document',
+          ctaLink: reviewUrl
+        })
+      };
+    },
+
+    // 11f. Email 4 — Documentation Reviewed (Notification to Applicant/Parent)
+    documentationReviewed: ({
+      recipientName,
+      learnerName,
+      schoolName,
+      applicationNumber,
+      outcome,
+      reviewNotes,
+      nextStatusLabel,
+      dashboardUrl
+    }) => {
+      const approved = String(outcome).toLowerCase() === 'approved';
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          <strong>${schoolName}</strong> has reviewed the supporting documentation submitted for <strong>${learnerName}</strong> (Ref: <code style="color: #38bdf8;">${applicationNumber}</code>).
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid ${approved ? '#10b981' : '#f59e0b'}; border-radius: 12px; padding: 16px 20px; margin: 18px 0; font-size: 13px; color: #e2e8f0;">
+          <p style="margin: 0 0 6px 0;"><strong>Document Review Outcome:</strong> <span style="color: ${approved ? '#34d399' : '#fbbf24'}; font-weight: 800;">${approved ? 'Accepted & Verified' : 'Resubmission Required'}</span></p>
+          ${reviewNotes ? `<p style="margin: 0 0 6px 0;"><strong>Reviewer Notes:</strong> ${reviewNotes}</p>` : ''}
+          <p style="margin: 0;"><strong>Current Application Status:</strong> ${nextStatusLabel}</p>
+        </div>
+      `;
+      return {
+        subject: `[Geleza SA] Documentation ${approved ? 'Accepted' : 'Update Required'} [${applicationNumber}] — ${schoolName}`,
+        body: createBaseEmailTemplate({
+          preheader: `Document review update for ${learnerName} (${applicationNumber})`,
+          title: approved ? 'Documentation Accepted' : 'Document Resubmission Needed',
+          subtitle: `${schoolName} • Ref ${applicationNumber}`,
+          contentHtml,
+          ctaText: 'View Application Status',
+          ctaLink: dashboardUrl
+        })
+      };
+    },
+
+    // 11g. Email 7 — Registration Completed Confirmation (No Plaintext Passwords)
+    registrationCompletedConfirmation: ({
+      recipientName,
+      learnerName,
+      learnerNumber,
+      applicationNumber,
+      schoolName,
+      grade,
+      academicYear,
+      stream,
+      className,
+      classTeacherName,
+      selectedSubjects = [],
+      dashboardUrl,
+      activationUrl
+    }) => {
+      const subjectsHtml = (Array.isArray(selectedSubjects) && selectedSubjects.length > 0)
+        ? selectedSubjects.map((s) => `<li style="padding: 2px 0; color: #e2e8f0;">${s}</li>`).join('')
+        : '<li style="color: #94a3b8;">Subjects linked from school curriculum</li>';
+      const activationSection = activationUrl
+        ? `
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 16px; margin: 18px 0;">
+            <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px;">Activate Learner Portal Access</h4>
+            <p style="margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1;">Use this secure single-use link (valid 72 hours) to set your portal password and access the full Learner Dashboard.</p>
+            <a href="${activationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Set Password &amp; Activate Learner Account</a>
+          </div>
+        `
+        : '';
+
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Registration for <strong>${learnerName}</strong> at <strong>${schoolName}</strong> for <strong>Grade ${grade} (${academicYear})</strong> is now <strong>COMPLETE</strong>. Full Learner Dashboard access has been activated.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 18px 22px; margin: 18px 0;">
+          <table role="presentation" width="100%" style="font-size: 13px; border-collapse: collapse;">
+            <tr><td style="color: #94a3b8; padding: 4px 0; width: 42%;">School:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${schoolName}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Official Learner Number:</td><td style="color: #38bdf8; font-family: monospace; font-size: 15px; font-weight: 900; padding: 4px 0;">${learnerNumber}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Application Reference:</td><td style="color: #e2e8f0; font-family: monospace; padding: 4px 0;">${applicationNumber}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Enrolled Grade &amp; Year:</td><td style="color: #34d399; font-weight: 700; padding: 4px 0;">Grade ${grade} (${academicYear})</td></tr>
+            ${stream ? `<tr><td style="color: #94a3b8; padding: 4px 0;">Stream:</td><td style="color: #e2e8f0; padding: 4px 0;">${stream}</td></tr>` : ''}
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Allocated Class:</td><td style="color: #e2e8f0; font-weight: 700; padding: 4px 0;">${className || 'Pending school allocation'}</td></tr>
+            <tr><td style="color: #94a3b8; padding: 4px 0;">Class Teacher:</td><td style="color: #e2e8f0; padding: 4px 0;">${classTeacherName || 'Pending school assignment'}</td></tr>
+          </table>
+          <h5 style="margin: 14px 0 6px 0; color: #e2e8f0; font-size: 13px;">Registered Subjects:</h5>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">${subjectsHtml}</ul>
+        </div>
+        ${activationSection}
+      `;
+
+      return {
+        subject: `[Geleza SA] Registration Complete — ${learnerName} (${schoolName}, Grade ${grade} | Learner No: ${learnerNumber})`,
+        body: createBaseEmailTemplate({
+          preheader: `Registration complete for ${learnerName} at ${schoolName} (Learner No: ${learnerNumber})`,
+          title: 'Learner Registration Confirmed',
+          subtitle: `${schoolName} • Grade ${grade} (${academicYear})`,
+          contentHtml,
+          ctaText: 'Open Geleza SA Dashboard',
+          ctaLink: dashboardUrl
+        })
+      };
+    },
+
+    // 11h. Role-aware Account Activation Invitation (Parents, Learners, Principals)
+    accountActivationNotice: ({ recipientName, schoolName, roleLabel = 'Portal', activationUrl }) => {
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName || 'Geleza SA User'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          A new single-use password setup link has been generated for your Geleza SA <strong>${roleLabel}</strong> account${schoolName ? ` at <strong>${schoolName}</strong>` : ''}. This link expires in 72 hours and replaces any previous invitation link.
+        </p>
+      `;
+      return {
+        subject: `[Geleza SA] Set Your ${roleLabel} Account Password`,
+        body: createBaseEmailTemplate({
+          preheader: `Set your password to access your Geleza SA ${roleLabel} dashboard`,
+          title: 'Activate Your Account',
+          subtitle: schoolName || 'Geleza SA Secure Onboarding',
+          contentHtml,
+          ctaText: 'Create Your Password',
+          ctaLink: activationUrl
         })
       };
     },
@@ -2414,39 +2742,53 @@ const emailService = {
       };
     },
 
-    // 18. Application Unsuccessful / Rejected
-    applicationUnsuccessful: ({ parentName, learnerName, grade, applicationNumber, reason }) => {
-      const loginUrl = (process.env.APP_URL || 'https://educonnect-cmyh.onrender.com').trim() + '/application-status.html';
+    // 18. Application Unsuccessful / Declined (Email 6)
+    applicationUnsuccessful: ({
+      parentName,
+      learnerName,
+      schoolName,
+      schoolEmail,
+      schoolPhone,
+      grade,
+      academicYear,
+      applicationNumber,
+      reason,
+      dashboardUrl
+    }) => {
+      const targetUrl = dashboardUrl || `${(process.env.FRONTEND_URL || process.env.APP_URL || 'https://fusion-high-app.web.app').trim().replace(/\/+$/, '')}/login`;
+      const schoolLabel = schoolName || 'School Administration';
+      const schoolContacts = [schoolPhone ? `Tel: ${schoolPhone}` : null, schoolEmail ? `Email: ${schoolEmail}` : null].filter(Boolean);
       const contentHtml = `
         <p style="color: #ffffff; font-size: 15px; margin-top: 0;">Dear <strong>${parentName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Thank you for considering Geleza SA for <strong>${learnerName}</strong> (Ref: <strong>${applicationNumber || 'N/A'}</strong>).
+          Thank you for submitting an admission application to <strong>${schoolLabel}</strong> for <strong>${learnerName}</strong> (Ref: <strong style="color: #38bdf8; font-family: monospace;">${applicationNumber || 'N/A'}</strong>).
         </p>
 
-        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #64748b; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
-          <h4 style="margin: 0 0 10px 0; color: #94a3b8; font-size: 14px; font-weight: 800;">
-            Application Status: Unsuccessful
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #ef4444; border-radius: 12px; padding: 20px 24px; margin: 22px 0;">
+          <h4 style="margin: 0 0 10px 0; color: #f87171; font-size: 14px; font-weight: 800;">
+            Application Status: Declined
           </h4>
           <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.6;">
-            After careful review of submitted academic records and statutory grade capacity, we regret to inform you that we are unable to offer a placement for Grade ${grade || '8'} for the upcoming academic cycle.
+            After careful review, ${schoolLabel} is unable to offer placement for <strong>Grade ${grade || 'N/A'}</strong>${academicYear ? ` (${academicYear})` : ''} at this time.
           </p>
-          ${reason ? `<p style="margin: 8px 0 0 0; color: #f87171; font-size: 12px;"><strong>Note:</strong> ${reason}</p>` : ''}
+          ${reason ? `<p style="margin: 10px 0 0 0; color: #fecaca; font-size: 13px;"><strong>Decision Reason:</strong> ${reason}</p>` : ''}
         </div>
 
+        ${schoolContacts.length ? `<p style="color: #94a3b8; font-size: 12px;">For enquiries, contact ${schoolLabel}: ${schoolContacts.join(' • ')}</p>` : ''}
         <p style="color: #94a3b8; font-size: 13px; line-height: 1.6;">
-          We appreciate your interest in Geleza SA and wish ${learnerName} every success in their academic journey.
+          Your application history remains preserved in your Geleza SA dashboard. We wish ${learnerName} every success in their academic journey.
         </p>
       `;
 
       return {
-        subject: `[Geleza SA] Admission Application Outcome: ${learnerName} (Ref: ${applicationNumber || 'N/A'})`,
+        subject: `[Geleza SA] Admission Outcome — ${learnerName} (${schoolLabel}, Ref: ${applicationNumber || 'N/A'})`,
         body: createBaseEmailTemplate({
-          preheader: `Admission application outcome for ${learnerName}.`,
-          title: 'Admission Outcome Notification',
-          subtitle: 'Formal Admissions Decision',
+          preheader: `Admission decision for ${learnerName} at ${schoolLabel}`,
+          title: 'Admission Decision Notification',
+          subtitle: `${schoolLabel} • Formal Outcome`,
           contentHtml,
           ctaText: 'View Application Record',
-          ctaLink: loginUrl
+          ctaLink: targetUrl
         })
       };
     },
@@ -2944,6 +3286,36 @@ const emailService = {
       null,
       { attachments }
     );
+  },
+
+  sendApplicationReceivedConfirmation: async (params) => {
+    const template = emailService.templates.applicationReceivedConfirmation(params);
+    return await emailService.send(params.recipientEmail || params.parentEmail, template.subject, template.body);
+  },
+
+  sendDocumentationRequested: async (params) => {
+    const template = emailService.templates.documentationRequested(params);
+    return await emailService.send(params.recipientEmail || params.parentEmail, template.subject, template.body);
+  },
+
+  sendDocumentationSubmittedReviewer: async (params) => {
+    const template = emailService.templates.documentationSubmittedReviewer(params);
+    return await emailService.send(params.reviewerEmail, template.subject, template.body);
+  },
+
+  sendDocumentationReviewed: async (params) => {
+    const template = emailService.templates.documentationReviewed(params);
+    return await emailService.send(params.recipientEmail || params.parentEmail, template.subject, template.body);
+  },
+
+  sendRegistrationCompletedConfirmation: async (params) => {
+    const template = emailService.templates.registrationCompletedConfirmation(params);
+    return await emailService.send(params.recipientEmail || params.parentEmail, template.subject, template.body);
+  },
+
+  sendAccountActivationNotice: async (params) => {
+    const template = emailService.templates.accountActivationNotice(params);
+    return await emailService.send(params.recipientEmail, template.subject, template.body);
   },
 
   sendApplicationWaitlisted: async (params) => {

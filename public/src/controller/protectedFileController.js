@@ -82,7 +82,8 @@ async function sendApplicationFile(req, res) {
     const actor = await loadActor(req.user && req.user.id);
     if (!actor) return res.status(401).json({ error: 'Sign in to open this file.' });
     const docs = await db.query(
-      `SELECT a.school_id, a.primary_parent_email, a.secondary_parent_email
+      `SELECT a.school_id, a.primary_parent_email, a.secondary_parent_email,
+              a.email AS learner_email, a.parent_user_id, a.applicant_user_id
        FROM application_documents d
        JOIN applications a ON a.id = d.application_id
        WHERE regexp_replace(replace(d.file_path, '\\', '/'), '^.*/', '') = $1`,
@@ -90,12 +91,22 @@ async function sendApplicationFile(req, res) {
     );
     if (docs.rows.length === 0) return res.status(404).json({ error: 'File not found.' });
     const email = String(actor.email || '').toLowerCase();
+    const isSchoolReviewer = ['admin', 'principal', 'vice_principal', 'school_admin', 'subadmin', 'sub_admin'].includes(actor.role);
     const allowed = docs.rows.every((row) => {
       if (actor.is_superadmin) return true;
-      if (actor.role === 'admin' && sameSchool(actor, row.school_id)) return true;
+      if (isSchoolReviewer && sameSchool(actor, row.school_id)) return true;
       const parentEmail = String(row.primary_parent_email || '').toLowerCase();
       const secondEmail = String(row.secondary_parent_email || '').toLowerCase();
-      return actor.role === 'parent' && sameSchool(actor, row.school_id) && (email === parentEmail || email === secondEmail);
+      const learnerEmail = String(row.learner_email || '').toLowerCase();
+      if (actor.role === 'parent') {
+        return (row.parent_user_id && Number(row.parent_user_id) === Number(actor.id))
+          || (email && (email === parentEmail || email === secondEmail));
+      }
+      if (actor.role === 'learner' || actor.role === 'student') {
+        return (row.applicant_user_id && Number(row.applicant_user_id) === Number(actor.id))
+          || (email && email === learnerEmail);
+      }
+      return false;
     });
     if (!allowed) return res.status(403).json({ error: 'You cannot open this file.' });
     return sendIfExists(res, containedFile(path.join(process.cwd(), 'uploads', 'applications'), filename));

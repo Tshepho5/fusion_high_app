@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { adminService, parentApplicationService, classStaffService } from '../../services/api';
+import { adminService, parentApplicationService, classStaffService, applicationTrackingService } from '../../services/api';
 import { ClassTransferPanel } from './ClassTransferPanel';
 import { AdminRegistrationOversightPanel } from '../../components/registration/AdminRegistrationOversightPanel';
 import { useSchool } from '../../context/SchoolContext';
@@ -224,6 +224,7 @@ export const AdminUsers: React.FC = () => {
   });
   const [savingParentCorrection, setSavingParentCorrection] = useState(false);
   const [admissions, setAdmissions] = useState<any[]>([]);
+  const [admissionStatusFilter, setAdmissionStatusFilter] = useState<string>('all');
   const [schoolAdmins, setSchoolAdmins] = useState<any[]>([]);
   
   const [metadata, setMetadata] = useState<SchoolMetadata>({
@@ -307,16 +308,85 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
-  const handleUpdateAdmissionStatus = async (status: string) => {
+  const [docRequestTypes, setDocRequestTypes] = useState<string[]>(['birth_certificate']);
+  const [docRequestInstructions, setDocRequestInstructions] = useState<string>('');
+  const [docRequestDeadline, setDocRequestDeadline] = useState<string>('');
+  const [reviewAssignedClassId, setReviewAssignedClassId] = useState<string>('');
+  const [declineReasonText, setDeclineReasonText] = useState<string>('');
+  const [showDocRequestBox, setShowDocRequestBox] = useState<boolean>(false);
+  const [showDeclineBox, setShowDeclineBox] = useState<boolean>(false);
+
+  const handleUpdateAdmissionStatus = async (status: string, extraPayload: Record<string, any> = {}) => {
     if (!selectedAdmission) return;
     setUpdatingStatus(true);
+    setError(null);
     try {
-      await adminService.updateAdmissionStatus(selectedAdmission.id, { status });
-      setActionSuccess(`Application ${selectedAdmission.application_number} status updated to ${status.toUpperCase()}`);
-      setIsOcrModalOpen(false);
+      const payload: Record<string, any> = { status, ...extraPayload };
+      if (reviewAssignedClassId) payload.assigned_class_id = Number(reviewAssignedClassId);
+      const res = await adminService.updateAdmissionStatus(selectedAdmission.id, payload);
+      setActionSuccess(
+        res?.message ||
+          `Application ${selectedAdmission.application_number} updated to ${status.toUpperCase()}`
+      );
+      const refreshed = await adminService.getAdmissionById(selectedAdmission.id);
+      setSelectedAdmission(refreshed);
+      setShowDeclineBox(false);
+      setDeclineReasonText('');
       fetchData();
     } catch (err: any) {
-      setError('Failed to update status: ' + err.message);
+      setError(err?.response?.data?.error || 'Failed to update status: ' + err.message);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleCreateAdmissionDocRequest = async () => {
+    if (!selectedAdmission) return;
+    if (docRequestTypes.length === 0 || docRequestInstructions.trim().length < 5) {
+      setError('Select at least one required document and enter clear instructions (at least 5 characters).');
+      return;
+    }
+    setUpdatingStatus(true);
+    setError(null);
+    try {
+      const res = await applicationTrackingService.createDocumentRequest(selectedAdmission.id, {
+        required_documents: docRequestTypes,
+        instructions: docRequestInstructions.trim(),
+        deadline: docRequestDeadline || null
+      });
+      setActionSuccess(res?.message || 'Documentation request sent to applicant.');
+      setShowDocRequestBox(false);
+      setDocRequestInstructions('');
+      setDocRequestDeadline('');
+      const refreshed = await adminService.getAdmissionById(selectedAdmission.id);
+      setSelectedAdmission(refreshed);
+      fetchData();
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Could not create documentation request.');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleReviewAdmissionDocRequest = async (requestId: number, outcome: 'approved' | 'rejected') => {
+    if (!selectedAdmission) return;
+    const notes = outcome === 'rejected'
+      ? (window.prompt('Explain why resubmission is required (minimum 5 characters):') || '').trim()
+      : 'Submitted documentation verified by school administration.';
+    if (outcome === 'rejected' && notes.length < 5) return;
+    setUpdatingStatus(true);
+    setError(null);
+    try {
+      const res = await applicationTrackingService.reviewDocumentRequest(selectedAdmission.id, requestId, {
+        outcome,
+        notes
+      });
+      setActionSuccess(res?.message || 'Document review recorded.');
+      const refreshed = await adminService.getAdmissionById(selectedAdmission.id);
+      setSelectedAdmission(refreshed);
+      fetchData();
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Could not record document review.');
     } finally {
       setUpdatingStatus(false);
     }
@@ -984,13 +1054,20 @@ export const AdminUsers: React.FC = () => {
     (p.id_number || '').toLowerCase().includes(q)
   );
 
-  const filteredAdmissions = admissions.filter(a =>
-    `${a.first_name} ${a.surname}`.toLowerCase().includes(q) ||
-    (a.application_number || '').toLowerCase().includes(q) ||
-    (a.provisional_learner_number || '').toLowerCase().includes(q) ||
-    (a.status || '').toLowerCase().includes(q) ||
-    (a.primary_parent_name || '').toLowerCase().includes(q)
-  );
+  const filteredAdmissions = admissions.filter(a => {
+    const matchesSearch =
+      `${a.first_name} ${a.surname}`.toLowerCase().includes(q) ||
+      (a.application_number || '').toLowerCase().includes(q) ||
+      (a.provisional_learner_number || '').toLowerCase().includes(q) ||
+      (a.status || '').toLowerCase().includes(q) ||
+      (a.primary_parent_name || '').toLowerCase().includes(q);
+    if (!matchesSearch) return false;
+    const st = String(a.status || '').toLowerCase();
+    if (admissionStatusFilter === 'all') return true;
+    if (admissionStatusFilter === 'awaiting_review') return ['submitted', 'pending', 'under_review', 'pending_payment'].includes(st);
+    if (admissionStatusFilter === 'declined') return ['declined', 'rejected'].includes(st);
+    return st === admissionStatusFilter;
+  });
 
   const filteredAllUsers = users.filter(u =>
     `${u.full_name} ${u.surname}`.toLowerCase().includes(q) ||
@@ -1029,12 +1106,16 @@ export const AdminUsers: React.FC = () => {
     setError(null);
     try {
       const res = await adminService.reviewApplicationDecision(admId, { status: 'approved' });
-      setActionSuccess(res.message || `Learner ${admName} enrolled successfully with parent login credentials sent.`);
+      const learnerNo = res?.provisional_learner_number || res?.learner_number;
+      setActionSuccess(
+        res.message ||
+        `Application for ${admName} approved${learnerNo ? ` (Learner No: ${learnerNo})` : ''}. Acceptance email and secure onboarding link sent.`
+      );
       fetchData();
       setTimeout(() => setActionSuccess(null), 5000);
     } catch (err: any) {
-      console.error('Failed to 1-click enroll applicant:', err);
-      setError(err.response?.data?.error || err.message || 'Failed to enroll applicant.');
+      console.error('Failed to approve applicant:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to approve application.');
     } finally {
       setEnrollingAdmissionId(null);
     }
@@ -2050,111 +2131,139 @@ export const AdminUsers: React.FC = () => {
           </div>
         ) : activeTab === 'admissions' ? (
           /* Admissions Table */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
-                  <th className="pb-3 px-3">Applicant Learner</th>
-                  <th className="pb-3 px-3">App Number</th>
-                  <th className="pb-3 px-3">Learner ID</th>
-                  <th className="pb-3 px-3">Grade & Stream</th>
-                  <th className="pb-3 px-3">Allocated Class</th>
-                  <th className="pb-3 px-3">Primary Parent</th>
-                  <th className="pb-3 px-3">Admission Status</th>
-                  <th className="pb-3 px-3">Date Applied</th>
-                  <th className="pb-3 px-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {filteredAdmissions.map((adm) => (
-                  <tr key={adm.id} className="hover:bg-white/5 transition-colors">
-                    <td className="py-3.5 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-300 font-bold text-xs shrink-0">
-                          {adm.first_name?.[0] || 'L'}
-                        </div>
-                        <div>
-                          <p className="font-bold text-white">{adm.first_name} {adm.surname}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">ID: {adm.id_number || 'Under 16'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-3 font-mono font-bold text-brand-300">
-                      {adm.application_number}
-                    </td>
-                    <td className="py-3.5 px-3 font-mono font-bold text-cyan-400">
-                      {adm.provisional_learner_number || '-'}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-white">Grade {adm.grade_applied}</span>
-                        <Badge variant="indigo" size="sm">{adm.stream || 'General'}</Badge>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-emerald-300">
-                      {adm.assigned_class_name || (adm.assigned_class_id ? `Class #${adm.assigned_class_id}` : 'Auto-Allocated')}
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <p className="text-white font-medium">{adm.primary_parent_name} {adm.primary_parent_surname}</p>
-                      <p className="text-[10px] text-slate-400">{adm.primary_parent_email}</p>
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <Badge
-                        variant={
-                          adm.status === 'enrolled'
-                            ? 'emerald'
-                            : adm.status === 'approved'
-                            ? 'cyan'
-                            : adm.status === 'waitlisted'
-                            ? 'amber'
-                            : 'rose'
-                        }
-                        size="sm"
-                      >
-                        {adm.status?.toUpperCase() || 'SUBMITTED'}
-                      </Badge>
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">
-                      {adm.created_at ? new Date(adm.created_at).toLocaleDateString() : 'Recent'}
-                    </td>
-                    <td className="py-3.5 px-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {adm.status !== 'enrolled' && (
-                          <button
-                            onClick={() => handleQuickApproveAndEnroll(adm.id, `${adm.first_name} ${adm.surname}`)}
-                            disabled={enrollingAdmissionId === adm.id}
-                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 disabled:opacity-50"
-                            title="1-Click Approve, Create User & Parent Accounts, Generate Fee Invoice & Send Credentials"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
-                            <span>{enrollingAdmissionId === adm.id ? 'Enrolling...' : '⚡ 1-Click Enroll'}</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleInspectAdmission(adm)}
-                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105"
-                        >
-                          <Scan className="w-3.5 h-3.5" />
-                          <span>Inspect OCR</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteAdmission(adm.id, `${adm.first_name || ''} ${adm.surname || ''}`.trim())}
-                          className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
-                          title="Move this admission to the Recycle Bin"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 px-1">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'awaiting_review', label: 'Awaiting Review' },
+                { key: 'documents_requested', label: 'Docs Requested' },
+                { key: 'documents_submitted', label: 'Docs Submitted' },
+                { key: 'approved', label: 'Approved' },
+                { key: 'enrolled', label: 'Enrolled' },
+                { key: 'declined', label: 'Declined' }
+              ].map((pill) => (
+                <button
+                  key={pill.key}
+                  type="button"
+                  onClick={() => setAdmissionStatusFilter(pill.key)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors border ${
+                    admissionStatusFilter === pill.key
+                      ? 'bg-cyan-500/20 text-cyan-200 border-cyan-400/40'
+                      : 'bg-white/5 text-slate-400 border-white/10 hover:text-white'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[10px]">
+                    <th className="pb-3 px-3">Applicant Learner</th>
+                    <th className="pb-3 px-3">App Number</th>
+                    <th className="pb-3 px-3">Learner ID</th>
+                    <th className="pb-3 px-3">Grade & Stream</th>
+                    <th className="pb-3 px-3">Allocated Class</th>
+                    <th className="pb-3 px-3">Primary Parent</th>
+                    <th className="pb-3 px-3">Admission Status</th>
+                    <th className="pb-3 px-3">Date Applied</th>
+                    <th className="pb-3 px-3 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {filteredAdmissions.length === 0 && (
-              <div className="p-8 text-center text-slate-400 text-xs">No admission applications found.</div>
-            )}
-            <AdminRegistrationOversightPanel />
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filteredAdmissions.map((adm) => (
+                    <tr key={adm.id} className="hover:bg-white/5 transition-colors">
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-300 font-bold text-xs shrink-0">
+                            {adm.first_name?.[0] || 'L'}
+                          </div>
+                          <div>
+                            <p className="font-bold text-white">{adm.first_name} {adm.surname}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">ID: {adm.id_number || 'Under 16'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 font-mono font-bold text-brand-300">
+                        {adm.application_number}
+                      </td>
+                      <td className="py-3.5 px-3 font-mono font-bold text-cyan-400">
+                        {adm.provisional_learner_number || '-'}
+                      </td>
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-white">Grade {adm.grade_applied}</span>
+                          <Badge variant="indigo" size="sm">{adm.stream || 'General'}</Badge>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 font-semibold text-emerald-300">
+                        {adm.assigned_class_name || (adm.assigned_class_id ? `Class #${adm.assigned_class_id}` : 'Pending assignment')}
+                      </td>
+                      <td className="py-3.5 px-3">
+                        <p className="text-white font-medium">{adm.primary_parent_name} {adm.primary_parent_surname}</p>
+                        <p className="text-[10px] text-slate-400">{adm.primary_parent_email}</p>
+                      </td>
+                      <td className="py-3.5 px-3">
+                        <Badge
+                          variant={
+                            adm.status === 'enrolled'
+                              ? 'emerald'
+                              : adm.status === 'approved'
+                              ? 'cyan'
+                              : ['documents_requested', 'waitlisted'].includes(String(adm.status || '').toLowerCase())
+                              ? 'amber'
+                              : ['declined', 'rejected'].includes(String(adm.status || '').toLowerCase())
+                              ? 'rose'
+                              : 'indigo'
+                          }
+                          size="sm"
+                        >
+                          {String(adm.status || 'submitted').replace(/_/g, ' ').toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="py-3.5 px-3 text-slate-400 font-mono text-[11px]">
+                        {adm.created_at ? new Date(adm.created_at).toLocaleDateString() : 'Recent'}
+                      </td>
+                      <td className="py-3.5 px-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {!['approved', 'enrolled', 'declined', 'rejected'].includes(String(adm.status || '').toLowerCase()) && (
+                            <button
+                              onClick={() => handleQuickApproveAndEnroll(adm.id, `${adm.first_name} ${adm.surname}`)}
+                              disabled={enrollingAdmissionId === adm.id}
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105 disabled:opacity-50"
+                              title="Approve application, issue unique Learner Number, and email acceptance + onboarding link"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
+                              <span>{enrollingAdmissionId === adm.id ? 'Approving...' : 'Approve & Issue ID'}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleInspectAdmission(adm)}
+                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 transition-all hover:scale-105"
+                          >
+                            <Scan className="w-3.5 h-3.5" />
+                            <span>Review</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAdmission(adm.id, `${adm.first_name || ''} ${adm.surname || ''}`.trim())}
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                            title="Move this admission to the Recycle Bin"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredAdmissions.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs">No admission applications match the current filter.</div>
+              )}
+              <AdminRegistrationOversightPanel />
+            </div>
           </div>
         ) : activeTab === 'parent-applications' ? (
           /* Parent Portal Access Applications Table */
@@ -3499,72 +3608,266 @@ export const AdminUsers: React.FC = () => {
       </Modal>
 
       {/* ========================================================================= */}
-      {/* OCR INSPECTION MODAL */}
+      {/* APPLICATION REVIEW, DOCUMENTATION REQUESTS & DECISION MODAL               */}
       {/* ========================================================================= */}
       {selectedAdmission && (
         <Modal
           isOpen={isOcrModalOpen}
-          onClose={() => setIsOcrModalOpen(false)}
-          title={`Admission Document OCR: ${selectedAdmission.first_name} ${selectedAdmission.surname}`}
+          onClose={() => {
+            setIsOcrModalOpen(false);
+            setShowDocRequestBox(false);
+            setShowDeclineBox(false);
+          }}
+          title={`Application Review: ${selectedAdmission.first_name} ${selectedAdmission.surname}`}
           maxWidth="4xl"
         >
           <div className="space-y-4 text-xs">
             {ocrLoading ? (
-              <LoadingSpinner text="Running OCR document extraction & verification..." />
-            ) : ocrResult ? (
+              <LoadingSpinner text="Loading application dossier and local document inspection..." />
+            ) : (
               <div className="space-y-4">
+                {/* Summary Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 space-y-1.5">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Applicant</span>
+                  <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Applicant &amp; Identifiers</span>
                     <p className="font-bold text-white text-sm">{selectedAdmission.first_name} {selectedAdmission.surname}</p>
-                    <p className="text-slate-400 font-mono">App #: {selectedAdmission.application_number}</p>
-                    <p className="text-slate-400 font-mono">Grade Applied: Grade {selectedAdmission.grade_applied}</p>
+                    <p className="text-slate-300 font-mono">App Ref: {selectedAdmission.application_number}</p>
+                    <p className="text-cyan-300 font-mono">
+                      Learner No: {selectedAdmission.provisional_learner_number || selectedAdmission.learner_number || 'Issued upon approval'}
+                    </p>
+                    <p className="text-slate-300">
+                      Grade {selectedAdmission.grade_applied} ({selectedAdmission.academic_year || new Date().getFullYear()})
+                      {selectedAdmission.stream ? ` • ${selectedAdmission.stream}` : ''}
+                    </p>
+                    <p className="text-slate-400">
+                      Parent: {selectedAdmission.primary_parent_name} {selectedAdmission.primary_parent_surname} ({selectedAdmission.primary_parent_email})
+                    </p>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/5 space-y-1.5">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">OCR Match Confidence</span>
-                    <p className="font-bold text-emerald-400 text-sm">{ocrResult.confidence || '98.5% Verified'}</p>
-                    <p className="text-slate-400">Document Type: {ocrResult.document_type || 'Report Card / Birth Cert'}</p>
-                    <p className="text-slate-400">Status: {selectedAdmission.status?.toUpperCase()}</p>
+                  <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1.5">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Current Status &amp; Class Allocation</span>
+                    <p className="font-bold text-emerald-400 text-sm uppercase">{String(selectedAdmission.status || 'submitted').replace(/_/g, ' ')}</p>
+                    <p className="text-slate-400">
+                      Local Document Check: {ocrResult?.readable ? 'Text extracted locally for manual review' : 'Manual visual review required'}
+                    </p>
+                    <label className="block pt-1 space-y-1">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Assign School Class (Optional / Before Registration)</span>
+                      <select
+                        value={reviewAssignedClassId || (selectedAdmission.assigned_class_id ? String(selectedAdmission.assigned_class_id) : '')}
+                        onChange={(e) => setReviewAssignedClassId(e.target.value)}
+                        className="w-full rounded-xl bg-slate-950 border border-white/15 px-2.5 py-1.5 text-white text-xs"
+                      >
+                        <option value="">— Pending school class allocation —</option>
+                        {schoolClasses
+                          .filter((c) => Number(c.grade) === Number(selectedAdmission.grade_applied))
+                          .map((c) => (
+                            <option key={c.id} value={String(c.id)}>
+                              {c.name}{c.stream ? ` (${c.stream})` : ''}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-surface-darker border border-white/5 space-y-2">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Extracted OCR Text Content</span>
-                  <div className="p-3 rounded-xl bg-surface-dark border border-white/5 text-slate-300 font-mono text-[11px] max-h-40 overflow-y-auto whitespace-pre-wrap">
-                    {ocrResult.extracted_text || ocrResult.raw_text || 'Official school stamp and SA National ID verified successfully.'}
-                  </div>
+                {/* Uploaded Documents */}
+                <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-2">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    Submitted Documents ({Array.isArray(selectedAdmission.documents) ? selectedAdmission.documents.length : 0})
+                  </span>
+                  {!Array.isArray(selectedAdmission.documents) || selectedAdmission.documents.length === 0 ? (
+                    <p className="text-slate-400">No documents uploaded on this application yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {selectedAdmission.documents.map((doc: any) => (
+                        <div key={doc.id} className="p-2.5 rounded-xl bg-black/25 border border-white/5 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-white truncate">{doc.file_name || doc.document_type}</p>
+                            <p className="text-[10px] text-slate-400">{doc.document_type} • {doc.review_status || (doc.is_verified ? 'verified' : 'submitted')}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {/* Admission Status Actions */}
+                {/* Documentation Requests */}
+                {Array.isArray(selectedAdmission.document_requests) && selectedAdmission.document_requests.length > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/25 space-y-2">
+                    <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">
+                      Documentation Requests ({selectedAdmission.document_requests.length})
+                    </span>
+                    {selectedAdmission.document_requests.map((req: any) => (
+                      <div key={req.id} className="p-2.5 rounded-xl bg-black/25 border border-white/10 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-white">{req.descriptions} <span className="text-amber-300 uppercase text-[10px]">({req.status})</span></p>
+                          <p className="text-slate-300">{req.instructions}</p>
+                        </div>
+                        {req.status === 'submitted' && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              disabled={updatingStatus}
+                              onClick={() => handleReviewAdmissionDocRequest(req.id, 'approved')}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer"
+                            >
+                              Accept Docs
+                            </button>
+                            <button
+                              type="button"
+                              disabled={updatingStatus}
+                              onClick={() => handleReviewAdmissionDocRequest(req.id, 'rejected')}
+                              className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer"
+                            >
+                              Request Resubmission
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Request Additional Documents Form */}
+                {showDocRequestBox && (
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+                    <h4 className="font-bold text-amber-200">Request Additional Documentation from Applicant</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        ['birth_certificate', 'Birth Certificate'],
+                        ['learner_id', 'Learner ID'],
+                        ['parent_id', 'Parent ID'],
+                        ['proof_of_residence', 'Proof of Residence'],
+                        ['report_card', 'Latest Report Card'],
+                        ['transfer_card', 'Transfer Card'],
+                        ['clinic_card', 'Clinic Card']
+                      ].map(([key, label]) => {
+                        const checked = docRequestTypes.includes(key);
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setDocRequestTypes((prev) => checked ? prev.filter((x) => x !== key) : [...prev, key])}
+                            className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer ${checked ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-slate-300 border border-white/10'}`}
+                          >
+                            {checked ? `✓ ${label}` : `+ ${label}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={docRequestInstructions}
+                      onChange={(e) => setDocRequestInstructions(e.target.value)}
+                      placeholder="Specify clearly which documents are required and any certification instructions..."
+                      className="w-full rounded-xl bg-slate-950 border border-white/15 px-3 py-2 text-white"
+                    />
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <input
+                        type="date"
+                        value={docRequestDeadline}
+                        onChange={(e) => setDocRequestDeadline(e.target.value)}
+                        className="rounded-xl bg-slate-950 border border-white/15 px-3 py-1.5 text-white"
+                      />
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => setShowDocRequestBox(false)} className="px-3 py-1.5 rounded-xl border border-white/15 text-slate-300 font-bold cursor-pointer">
+                          Cancel
+                        </button>
+                        <button type="button" disabled={updatingStatus} onClick={handleCreateAdmissionDocRequest} className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold cursor-pointer">
+                          Send Document Request
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Decline Reason Form */}
+                {showDeclineBox && (
+                  <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 space-y-2.5">
+                    <h4 className="font-bold text-rose-200">Decline Application (Reason Required)</h4>
+                    <textarea
+                      rows={2}
+                      value={declineReasonText}
+                      onChange={(e) => setDeclineReasonText(e.target.value)}
+                      placeholder="Enter the approved admission decline reason to record and send to the applicant..."
+                      className="w-full rounded-xl bg-slate-950 border border-white/15 px-3 py-2 text-white"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => setShowDeclineBox(false)} className="px-3 py-1.5 rounded-xl border border-white/15 text-slate-300 font-bold cursor-pointer">
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={updatingStatus || declineReasonText.trim().length < 5}
+                        onClick={() => handleUpdateAdmissionStatus('rejected', { reason: declineReasonText.trim() })}
+                        className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer disabled:opacity-50"
+                      >
+                        Confirm Decline &amp; Notify
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Real Status Timeline */}
+                {Array.isArray(selectedAdmission.timeline) && selectedAdmission.timeline.length > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1.5">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Review &amp; Status History</span>
+                    <ul className="space-y-1 text-[11px] text-slate-300 max-h-32 overflow-y-auto">
+                      {selectedAdmission.timeline.map((ev: any) => (
+                        <li key={ev.id}>
+                          <strong className="text-white">{ev.to_status}</strong> — {ev.reason || 'Status updated'}{' '}
+                          <span className="text-slate-500">({new Date(ev.created_at).toLocaleString('en-ZA')})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Admission Status Actions (State-Machine Compliant) */}
                 <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-white/10">
-                  <button
-                    type="button"
-                    disabled={updatingStatus}
-                    onClick={() => handleUpdateAdmissionStatus('approved')}
-                    className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-all shadow-sm"
-                  >
-                    Approve Application
-                  </button>
-                  <button
-                    type="button"
-                    disabled={updatingStatus}
-                    onClick={() => handleUpdateAdmissionStatus('enrolled')}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-sm"
-                  >
-                    Officially Enroll Learner
-                  </button>
-                  <button
-                    type="button"
-                    disabled={updatingStatus}
-                    onClick={() => handleUpdateAdmissionStatus('waitlisted')}
-                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all shadow-sm"
-                  >
-                    Waitlist
-                  </button>
+                  {selectedAdmission.status !== 'enrolled' && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={updatingStatus}
+                        onClick={() => {
+                          setShowDocRequestBox((v) => !v);
+                          setShowDeclineBox(false);
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-bold transition-all cursor-pointer"
+                      >
+                        Request Documents
+                      </button>
+                      <button
+                        type="button"
+                        disabled={updatingStatus}
+                        onClick={() => handleUpdateAdmissionStatus('waitlisted')}
+                        className="px-3.5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold transition-all cursor-pointer"
+                      >
+                        Waitlist
+                      </button>
+                      <button
+                        type="button"
+                        disabled={updatingStatus}
+                        onClick={() => {
+                          setShowDeclineBox((v) => !v);
+                          setShowDocRequestBox(false);
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-white font-bold transition-all cursor-pointer"
+                      >
+                        Decline
+                      </button>
+                      <button
+                        type="button"
+                        disabled={updatingStatus}
+                        onClick={() => handleUpdateAdmissionStatus('approved')}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-sm cursor-pointer"
+                      >
+                        Approve &amp; Issue Learner Number
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-            ) : (
-              <p className="text-slate-400">No OCR preview available for this document.</p>
             )}
           </div>
         </Modal>

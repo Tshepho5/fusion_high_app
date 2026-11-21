@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FileCheck2, ArrowRight, Download, Clock } from 'lucide-react';
-import { learnerRegistrationService } from '../../services/api';
+import { learnerRegistrationService, applicationTrackingService } from '../../services/api';
 
 interface RegistrationActionBannerProps {
   onOpenRegistration: (applicationId?: number) => void;
@@ -11,6 +11,8 @@ export const RegistrationActionBanner: React.FC<RegistrationActionBannerProps> =
 }) => {
   const [summary, setSummary] = useState<{
     pendingApps: any[];
+    docRequestApps: any[];
+    trackedApps: any[];
     openDeregs: number;
     hasAny: boolean;
   } | null>(null);
@@ -18,20 +20,31 @@ export const RegistrationActionBanner: React.FC<RegistrationActionBannerProps> =
 
   useEffect(() => {
     let active = true;
-    learnerRegistrationService
-      .getMyRegistrations()
-      .then((res) => {
+    Promise.allSettled([
+      learnerRegistrationService.getMyRegistrations(),
+      applicationTrackingService.getMyApplications()
+    ])
+      .then(([regRes, trackRes]) => {
         if (!active) return;
-        const apps = Array.isArray(res?.applications) ? res.applications : [];
+        const regData = regRes.status === 'fulfilled' ? regRes.value : null;
+        const trackData = trackRes.status === 'fulfilled' ? trackRes.value : null;
+        const apps = Array.isArray(regData?.applications) ? regData.applications : [];
         const pendingApps = apps.filter((a: any) => a.requires_registration);
-        const deregs = Array.isArray(res?.deregistration_requests) ? res.deregistration_requests : [];
+        const trackedApps = Array.isArray(trackData?.applications) ? trackData.applications : [];
+        const docRequestApps = trackedApps.filter(
+          (a: any) => Number(a.outstanding_document_requests_count || 0) > 0 || a.status === 'documents_requested'
+        );
+        const deregs = Array.isArray(regData?.deregistration_requests) ? regData.deregistration_requests : [];
         const openDeregs = deregs.filter((r: any) =>
           ['pending_teacher_review', 'pending_admin_approval'].includes(String(r.status || '').toLowerCase())
         ).length;
+        const activeNonEnrolled = trackedApps.filter((a: any) => !['enrolled', 'withdrawn', 'cancelled'].includes(a.status));
         setSummary({
           pendingApps,
+          docRequestApps,
+          trackedApps: activeNonEnrolled,
           openDeregs,
-          hasAny: pendingApps.length > 0 || openDeregs > 0
+          hasAny: pendingApps.length > 0 || docRequestApps.length > 0 || activeNonEnrolled.length > 0 || openDeregs > 0
         });
       })
       .catch(() => {
@@ -45,6 +58,8 @@ export const RegistrationActionBanner: React.FC<RegistrationActionBannerProps> =
   if (!summary || !summary.hasAny) return null;
 
   const primaryPending = summary.pendingApps[0] || null;
+  const primaryDocReq = !primaryPending ? (summary.docRequestApps[0] || null) : null;
+  const primaryTracked = !primaryPending && !primaryDocReq ? (summary.trackedApps[0] || null) : null;
 
   const handleDownload = async () => {
     if (!primaryPending) return;
@@ -79,16 +94,24 @@ export const RegistrationActionBanner: React.FC<RegistrationActionBannerProps> =
               <h3 className="text-sm md:text-base font-bold text-slate-900 dark:text-white">
                 {primaryPending
                   ? 'Admission Approved — Complete Learner Registration'
+                  : primaryDocReq
+                  ? 'Additional Documentation Requested by School'
+                  : primaryTracked
+                  ? `Admission Application In Progress (${primaryTracked.status_label})`
                   : 'Controlled Deregistration / Transfer In Progress'}
               </h3>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                 <Clock className="w-3 h-3" />
-                Action Required
+                {primaryPending || primaryDocReq ? 'Action Required' : 'Live Status'}
               </span>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300">
               {primaryPending
-                ? `${primaryPending.learner_name} was accepted at ${primaryPending.school_name} for Grade ${primaryPending.grade} (${primaryPending.academic_year}). Select subjects, review class allocation, and accept the registration terms inside your dashboard.`
+                ? `${primaryPending.learner_name}${primaryPending.learner_number ? ` (Learner No: ${primaryPending.learner_number})` : ''} was accepted at ${primaryPending.school_name} for Grade ${primaryPending.grade} (${primaryPending.academic_year}). Select subjects, review class allocation, and accept the registration terms inside your dashboard.`
+                : primaryDocReq
+                ? `${primaryDocReq.school_name} requested additional documents for ${primaryDocReq.learner_name} (Ref: ${primaryDocReq.application_number}). Upload the requested files securely in your application tracker.`
+                : primaryTracked
+                ? `${primaryTracked.learner_name} — ${primaryTracked.school_name} Grade ${primaryTracked.grade} (${primaryTracked.academic_year}), Ref: ${primaryTracked.application_number}.`
                 : `You have ${summary.openDeregs} active deregistration or transfer request(s) awaiting school review.`}
             </p>
           </div>
@@ -107,10 +130,10 @@ export const RegistrationActionBanner: React.FC<RegistrationActionBannerProps> =
           )}
           <button
             type="button"
-            onClick={() => onOpenRegistration(primaryPending?.application_id)}
+            onClick={() => onOpenRegistration((primaryPending || primaryDocReq || primaryTracked)?.application_id)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#168BFF] hover:bg-[#0878E8] text-white text-xs font-bold shadow-sm cursor-pointer"
           >
-            <span>{primaryPending ? 'Complete Registration' : 'Track Request'}</span>
+            <span>{primaryPending ? 'Complete Registration' : primaryDocReq ? 'Upload Documents' : 'Track Application'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

@@ -284,7 +284,7 @@ async function findLinkedParentIds(executor, childId) {
   const ids = new Set();
   try {
     const cRes = await executor.query(
-      'SELECT parent_id, secondary_parent_id FROM children WHERE id = $1 LIMIT 1',
+      'SELECT * FROM children WHERE id = $1 LIMIT 1',
       [childId]
     );
     if (cRes.rows[0]?.parent_id) ids.add(Number(cRes.rows[0].parent_id));
@@ -506,169 +506,13 @@ async function ensureAccountWithSafeActivation(executor, {
  * Letter PDF, dispatches Acceptance Email, and sends in-app notifications.
  */
 async function handleApplicationApproved({ applicationId, actor = null, baseUrl = '', assignedClassId = null }) {
-  const appRes = await db.query(
-    `SELECT a.*, s.name AS school_name
-     FROM applications a
-     LEFT JOIN schools s ON s.id = a.school_id
-     WHERE a.id = $1
-     LIMIT 1`,
-    [applicationId]
-  );
-  if (appRes.rows.length === 0) {
-    const err = new Error('Application not found.');
-    err.status = 404;
-    throw err;
-  }
-
-  const app = appRes.rows[0];
-  const school = await fetchSchoolById(db, app.school_id);
-  const effectiveClassId = assignedClassId || app.assigned_class_id || null;
-  const classAllocation = effectiveClassId ? await fetchClassAllocation(db, app.school_id, effectiveClassId) : null;
-  const academicYear = Number(app.academic_year || new Date().getFullYear());
-  const grade = Number(app.grade_applied || 10);
-  const acceptanceRef = buildAcceptanceReference(app);
-
-  // Ensure Parent account safely (reuse if already registered; otherwise passwordless + activation token)
-  let parentAccount = { user: null, created: false, activationToken: null };
-  if (app.primary_parent_email) {
-    parentAccount = await ensureAccountWithSafeActivation(db, {
-      email: app.primary_parent_email,
-      fullName: app.primary_parent_name || 'Parent',
-      surname: app.primary_parent_surname || app.surname || '',
-      phone: app.primary_parent_phone || null,
-      idNumber: app.primary_parent_id_number || null,
-      roleName: 'parent',
-      fallbackRoleId: 4,
-      schoolId: app.school_id
-    });
-  }
-
-  // Look up existing learner user account if one already exists
-  let learnerUserId = null;
-  if (app.email || app.id_number) {
-    const cleanId = normalizeIdNumber(app.id_number);
-    const learnerRes = await db.query(
-      `SELECT id FROM users
-       WHERE ($1 <> '' AND LOWER(email) = LOWER($1))
-          OR ($2 <> '' AND id_number IS NOT NULL AND REGEXP_REPLACE(id_number::text, '[^0-9]', '', 'g') = $2)
-       LIMIT 1`,
-      [normalizeEmail(app.email), cleanId]
-    );
-    learnerUserId = learnerRes.rows[0]?.id || null;
-  }
-
-  const linkedChild = await findLinkedChildForApplication(db, app);
-
-  // Upsert learner_registrations idempotently (never reset a completed registration!)
-  const regRes = await db.query(
-    `INSERT INTO learner_registrations (
-       application_id, school_id, child_id, learner_user_id, parent_user_id,
-       academic_year, grade, class_id, class_teacher_id,
-       stream_name, home_language, first_additional_language,
-       status, acceptance_letter_reference, acceptance_letter_issued_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'awaiting_registration', $13, NOW())
-     ON CONFLICT (application_id) DO UPDATE SET
-       parent_user_id = COALESCE(learner_registrations.parent_user_id, EXCLUDED.parent_user_id),
-       learner_user_id = COALESCE(learner_registrations.learner_user_id, EXCLUDED.learner_user_id),
-       child_id = COALESCE(learner_registrations.child_id, EXCLUDED.child_id),
-       class_id = COALESCE(EXCLUDED.class_id, learner_registrations.class_id),
-       class_teacher_id = COALESCE(EXCLUDED.class_teacher_id, learner_registrations.class_teacher_id),
-       acceptance_letter_reference = COALESCE(learner_registrations.acceptance_letter_reference, EXCLUDED.acceptance_letter_reference),
-       acceptance_letter_issued_at = COALESCE(learner_registrations.acceptance_letter_issued_at, NOW()),
-       updated_at = NOW()
-     RETURNING *`,
-    [
-      app.id,
-      app.school_id,
-      linkedChild?.id || null,
-      learnerUserId || linkedChild?.learner_user_id || null,
-      parentAccount.user?.id || null,
-      academicYear,
-      grade,
-      classAllocation?.id || effectiveClassId || null,
-      classAllocation?.teacher_id || null,
-      app.stream || null,
-      app.home_language || null,
-      app.first_additional_language || null,
-      acceptanceRef
-    ]
-  );
-
-  const registration = regRes.rows[0];
-
-  // Generate Official Acceptance Letter PDF Buffer from real DB data
-  const pdfResult = await generateAcceptanceLetterPdf({
-    application: app,
-    school,
-    classAllocation,
-    issuedAt: registration.acceptance_letter_issued_at || new Date()
+  const applicationLifecycleService = require('./applicationLifecycleService');
+  return applicationLifecycleService.approveApplication({
+    applicationId,
+    actor: actor || { role: 'admin', is_superadmin: true },
+    baseUrl,
+    assignedClassId
   });
-
-  const cleanBaseUrl = String(baseUrl || process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
-  const dashboardRegistrationUrl = `${cleanBaseUrl}/dashboard/parent?tab=registration&applicationId=${encodeURIComponent(app.id)}`;
-  const activationUrl = parentAccount.activationToken
-    ? `${cleanBaseUrl}/activate?token=${encodeURIComponent(parentAccount.activationToken)}`
-    : null;
-
-  // Dispatch Acceptance Email (idempotent: skip if already sent unless never sent yet)
-  let emailResult = { skipped: true };
-  if (app.primary_parent_email && !registration.acceptance_email_sent_at) {
-    try {
-      emailResult = await emailService.sendIntegratedAcceptanceLetter({
-        parentEmail: app.primary_parent_email,
-        parentName: `${app.primary_parent_name || ''} ${app.primary_parent_surname || ''}`.trim() || 'Parent / Guardian',
-        learnerName: `${app.first_name || ''} ${app.surname || ''}`.trim(),
-        schoolName: school?.name || app.school_name || 'Your School',
-        grade,
-        academicYear,
-        applicationNumber: app.application_number,
-        acceptanceReference: acceptanceRef,
-        className: classAllocation?.name || null,
-        classTeacherName: classAllocation?.teacher_name || null,
-        dashboardRegistrationUrl,
-        activationUrl,
-        pdfBuffer: pdfResult.buffer,
-        pdfFilename: pdfResult.filename
-      });
-      if (emailResult && emailResult.success) {
-        await db.query(
-          'UPDATE learner_registrations SET acceptance_email_sent_at = NOW(), updated_at = NOW() WHERE id = $1',
-          [registration.id]
-        ).catch(() => {});
-      }
-    } catch (emailErr) {
-      console.warn('[ACCEPTANCE EMAIL WARNING]:', emailErr.message);
-      emailResult = { success: false, error: emailErr.message };
-    }
-  }
-
-  // Send in-app notification to Parent & Learner (deduplicated)
-  const notifyUserIds = [parentAccount.user?.id, learnerUserId].filter(Boolean);
-  if (notifyUserIds.length > 0 && !registration.acceptance_email_sent_at) {
-    await dispatchInAppNotification({
-      userIds: notifyUserIds,
-      schoolId: app.school_id,
-      type: 'admission_accepted',
-      title: `Admission Approved — ${school?.name || 'School'}`,
-      message: `${app.first_name} ${app.surname} has been accepted for Grade ${grade} (${academicYear}). Open Learner Registration to review details, select subjects, and confirm registration.`,
-      targetTab: 'registration',
-      metadata: {
-        application_id: app.id,
-        application_number: app.application_number,
-        registration_id: registration.id,
-        acceptance_reference: acceptanceRef
-      }
-    }).catch((err) => console.warn('[ACCEPTANCE NOTIF WARNING]:', err.message));
-  }
-
-  return {
-    registration,
-    acceptanceReference: acceptanceRef,
-    pdfFilename: pdfResult.filename,
-    emailDispatched: Boolean(emailResult?.success),
-    parentActivationRequired: Boolean(activationUrl),
-    dashboardRegistrationUrl
-  };
 }
 
 /**
@@ -924,6 +768,7 @@ async function getMyRegistrations(actor) {
     return {
       application_id: row.id,
       application_number: row.application_number,
+      learner_number: row.provisional_learner_number || row.learner_number || null,
       acceptance_reference: row.acceptance_letter_reference || buildAcceptanceReference(row),
       school_id: row.school_id,
       school_name: row.school_name,
@@ -1033,6 +878,7 @@ async function getRegistrationContext({ applicationId, actor }) {
     application: {
       id: app.id,
       application_number: app.application_number,
+      learner_number: app.provisional_learner_number || existingRegistration?.learner_number || linkedChild?.learner_number || null,
       acceptance_reference: existingRegistration?.acceptance_letter_reference || buildAcceptanceReference(app),
       status: app.status,
       grade,
@@ -1194,6 +1040,7 @@ async function completeLearnerRegistration({ applicationId, actor, payload = {} 
         idempotentReplay: true,
         registration: existingRegistration,
         childId: existingRegistration.child_id,
+        learnerNumber: existingRegistration.learner_number || linkedChild?.learner_number || app.provisional_learner_number || null,
         classAllocation,
         school,
         application: app,
@@ -1277,10 +1124,11 @@ async function completeLearnerRegistration({ applicationId, actor, payload = {} 
       await client.query('UPDATE users SET school_id = $1 WHERE id = $2', [app.school_id, learnerUserId]);
     }
 
-    const learnerNumber =
-      linkedChild?.learner_number ||
-      app.provisional_learner_number ||
-      `GSA-${academicYear}-${String(app.school_id).padStart(2, '0')}-${String(app.id).padStart(4, '0')}`;
+    const applicationLifecycleService = require('./applicationLifecycleService');
+    const learnerNumber = await applicationLifecycleService.allocateUniqueLearnerNumber(client, {
+      academicYear,
+      existingLearnerNumber: linkedChild?.learner_number || app.provisional_learner_number || existingRegistration?.learner_number || null
+    });
 
     // Upsert children record idempotently (preserving historical record if transferring from a deregistered school)
     let childId = linkedChild?.id || existingRegistration?.child_id || null;
@@ -1476,6 +1324,22 @@ async function completeLearnerRegistration({ applicationId, actor, payload = {} 
       ]
     );
 
+    await applicationLifecycleService.recordStatusHistory(client, {
+      applicationId: app.id,
+      schoolId: app.school_id,
+      fromStatus: app.status,
+      toStatus: 'enrolled',
+      actorId: actor.id,
+      actorRole: actor.role,
+      reason: `Learner registration completed for Grade ${grade} (${classAllocation.name}).`,
+      metadata: {
+        learner_number: learnerNumber,
+        child_id: childId,
+        class_id: classAllocation.id,
+        subjects_count: normalizedSubjects.length
+      }
+    });
+
     return {
       idempotentReplay: false,
       registration: savedRegistration,
@@ -1662,15 +1526,58 @@ async function dispatchPostRegistrationNotifications(txResult) {
       schoolId,
       type: 'learner_registration_confirmed',
       title: `Registration Complete — ${school?.name || 'School'}`,
-      message: `${learnerName} is now officially registered in ${className} (Grade ${grade}) with ${normalizedSubjects.length} selected subjects.`,
+      message: `${learnerName} (Learner No: ${txResult.learnerNumber || application.provisional_learner_number || ''}) is now officially registered in ${className} (Grade ${grade}) with ${normalizedSubjects.length} selected subjects.`,
       targetTab: 'registration',
       metadata: {
         registration_id: registration.id,
         child_id: registration.child_id,
+        learner_number: txResult.learnerNumber || application.provisional_learner_number || null,
         class_name: className,
         selected_subjects: normalizedSubjects
       }
     });
+  }
+
+  // 5. Email 7 — Registration Completed Confirmation (idempotent, zero plaintext passwords)
+  try {
+    const applicationLifecycleService = require('./applicationLifecycleService');
+    const cleanBaseUrl = String(process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
+    const resolvedLearnerNo = txResult.learnerNumber || application.provisional_learner_number || '';
+    const parentFullName = `${application.primary_parent_name || ''} ${application.primary_parent_surname || ''}`.trim() || 'Parent / Guardian';
+
+    if (application.primary_parent_email) {
+      const emailRes = await applicationLifecycleService.dispatchIdempotentEmail({
+        applicationId: application.id,
+        schoolId,
+        eventType: 'registration_completed',
+        recipientEmail: application.primary_parent_email,
+        idempotencyKey: `reg_completed:${registration.id}:${normalizeEmail(application.primary_parent_email)}`,
+        sendFn: () => emailService.sendRegistrationCompletedConfirmation({
+          recipientEmail: application.primary_parent_email,
+          recipientName: parentFullName,
+          learnerName,
+          learnerNumber: resolvedLearnerNo,
+          applicationNumber: application.application_number,
+          schoolName: school?.name || application.school_name || 'School',
+          grade,
+          academicYear: Number(application.academic_year || registration.academic_year || new Date().getFullYear()),
+          stream: registration.stream_name || application.stream || null,
+          className,
+          classTeacherName: classAllocation?.teacher_name ? classAllocation.teacher_name.trim() : null,
+          selectedSubjects: normalizedSubjects,
+          dashboardUrl: `${cleanBaseUrl}/dashboard/parent`,
+          activationUrl: null
+        })
+      });
+      if (emailRes.sent) {
+        await db.query(
+          'UPDATE learner_registrations SET registration_email_sent_at = COALESCE(registration_email_sent_at, NOW()), updated_at = NOW() WHERE id = $1',
+          [registration.id]
+        ).catch(() => {});
+      }
+    }
+  } catch (regMailErr) {
+    console.warn('[REGISTRATION COMPLETE EMAIL WARNING]:', regMailErr.message);
   }
 }
 

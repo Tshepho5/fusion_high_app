@@ -116,6 +116,16 @@ async function getOrLinkLearnerChild(user) {
     return null;
 }
 
+exports.getAccessStatus = async (req, res) => {
+    try {
+        const applicationLifecycleService = require('../services/applicationLifecycleService');
+        const access = await applicationLifecycleService.getLearnerAccessStatus(req.user);
+        return res.json({ success: true, ...access });
+    } catch (err) {
+        return res.status(500).json({ error: 'Failed to determine learner access status.' });
+    }
+};
+
 exports.getSubjects = async (req, res) => {
     try {
         const learner = await getOrLinkLearnerChild(req.user);
@@ -212,60 +222,65 @@ exports.getMySubjectsOverview = async (req, res) => {
 
         for (const subjName of subjectsList) {
             let teacherFormatted = 'To Be Assigned';
+            const learnerSchoolId = learner.school_id ? Number(learner.school_id) : null;
             try {
-                // 1. Direct match in teacher_assignments by subject, grade, and class
-                let teacherRes = await db.query(
+                // 1. Direct match in teacher_assignments by subject, grade, class, and strict school_id
+                let teacherRes = learnerSchoolId ? await db.query(
                     `SELECT u.full_name, u.surname 
                      FROM teacher_assignments ta
                      JOIN users u ON ta.teacher_id = u.id 
-                     WHERE (ta.subject_name ILIKE $1 OR $1 ILIKE ta.subject_name)
+                     WHERE u.school_id = $5
+                       AND (ta.subject_name ILIKE $1 OR $1 ILIKE ta.subject_name)
                        AND (ta.grade_level = $2 OR $2 IS NULL)
                        AND ($3::int IS NULL OR ta.class_id = $3 OR ta.class_name ILIKE $4)
                      LIMIT 1`,
-                    [`%${subjName}%`, learner.grade || 10, learner.class_id || null, `%${learnerClassName}%`]
-                ).catch(() => ({ rows: [] }));
+                    [`%${subjName}%`, learner.grade || 10, learner.class_id || null, `%${learnerClassName}%`, learnerSchoolId]
+                ).catch(() => ({ rows: [] })) : { rows: [] };
 
-                // 2. Direct match in teacher_assignments by subject and grade
-                if (!teacherRes || teacherRes.rows.length === 0) {
+                // 2. Direct match in teacher_assignments by subject, grade, and strict school_id
+                if ((!teacherRes || teacherRes.rows.length === 0) && learnerSchoolId) {
                     teacherRes = await db.query(
                         `SELECT u.full_name, u.surname 
                          FROM teacher_assignments ta
                          JOIN users u ON ta.teacher_id = u.id 
-                         WHERE (ta.subject_name ILIKE $1 OR $1 ILIKE ta.subject_name)
+                         WHERE u.school_id = $3
+                           AND (ta.subject_name ILIKE $1 OR $1 ILIKE ta.subject_name)
                            AND (ta.grade_level = $2 OR $2 IS NULL)
                          LIMIT 1`,
-                        [`%${subjName}%`, learner.grade || 10]
+                        [`%${subjName}%`, learner.grade || 10, learnerSchoolId]
                     ).catch(() => ({ rows: [] }));
                 }
 
-                // 3. Match in employees table by subjects and grades_taught
-                if (!teacherRes || teacherRes.rows.length === 0) {
+                // 3. Match in employees table by subjects, grades_taught, and strict school_id
+                if ((!teacherRes || teacherRes.rows.length === 0) && learnerSchoolId) {
                     teacherRes = await db.query(
                         `SELECT u.full_name, u.surname 
                          FROM employees e 
                          JOIN users u ON e.user_id = u.id 
-                         WHERE EXISTS (
+                         WHERE u.school_id = $3
+                           AND EXISTS (
                              SELECT 1 FROM unnest(COALESCE(e.subjects, ARRAY[]::TEXT[])) s 
                              WHERE s ILIKE $1 OR $1 ILIKE s
                          )
                          AND ($2 = ANY(COALESCE(e.grades_taught, ARRAY[]::INT[])) OR ARRAY_LENGTH(e.grades_taught, 1) IS NULL OR e.grades_taught = '{}')
                          LIMIT 1`,
-                        [`%${subjName}%`, learner.grade || 10]
+                        [`%${subjName}%`, learner.grade || 10, learnerSchoolId]
                     ).catch(() => ({ rows: [] }));
                 }
 
-                // 4. Fallback match in employees table by subjects array
-                if (!teacherRes || teacherRes.rows.length === 0) {
+                // 4. Fallback match in employees table by subjects array within the SAME school only
+                if ((!teacherRes || teacherRes.rows.length === 0) && learnerSchoolId) {
                     teacherRes = await db.query(
                         `SELECT u.full_name, u.surname 
                          FROM employees e 
                          JOIN users u ON e.user_id = u.id 
-                         WHERE EXISTS (
+                         WHERE u.school_id = $2
+                           AND EXISTS (
                              SELECT 1 FROM unnest(COALESCE(e.subjects, ARRAY[]::TEXT[])) s 
                              WHERE s ILIKE $1 OR $1 ILIKE s
                          )
                          LIMIT 1`,
-                        [`%${subjName}%`]
+                        [`%${subjName}%`, learnerSchoolId]
                     ).catch(() => ({ rows: [] }));
                 }
 
@@ -1176,10 +1191,10 @@ exports.getAttendanceOverview = async (req, res) => {
         for (const subj of subjectsList) {
             let teacherName = 'Subject Educator';
             try {
-                const teacherRes = await db.query(
-                    `SELECT u.full_name, u.surname FROM employees e JOIN users u ON e.user_id = u.id WHERE $1 = ANY(e.subjects) LIMIT 1`,
-                    [subj]
-                );
+                const teacherRes = learner?.school_id ? await db.query(
+                    `SELECT u.full_name, u.surname FROM employees e JOIN users u ON e.user_id = u.id WHERE $1 = ANY(e.subjects) AND u.school_id = $2 LIMIT 1`,
+                    [subj, Number(learner.school_id)]
+                ) : { rows: [] };
                 if (teacherRes.rows[0]) {
                     teacherName = `${teacherRes.rows[0].full_name} ${teacherRes.rows[0].surname}`.trim();
                 }
@@ -1484,10 +1499,10 @@ exports.getGradesOverview = async (req, res) => {
         for (const subj of subjectsList) {
             let teacherName = 'Subject Educator';
             try {
-                const teacherRes = await db.query(
-                    `SELECT u.full_name, u.surname FROM employees e JOIN users u ON e.user_id = u.id WHERE $1 = ANY(e.subjects) LIMIT 1`,
-                    [subj]
-                );
+                const teacherRes = learner?.school_id ? await db.query(
+                    `SELECT u.full_name, u.surname FROM employees e JOIN users u ON e.user_id = u.id WHERE $1 = ANY(e.subjects) AND u.school_id = $2 LIMIT 1`,
+                    [subj, Number(learner.school_id)]
+                ) : { rows: [] };
                 if (teacherRes.rows[0]) {
                     teacherName = `${teacherRes.rows[0].full_name} ${teacherRes.rows[0].surname}`.trim();
                 }

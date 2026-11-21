@@ -117,8 +117,12 @@ function generateAcceptanceLetterPdf({ application, school, classAllocation = nu
         ['Class Allocation', model.classAllocation.className],
         ['Assigned Class Teacher', model.classAllocation.classTeacherName]
       ];
+      if (model.learner.learnerNumber) {
+        rows.splice(1, 0, ['Official Learner Number', model.learner.learnerNumber]);
+      }
       if (model.learner.stream) {
-        rows.splice(5, 0, ['Academic Stream (Applied)', model.learner.stream]);
+        const insertAt = model.learner.learnerNumber ? 6 : 5;
+        rows.splice(insertAt, 0, ['Academic Stream (Applied)', model.learner.stream]);
       }
 
       const rowHeight = 20;

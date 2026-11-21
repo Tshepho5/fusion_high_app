@@ -31,9 +31,15 @@ router.post('/:id/confirm-receipt', authenticateToken, isAdmin, applicationContr
 router.get('/cron/reminders', authenticateToken, isAdmin, applicationController.triggerFeeReminders);
 router.post('/cron/reminders', authenticateToken, isAdmin, applicationController.triggerFeeReminders);
 
-// Admin Application Management Routes
+// Authenticated Applicant / Parent Application Tracking & Secure Document Upload
+router.get('/my', authenticateToken, applicationController.getMyApplications);
+router.post('/:id/documents', authenticateToken, applicationController.uploadSingleApplicationDoc, applicationController.uploadRequestedDocument);
+
+// Admin Application Management & Documentation Request Routes
 router.get('/', authenticateToken, isAdmin, applicationController.listApplications);
 router.post('/:id/decision', authenticateToken, isAdmin, applicationController.reviewApplication);
+router.post('/:id/document-requests', authenticateToken, isAdmin, applicationController.createDocumentRequest);
+router.post('/:id/document-requests/:requestId/review', authenticateToken, isAdmin, applicationController.reviewDocumentRequest);
 
 module.exports = router;
 

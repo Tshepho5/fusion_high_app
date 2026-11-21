@@ -245,6 +245,7 @@ export const userService = {
 
 // Learner Portal APIs (children, subjects, attendance, progress, announcements, textbooks)
 export const learnerService = {
+  getAccessStatus: () => api.get('/api/learner/access-status').then(res => res.data),
   getProfile: () => api.get('/api/profile').then(res => res.data),
   getSubjects: () => api.get('/api/learner/subjects').then(res => res.data),
   getMySubjectsOverview: () => api.get('/api/learner/my-subjects-overview').then(res => res.data),
@@ -1075,5 +1076,30 @@ export const learnerRegistrationService = {
     api.post(`/api/registrations/deregistrations/${id}/teacher-review`, { notes }).then(res => res.data),
   adminDecideDeregistration: (id: number | string, decision: 'approve' | 'reject', notes?: string) =>
     api.post(`/api/registrations/deregistrations/${id}/decision`, { decision, notes }).then(res => res.data),
+};
+
+// Applicant & Parent Application Tracking + Documentation Request/Upload API
+export const applicationTrackingService = {
+  getMyApplications: () =>
+    api.get('/api/applications/my').then(res => res.data),
+  uploadDocument: (applicationId: number | string, formData: FormData) =>
+    api.post(`/api/applications/${applicationId}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(res => res.data),
+  createDocumentRequest: (
+    applicationId: number | string,
+    payload: {
+      required_documents: Array<string | { document_type: string; label?: string; description?: string }>;
+      instructions: string;
+      deadline?: string | null;
+    }
+  ) =>
+    api.post(`/api/applications/${applicationId}/document-requests`, payload).then(res => res.data),
+  reviewDocumentRequest: (
+    applicationId: number | string,
+    requestId: number | string,
+    payload: { outcome: 'approved' | 'rejected'; notes?: string }
+  ) =>
+    api.post(`/api/applications/${applicationId}/document-requests/${requestId}/review`, payload).then(res => res.data),
 };
 

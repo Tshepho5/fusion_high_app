@@ -91,8 +91,8 @@ export const LearnerOverview: React.FC<LearnerOverviewProps> = ({ onNavigateTab 
   const [loading, setLoading] = useState<boolean>(true);
   const [isQuizModalOpen, setIsQuizModalOpen] = useState<boolean>(false);
   const [classInfo, setClassInfo] = useState<{ className: string; classTeacher: string }>({
-    className: '10A',
-    classTeacher: 'To Be Assigned'
+    className: '',
+    classTeacher: 'Pending Assignment'
   });
 
   // Subject Presentation Mode (3D Flow / Carousel / Visual Cards / Grid / Compact / List)

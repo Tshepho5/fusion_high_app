@@ -29,19 +29,61 @@ import { GelezaAIStudyHubModule } from '../../components/learner/GelezaAIStudyHu
 import { useSchool } from '../../context/SchoolContext';
 import { moduleAllowed } from '../../utils/schoolModules';
 import { LearnerRegistrationPanel } from '../../components/registration/LearnerRegistrationPanel';
+import { ApplicantTrackingPanel } from '../../components/applications/ApplicantTrackingPanel';
+import { learnerService } from '../../services/api';
+
+const RESTRICTED_APPLICANT_TABS = new Set(['applications', 'registration', 'profile', 'settings']);
 
 export const LearnerDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { currentSchool, refreshSchools } = useSchool();
+  const [accessStatus, setAccessStatus] = useState<{
+    loaded: boolean;
+    mode: string;
+    isRestrictedApplicant: boolean;
+    hasActiveEnrollment: boolean;
+    hasApprovedApplication?: boolean;
+    reason?: string | null;
+  }>({
+    loaded: false,
+    mode: 'enrolled',
+    isRestrictedApplicant: false,
+    hasActiveEnrollment: true,
+    reason: null
+  });
   const initialTab = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState<string>(() =>
     moduleAllowed('learner', initialTab, currentSchool.learner_modules, currentSchool.teacher_modules) ? initialTab : 'overview'
   );
   const [tabHistory, setTabHistory] = useState<string[]>([]);
 
+  const loadAccessStatus = React.useCallback(async () => {
+    try {
+      const res = await learnerService.getAccessStatus();
+      const restricted = Boolean(res?.isRestrictedApplicant);
+      setAccessStatus({
+        loaded: true,
+        mode: res?.mode || (restricted ? 'restricted_applicant' : 'enrolled'),
+        isRestrictedApplicant: restricted,
+        hasActiveEnrollment: !restricted,
+        hasApprovedApplication: Boolean(res?.hasApprovedApplication),
+        reason: res?.reason || null
+      });
+    } catch (_) {
+      setAccessStatus({
+        loaded: true,
+        mode: 'restricted_applicant',
+        isRestrictedApplicant: true,
+        hasActiveEnrollment: false,
+        reason: 'Unable to confirm active school enrolment. Showing Applicant Tracking Workspace until enrolment is verified.'
+      });
+    }
+  }, []);
+
   useEffect(() => {
     refreshSchools();
-  }, []);
+    loadAccessStatus();
+  }, [loadAccessStatus]);
 
   // State passed to AI Tutor when launching from Subjects
   const [tutorContext, setTutorContext] = useState<{
@@ -53,7 +95,19 @@ export const LearnerDashboard: React.FC = () => {
   });
 
   useEffect(() => {
+    if (!accessStatus.loaded) return;
     const tabParam = searchParams.get('tab') || activeTab || 'overview';
+    if (accessStatus.isRestrictedApplicant) {
+      if (!RESTRICTED_APPLICANT_TABS.has(tabParam)) {
+        if (activeTab !== 'applications') setActiveTab('applications');
+        if (searchParams.get('tab') !== 'applications') {
+          setSearchParams({ tab: 'applications' });
+        }
+        return;
+      }
+      if (tabParam !== activeTab) setActiveTab(tabParam);
+      return;
+    }
     if (!moduleAllowed('learner', tabParam, currentSchool.learner_modules, currentSchool.teacher_modules)) {
       if (activeTab !== 'overview') setActiveTab('overview');
       if (searchParams.get('tab') && searchParams.get('tab') !== 'overview') {
@@ -62,10 +116,15 @@ export const LearnerDashboard: React.FC = () => {
       return;
     }
     if (tabParam !== activeTab) setActiveTab(tabParam);
-  }, [searchParams, currentSchool.learner_modules, currentSchool.teacher_modules, activeTab]);
+  }, [searchParams, currentSchool.learner_modules, currentSchool.teacher_modules, activeTab, accessStatus.loaded, accessStatus.isRestrictedApplicant]);
 
   const handleSelectTab = (tabId: string, subjectName?: string) => {
-    if (!moduleAllowed('learner', tabId, currentSchool.learner_modules, currentSchool.teacher_modules)) {
+    if (accessStatus.isRestrictedApplicant && !RESTRICTED_APPLICANT_TABS.has(tabId)) {
+      setActiveTab('applications');
+      setSearchParams({ tab: 'applications' });
+      return;
+    }
+    if (!accessStatus.isRestrictedApplicant && !moduleAllowed('learner', tabId, currentSchool.learner_modules, currentSchool.teacher_modules)) {
       setActiveTab('overview');
       setSearchParams({ tab: 'overview' });
       return;
@@ -208,6 +267,73 @@ export const LearnerDashboard: React.FC = () => {
   const leaveSubject = () => {
     setSearchParams({ tab: 'subjects' });
   };
+
+  if (!accessStatus.loaded) {
+    return (
+      <DashboardLayout
+        activeTab="applications"
+        onSelectTab={handleSelectTab}
+        title="Loading Learner Workspace"
+      >
+        <div className="py-16 flex flex-col items-center justify-center gap-3 text-sm text-slate-500 dark:text-slate-300">
+          <div className="w-8 h-8 rounded-full border-2 border-[#168BFF] border-t-transparent animate-spin" />
+          <p>Verifying enrolment and workspace access...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (accessStatus.loaded && accessStatus.isRestrictedApplicant) {
+    const restrictedTab = RESTRICTED_APPLICANT_TABS.has(activeTab) ? activeTab : 'applications';
+    return (
+      <DashboardLayout
+        activeTab={restrictedTab}
+        onSelectTab={handleSelectTab}
+        title={restrictedTab === 'registration' ? 'Learner Registration' : 'Applicant Tracking Dashboard'}
+      >
+        <div className="space-y-5">
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <p className="font-semibold text-amber-800 dark:text-amber-200">
+              {accessStatus.reason || 'Restricted Applicant Dashboard — Full learner modules (Subjects, Timetable, Assignments, Reports) unlock automatically after registration is completed.'}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(['applications', 'registration', 'profile', 'settings'] as const).map((tabKey) => (
+                <button
+                  key={tabKey}
+                  type="button"
+                  onClick={() => handleSelectTab(tabKey)}
+                  className={`px-3 py-1.5 rounded-xl font-bold capitalize cursor-pointer ${
+                    restrictedTab === tabKey
+                      ? 'bg-[#168BFF] text-white'
+                      : 'bg-white/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10'
+                  }`}
+                >
+                  {tabKey === 'applications' ? 'Application Tracker' : tabKey}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {restrictedTab === 'applications' && (
+            <ApplicantTrackingPanel
+              roleLabel="Applicant"
+              isRestrictedMode={true}
+              onStartRegistration={(appId) => handleSelectTab('registration', String(appId))}
+            />
+          )}
+          {restrictedTab === 'registration' && (
+            <LearnerRegistrationPanel
+              initialApplicationId={searchParams.get('applicationId')}
+              roleLabel="Learner"
+              onRegistrationCompleted={loadAccessStatus}
+            />
+          )}
+          {restrictedTab === 'profile' && <LearnerProfile />}
+          {restrictedTab === 'settings' && <LearnerSettings />}
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout

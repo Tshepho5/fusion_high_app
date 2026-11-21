@@ -2366,7 +2366,11 @@ exports.getAdmissionById = async (req, res) => {
         if (!canDecideApplication(req.user, app.school_id)) {
             return res.status(404).json({ error: 'Application not found.' });
         }
-        const docRes = await db.query(`SELECT * FROM application_documents WHERE application_id = $1`, [app.id]);
+        const [docRes, reqRes, histRes] = await Promise.all([
+            db.query(`SELECT * FROM application_documents WHERE application_id = $1 ORDER BY uploaded_at DESC`, [app.id]),
+            db.query(`SELECT * FROM application_document_requests WHERE application_id = $1 ORDER BY created_at DESC`, [app.id]).catch(() => ({ rows: [] })),
+            db.query(`SELECT * FROM application_status_history WHERE application_id = $1 ORDER BY created_at ASC, id ASC`, [app.id]).catch(() => ({ rows: [] }))
+        ]);
         app.documents = docRes.rows.map((doc) => {
             const raw = String(doc.file_path || '').replace(/\\/g, '/');
             const base = raw.split('/').pop();
@@ -2375,6 +2379,9 @@ exports.getAdmissionById = async (req, res) => {
                 : null;
             return { ...doc, file_path: safe };
         });
+        app.document_requests = reqRes.rows;
+        app.timeline = histRes.rows;
+        app.learner_number = app.provisional_learner_number || null;
 
         res.json(app);
     } catch (err) {
@@ -2389,94 +2396,141 @@ exports.getAdmissionById = async (req, res) => {
 exports.updateAdmissionStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, assigned_class_id, notes } = req.body;
+        const { status, assigned_class_id, notes, reason, required_documents, instructions, deadline } = req.body;
+        const applicationLifecycleService = require('../services/applicationLifecycleService');
+        const { validateApplicationTransition, normalizeApplicationStatus } = require('../../../lib/applicationLifecycle');
+        const requestOrigin = req.headers?.origin || process.env.FRONTEND_URL || process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+
+        const canonicalTarget = status ? normalizeApplicationStatus(status) : null;
+
+        if (canonicalTarget === 'approved') {
+            const acceptancePackage = await applicationLifecycleService.approveApplication({
+                applicationId: id,
+                actor: req.user,
+                baseUrl: requestOrigin,
+                assignedClassId: assigned_class_id || null,
+                adminNotes: typeof notes === 'string' ? notes : null
+            });
+            return res.json({
+                message: `Admission approved. Learner Number ${acceptancePackage.learnerNumber} persisted, Acceptance Letter generated, and integrated dashboard registration enabled.`,
+                application: acceptancePackage.application,
+                learner_number: acceptancePackage.learnerNumber,
+                acceptance: acceptancePackage
+            });
+        }
+
+        if (canonicalTarget === 'rejected') {
+            const declineRes = await applicationLifecycleService.declineApplication({
+                applicationId: id,
+                actor: req.user,
+                baseUrl: requestOrigin,
+                reason: reason || (typeof notes === 'string' ? notes : 'Admission criteria or grade capacity not met.')
+            });
+            return res.json({
+                message: 'Application declined and formal notification email dispatched.',
+                application: declineRes.application,
+                email_dispatched: declineRes.emailDispatched
+            });
+        }
+
+        if (canonicalTarget === 'documents_requested' && Array.isArray(required_documents) && required_documents.length > 0) {
+            const reqRes = await applicationLifecycleService.createDocumentRequest({
+                applicationId: id,
+                actor: req.user,
+                baseUrl: requestOrigin,
+                body: { required_documents, instructions: instructions || reason || (typeof notes === 'string' ? notes : ''), deadline }
+            });
+            return res.json({
+                message: 'Additional documentation requested and applicant notified.',
+                application: reqRes.application,
+                document_request: reqRes.request
+            });
+        }
 
         const existingRes = await db.query(
-            `SELECT id, school_id FROM applications WHERE id::text = $1::text OR application_number = $1::text`,
+            `SELECT * FROM applications WHERE id::text = $1::text OR application_number = $1::text`,
             [id]
         );
         if (existingRes.rows.length === 0 || !canDecideApplication(req.user, existingRes.rows[0].school_id)) {
             return res.status(404).json({ error: 'Application not found.' });
+        }
+        const existingApp = existingRes.rows[0];
+
+        if (canonicalTarget) {
+            const transition = validateApplicationTransition({
+                fromStatus: existingApp.status,
+                toStatus: canonicalTarget,
+                actorRole: req.user?.role,
+                isSuperadmin: Boolean(req.user?.is_superadmin)
+            });
+            if (!transition.allowed) {
+                return res.status(transition.code === 'UNAUTHORIZED_STATUS_CHANGE' ? 403 : 409).json({
+                    error: transition.reason,
+                    code: transition.code
+                });
+            }
+        }
+
+        // Validate assigned_class_id belongs to the application's school when provided
+        if (assigned_class_id) {
+            const clsCheck = await db.query('SELECT id FROM classes WHERE id = $1 AND school_id = $2 LIMIT 1', [Number(assigned_class_id), Number(existingApp.school_id)]);
+            if (clsCheck.rows.length === 0) {
+                return res.status(400).json({ error: 'Selected class does not belong to this school.' });
+            }
         }
 
         const updateRes = await db.query(`
             UPDATE applications
             SET status = COALESCE($1, status),
                 assigned_class_id = COALESCE($2, assigned_class_id),
-                ai_verification_notes = COALESCE($3, ai_verification_notes),
+                admin_notes = COALESCE($3, admin_notes),
+                reviewed_by = $4,
+                reviewed_at = NOW(),
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = $4
+            WHERE id = $5
             RETURNING *;
-        `, [status || null, assigned_class_id || null, notes ? JSON.stringify(notes) : null, existingRes.rows[0].id]);
-
-        if (updateRes.rows.length === 0) {
-            return res.status(404).json({ error: 'Application not found.' });
-        }
+        `, [canonicalTarget || null, assigned_class_id || null, typeof notes === 'string' ? notes : null, req.user?.id || null, existingApp.id]);
 
         const app = updateRes.rows[0];
-        const baseUrl = process.env.APP_URL || 'https://educonnect-cmyh.onrender.com';
-        const learnerFullName = `${app.first_name} ${app.surname}`;
-        const parentFullName = `${app.primary_parent_name} ${app.primary_parent_surname}`;
 
-        let acceptancePackage = null;
-        if (status === 'approved') {
-            try {
-                const learnerRegistrationService = require('../services/learnerRegistrationService');
-                const requestOrigin = req.headers?.origin || `${req.protocol}://${req.get('host')}`;
-                acceptancePackage = await learnerRegistrationService.handleApplicationApproved({
-                    applicationId: app.id,
-                    actor: req.user,
-                    baseUrl: requestOrigin,
-                    assignedClassId: req.body?.assigned_class_id || app.assigned_class_id || null
-                });
-            } catch (accErr) {
-                console.warn('[ADMIN ADMISSION ACCEPTANCE PACKAGE NOTICE]:', accErr.message);
-            }
-        } else if (app.primary_parent_email) {
-            setImmediate(async () => {
-                try {
-                    if (status === 'waitlisted') {
-                        await emailService.sendApplicationWaitlisted({
-                            parentEmail: app.primary_parent_email,
-                            parentName: parentFullName,
-                            learnerName: learnerFullName,
-                            grade: app.grade_applied,
-                            applicationNumber: app.application_number
-                        });
-                    } else if (status === 'action_required') {
-                        const resumptionUrl = `${baseUrl}/application.html?resume=${app.correction_token || app.application_number}`;
-                        await emailService.sendApplicationCorrection({
-                            parentEmail: app.primary_parent_email,
-                            parentName: parentFullName,
-                            learnerName: learnerFullName,
-                            applicationNumber: app.application_number,
-                            issues: Array.isArray(notes) ? notes : [notes || 'Document or detail verification needed.'],
-                            resumptionUrl
-                        });
-                    } else if (status === 'rejected') {
-                        await emailService.sendApplicationUnsuccessful({
-                            parentEmail: app.primary_parent_email,
-                            parentName: parentFullName,
-                            learnerName: learnerFullName,
-                            grade: app.grade_applied,
-                            applicationNumber: app.application_number,
-                            reason: typeof notes === 'string' ? notes : 'Statutory capacity and admissions criteria.'
-                        });
-                    }
-                } catch (eErr) {
-                    console.warn('[ADMIN ADMISSION STATUS EMAIL ERROR]:', eErr.message);
-                }
-            });
+        // Keep learner_registrations class_id synchronized if already approved
+        if (assigned_class_id && normalizeApplicationStatus(app.status) === 'approved') {
+            await db.query(
+                `UPDATE learner_registrations SET class_id = $1, updated_at = NOW() WHERE application_id = $2`,
+                [Number(assigned_class_id), app.id]
+            ).catch(() => {});
+        }
+
+        if (canonicalTarget && canonicalTarget !== normalizeApplicationStatus(existingApp.status)) {
+            await applicationLifecycleService.recordStatusHistory(db, {
+                applicationId: app.id,
+                schoolId: app.school_id,
+                fromStatus: existingApp.status,
+                toStatus: canonicalTarget,
+                actorId: req.user?.id || null,
+                actorRole: req.user?.role || 'admin',
+                reason: typeof notes === 'string' ? notes : `Status updated to ${canonicalTarget}.`
+            }).catch(() => {});
+        }
+
+        if (canonicalTarget === 'waitlisted' && app.primary_parent_email) {
+            await emailService.sendApplicationWaitlisted({
+                parentEmail: app.primary_parent_email,
+                parentName: `${app.primary_parent_name} ${app.primary_parent_surname}`.trim(),
+                learnerName: `${app.first_name} ${app.surname}`.trim(),
+                grade: app.grade_applied,
+                applicationNumber: app.application_number
+            }).catch(() => {});
         }
 
         res.json({
-            message: status === 'approved'
-                ? 'Admission approved. Official Acceptance Letter generated and integrated dashboard registration enabled.'
-                : 'Admission status updated successfully and notification email dispatched.',
-            application: app,
-            acceptance: acceptancePackage
+            message: 'Admission record updated successfully.',
+            application: app
         });
     } catch (err) {
+        if (err.status) {
+            return res.status(err.status).json({ error: err.message, code: err.code || undefined });
+        }
         console.error('Error updating admission status:', err);
         res.status(500).json({ error: 'Failed to update application status.' });
     }

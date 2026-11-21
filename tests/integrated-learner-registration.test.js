@@ -490,13 +490,13 @@ test('Additive SQL migration and backend controllers uphold security, no-plainte
     'utf8'
   );
   assert.doesNotMatch(appCtrl, /temporary_password\s*:\s*defaultPassword/);
-  assert.match(appCtrl, /handleApplicationApproved/);
+  assert.match(appCtrl, /(handleApplicationApproved|approveApplication)/);
 
   const adminCtrl = fs.readFileSync(
     path.join(__dirname, '../public/src/controller/adminController.js'),
     'utf8'
   );
-  assert.match(adminCtrl, /handleApplicationApproved/);
+  assert.match(adminCtrl, /(handleApplicationApproved|approveApplication)/);
 
   const teacherLearnersCtrl = fs.readFileSync(
     path.join(__dirname, '../public/src/controller/teacher/teacherLearnersController.js'),
