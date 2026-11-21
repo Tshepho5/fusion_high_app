@@ -80,8 +80,7 @@ async function fetchClassAllocation(executor, schoolId, classId) {
 
 async function fetchSchoolById(executor, schoolId) {
   const res = await executor.query(
-    `SELECT id, name, emis_number, physical_address, contact_email, contact_phone,
-            province, district, offered_subjects, offered_languages, offered_streams
+    `SELECT *
      FROM schools
      WHERE id = $1
      LIMIT 1`,

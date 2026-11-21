@@ -59,14 +59,28 @@ async function resolveRoleId(executor, roleName, fallbackId) {
 async function fetchSchoolDetails(executor, schoolId) {
   if (!schoolId) return null;
   const res = await executor.query(
-    `SELECT id, name, slug, emis_number, physical_address, contact_email, contact_phone,
-            province, district, circuit, logo_url, logo_stored_name
+    `SELECT *
      FROM schools
      WHERE id = $1
      LIMIT 1`,
     [Number(schoolId)]
   );
-  return res.rows[0] || null;
+  const row = res.rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name || null,
+    slug: row.slug || null,
+    emis_number: row.emis_number || null,
+    physical_address: row.physical_address || null,
+    contact_email: row.contact_email || null,
+    contact_phone: row.contact_phone || null,
+    province: row.province || null,
+    district: row.district || null,
+    circuit: row.circuit || null,
+    logo_url: row.logo_url || row.badge_url || null,
+    logo_stored_name: row.logo_stored_name || null
+  };
 }
 
 async function fetchClassAllocation(executor, schoolId, classId) {

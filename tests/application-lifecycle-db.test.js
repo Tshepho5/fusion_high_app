@@ -85,7 +85,6 @@ describe('Application Lifecycle End-to-End Integration (Disposable PostgreSQL DB
         district VARCHAR(100),
         circuit VARCHAR(100),
         logo_url TEXT,
-        logo_stored_name VARCHAR(255),
         status VARCHAR(40) DEFAULT 'approved',
         offered_subjects JSONB DEFAULT '[]'::jsonb,
         offered_languages JSONB DEFAULT '[]'::jsonb,

@@ -3626,6 +3626,16 @@ export const AdminUsers: React.FC = () => {
               <LoadingSpinner text="Loading application dossier and local document inspection..." />
             ) : (
               <div className="space-y-4">
+                {error && (
+                  <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs font-medium">
+                    {error}
+                  </div>
+                )}
+                {actionSuccess && (
+                  <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200 text-xs font-medium">
+                    {actionSuccess}
+                  </div>
+                )}
                 {/* Summary Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="p-3.5 rounded-2xl bg-surface-darker border border-white/10 space-y-1">

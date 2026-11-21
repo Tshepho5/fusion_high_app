@@ -455,4 +455,12 @@ describe('Security & static regression guards', () => {
       }
     }
   });
+
+  it('fetchSchoolDetails and fetchSchoolById never query non-existent schools.logo_stored_name column', () => {
+    const lifecycleSrc = fs.readFileSync(path.join(__dirname, '../public/src/services/applicationLifecycleService.js'), 'utf8');
+    const regSrc = fs.readFileSync(path.join(__dirname, '../public/src/services/learnerRegistrationService.js'), 'utf8');
+    assert.doesNotMatch(lifecycleSrc, /SELECT[^;]*logo_stored_name[^;]*FROM\s+schools/i);
+    assert.match(lifecycleSrc, /SELECT\s+\*\s+FROM\s+schools/i);
+    assert.match(regSrc, /SELECT\s+\*\s+FROM\s+schools/i);
+  });
 });
