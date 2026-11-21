@@ -1,4 +1,4 @@
-const CACHE_NAME = 'geleza-sa-cache-v2.8';
+const CACHE_NAME = 'geleza-sa-cache-v2.9';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.svg',
@@ -56,10 +56,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets and Scripts: Cache First with Network Refresh
+  // Unfingerprinted static scripts/styles (e.g. /js/application.js, /css/application.css):
+  // Network-First so returning browsers always load updated application logic matching fresh HTML.
+  if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/css/')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const resClone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Fingerprinted build assets (/assets/*.js, /assets/*.css) and icons/fonts: Cache First with Network Refresh
   if (
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css') ||
+    url.pathname.startsWith('/assets/') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.png') ||
     url.pathname.endsWith('.woff2') ||

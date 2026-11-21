@@ -63,7 +63,7 @@ export const ADMIN_DIRECTORY_MODULES: DirectoryModule[] = [
   { id: 'command-center', title: 'Multi-School Command', categoryId: 'governance-access', icon: 'building', badge: 'Multi-Campus' },
   { id: 'support-desk', title: 'User Support Desk', categoryId: 'governance-access', icon: 'life-buoy', badge: 'Corrections' },
 
-  { id: 'academic-streams', title: 'Subject Streams', categoryId: 'academic-curriculum', icon: 'book', badge: 'Grades 10-12' },
+  { id: 'academic-streams', title: 'Subject Streams', categoryId: 'academic-curriculum', icon: 'book', badge: 'Grades 8-12' },
   { id: 'subjects', title: 'School Curriculum & Subjects', categoryId: 'academic-curriculum', icon: 'book', badge: 'Grades 8-12' },
   { id: 'lesson-planning', title: 'Lesson Planning Oversight', categoryId: 'academic-curriculum', icon: 'book', badge: 'Teachers' },
   { id: 'classes-streams', title: 'Dynamic Classes & Homerooms', categoryId: 'academic-curriculum', icon: 'users', badge: 'Class Teachers' },

@@ -117,23 +117,43 @@ function advisoryLockKeyForLearner(idNumber, childId, academicYear) {
 }
 
 async function fetchSchoolSubjectConfig(executor, schoolId, academicYear, grade, schoolRow = null) {
+  const nscRules = require('./nscCurriculum');
   let offerings = [];
   let streams = [];
   const gradeNum = Number(grade);
   const yearNum = Number(academicYear);
+  let resolvedYear = yearNum;
 
   try {
-    const offRes = await executor.query(
-      `SELECT id, subject_name, category, language_level, is_required, is_active, stream_name
+    let offRes = await executor.query(
+      `SELECT id, academic_year, subject_name, category, language_level, is_required, is_active
        FROM school_subject_offerings
        WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND COALESCE(is_active, TRUE) = TRUE
        ORDER BY category, subject_name`,
       [schoolId, yearNum, gradeNum]
     );
+    if (!offRes.rows.length) {
+      const latestRes = await executor.query(
+        `SELECT academic_year FROM school_subject_offerings
+         WHERE school_id = $1 AND grade = $2 AND COALESCE(is_active, TRUE) = TRUE
+         ORDER BY academic_year DESC LIMIT 1`,
+        [schoolId, gradeNum]
+      );
+      if (latestRes.rows[0]?.academic_year) {
+        resolvedYear = Number(latestRes.rows[0].academic_year);
+        offRes = await executor.query(
+          `SELECT id, academic_year, subject_name, category, language_level, is_required, is_active
+           FROM school_subject_offerings
+           WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND COALESCE(is_active, TRUE) = TRUE
+           ORDER BY category, subject_name`,
+          [schoolId, resolvedYear, gradeNum]
+        );
+      }
+    }
     const seen = new Set();
     for (const row of offRes.rows) {
       let displayName = String(row.subject_name || '').trim();
-      const level = String(row.language_level || '').trim();
+      const level = nscRules.normalizeLanguageLevel(row.language_level);
       if (String(row.category || '').toLowerCase() === 'language' && level && !displayName.toLowerCase().includes(level.toLowerCase())) {
         displayName = `${displayName} ${level}`;
       }
@@ -162,21 +182,38 @@ async function fetchSchoolSubjectConfig(executor, schoolId, academicYear, grade,
         is_active: true
       });
     }
-  } catch (_) {
-    offerings = [];
+  } catch (err) {
+    nscRules.wrapCurriculumSchemaError(err, 'fetchSchoolSubjectConfig:offerings');
   }
 
   try {
-    const streamRes = await executor.query(
+    let streamRes = await executor.query(
       `SELECT id, school_id, academic_year, grade, name, mathematics_option, electives, status
        FROM academic_streams
-       WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND LOWER(status) = 'published'
+       WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND LOWER(status) IN ('published', 'draft')
        ORDER BY name`,
       [schoolId, yearNum, gradeNum]
     );
+    if (!streamRes.rows.length) {
+      const latestStreamYear = await executor.query(
+        `SELECT academic_year FROM academic_streams
+         WHERE school_id = $1 AND grade = $2 AND LOWER(status) IN ('published', 'draft')
+         ORDER BY academic_year DESC LIMIT 1`,
+        [schoolId, gradeNum]
+      );
+      if (latestStreamYear.rows[0]?.academic_year) {
+        streamRes = await executor.query(
+          `SELECT id, school_id, academic_year, grade, name, mathematics_option, electives, status
+           FROM academic_streams
+           WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND LOWER(status) IN ('published', 'draft')
+           ORDER BY name`,
+          [schoolId, Number(latestStreamYear.rows[0].academic_year), gradeNum]
+        );
+      }
+    }
     streams = streamRes.rows;
-  } catch (_) {
-    streams = [];
+  } catch (err) {
+    nscRules.wrapCurriculumSchemaError(err, 'fetchSchoolSubjectConfig:streams');
   }
 
   let fallbackOfferedSubjects = [];
@@ -195,10 +232,31 @@ async function fetchSchoolSubjectConfig(executor, schoolId, academicYear, grade,
     }
   }
 
+  // If no language offerings exist yet in school_subject_offerings, surface the school's registered offered_languages
+  if (!offerings.some((o) => String(o.category || '').toLowerCase() === 'language') && school?.offered_languages) {
+    const parsedLangs = nscRules.parseSchoolOfferedLanguages(school.offered_languages);
+    const seen = new Set(offerings.map((o) => o.subject_name.toLowerCase()));
+    for (const lang of parsedLangs) {
+      const displayName = `${lang.language} ${lang.level}`;
+      if (seen.has(displayName.toLowerCase())) continue;
+      seen.add(displayName.toLowerCase());
+      offerings.push({
+        id: null,
+        subject_name: displayName,
+        raw_subject_name: lang.language,
+        category: 'language',
+        language_level: lang.level,
+        is_required: Boolean(lang.required),
+        is_active: true
+      });
+    }
+  }
+
   return {
     offerings,
     streams,
     fallbackOfferedSubjects,
+    resolved_year: resolvedYear,
     source: offerings.length > 0 ? 'school_subject_offerings' : (fallbackOfferedSubjects.length > 0 ? 'schools.offered_subjects' : 'unconfigured')
   };
 }
@@ -448,8 +506,6 @@ async function ensureAccountWithSafeActivation(executor, {
  * Letter PDF, dispatches Acceptance Email, and sends in-app notifications.
  */
 async function handleApplicationApproved({ applicationId, actor = null, baseUrl = '', assignedClassId = null }) {
-  await ensureRegistrationSchema(db);
-
   const appRes = await db.query(
     `SELECT a.*, s.name AS school_name
      FROM applications a
@@ -619,7 +675,6 @@ async function handleApplicationApproved({ applicationId, actor = null, baseUrl 
  * Generates Acceptance Letter PDF for an authorized Parent, Learner, or accepting School Admin.
  */
 async function generateAcceptanceLetterForActor({ applicationId, actor }) {
-  await ensureRegistrationSchema(db);
   const appRes = await db.query(
     `SELECT a.*, s.name AS school_name
      FROM applications a
@@ -684,8 +739,6 @@ async function generateAcceptanceLetterForActor({ applicationId, actor }) {
  * authenticated Parent or Learner.
  */
 async function getMyRegistrations(actor) {
-  await ensureRegistrationSchema(db);
-
   const role = normalizeRole(actor.role);
   if (!isParentRole(role) && !isLearnerRole(role)) {
     const err = new Error('Only parent and learner accounts can access personal learner registrations.');
@@ -914,8 +967,6 @@ async function getMyRegistrations(actor) {
  * - Terms & Conditions text + version
  */
 async function getRegistrationContext({ applicationId, actor }) {
-  await ensureRegistrationSchema(db);
-
   const appRes = await db.query(
     `SELECT a.*, s.name AS school_name
      FROM applications a
@@ -1058,8 +1109,6 @@ async function getRegistrationContext({ applicationId, actor }) {
  * notifications after commit.
  */
 async function completeLearnerRegistration({ applicationId, actor, payload = {} }) {
-  await ensureRegistrationSchema(db);
-
   if (payload.terms_accepted !== true && payload.termsAccepted !== true) {
     const err = new Error('You must explicitly review and accept the Registration Terms & Conditions before completing registration.');
     err.status = 400;
@@ -1630,7 +1679,6 @@ async function dispatchPostRegistrationNotifications(txResult) {
  * and deregistration/transfer requests.
  */
 async function getSchoolRegistrationDashboard({ schoolId, actor }) {
-  await ensureRegistrationSchema(db);
   const targetSchoolId = Number(schoolId);
   if (!Number.isInteger(targetSchoolId) || targetSchoolId <= 0) {
     const err = new Error('A valid school context is required.');
@@ -1715,8 +1763,6 @@ async function getSchoolRegistrationDashboard({ schoolId, actor }) {
  * Controlled Deregistration / Transfer Request Creation (Parent or authorized Learner).
  */
 async function createDeregistrationRequest({ actor, childId, requestType = 'deregistration', reason = '', targetSchoolName = null }) {
-  await ensureRegistrationSchema(db);
-
   const childRes = await db.query(
     `SELECT c.*,
             cl.name AS class_name,
@@ -1892,7 +1938,6 @@ async function createDeregistrationRequest({ actor, childId, requestType = 'dere
  * - School Admin / Principal: only their own school
  */
 async function listDeregistrationRequests({ actor, schoolId = null }) {
-  await ensureRegistrationSchema(db);
   const role = normalizeRole(actor.role);
   const actorId = Number(actor.id);
 
@@ -1954,8 +1999,6 @@ async function listDeregistrationRequests({ actor, schoolId = null }) {
  * Class Teachers CANNOT directly finalize deregistration.
  */
 async function reviewDeregistrationAsTeacher({ requestId, actor, notes = '' }) {
-  await ensureRegistrationSchema(db);
-
   const saved = await withTransaction(async (client) => {
     const res = await client.query(
       `SELECT r.*, c.full_name AS learner_first_name, c.surname AS learner_surname,
@@ -2045,7 +2088,6 @@ async function reviewDeregistrationAsTeacher({ requestId, actor, notes = '' }) {
  * On REJECT: restores learner_registrations status to 'completed' and keeps active enrollment intact.
  */
 async function decideDeregistrationAsAdmin({ requestId, actor, decision, notes = '' }) {
-  await ensureRegistrationSchema(db);
   const action = normalizeRole(decision) === 'approve' || normalizeRole(decision) === 'approved'
     ? 'admin_approve'
     : (normalizeRole(decision) === 'reject' || normalizeRole(decision) === 'rejected' ? 'admin_reject' : null);

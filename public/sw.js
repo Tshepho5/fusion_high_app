@@ -1,7 +1,5 @@
-const CACHE_NAME = 'geleza-sa-cache-v2.8';
+const CACHE_NAME = 'geleza-sa-cache-v2.9';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/favicon.svg',
   '/offline.html',
@@ -11,11 +9,18 @@ const STATIC_ASSETS = [
   '/assets/fusion-app-icon.png'
 ];
 
-// Install Event: Pre-cache core shell
+// Handle skipWaiting message from client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Install Event: Pre-cache static shell assets (excluding dynamic HTML)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[PWA SW] Pre-caching offline shell and assets');
+      console.log('[PWA SW v2.3] Pre-caching static assets');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[PWA SW] Some initial assets failed to cache:', err);
       });
@@ -24,14 +29,14 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate Event: Clean up old cache versions
+// Activate Event: Clean up all old cache versions immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('[PWA SW] Clearing legacy cache:', key);
+            console.log('[PWA SW v2.3] Purging legacy cache:', key);
             return caches.delete(key);
           }
         })
@@ -51,10 +56,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets and Scripts: Cache First with Network Refresh
+  // Unfingerprinted static scripts/styles (e.g. /js/application.js, /css/application.css):
+  // Network-First so returning browsers always load updated application logic matching fresh HTML.
+  if (url.pathname.startsWith('/js/') || url.pathname.startsWith('/css/')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const resClone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Fingerprinted build assets (/assets/*.js, /assets/*.css) and icons/fonts: Cache First with Network Refresh
   if (
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css') ||
+    url.pathname.startsWith('/assets/') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.png') ||
     url.pathname.endsWith('.woff2') ||

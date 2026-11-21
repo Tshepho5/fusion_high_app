@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/api';
 import { IncompleteLearnerSubjects } from './IncompleteLearnerSubjects';
+import { AcademicStreamsManager } from './AcademicStreamsManager';
 import { Badge } from '../common/Badge';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Modal } from '../common/Modal';
@@ -68,6 +69,7 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
 }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeView, setActiveView] = useState<'analytics' | 'configure'>('analytics');
   const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
   
   // Filters
@@ -221,14 +223,41 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
-            <button
-              onClick={() => fetchSubjects(false)}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold transition-colors"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              <span>Refresh Subjects</span>
-            </button>
+            <div className="inline-flex rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100/80 dark:bg-surface-darker p-1">
+              <button
+                type="button"
+                onClick={() => setActiveView('analytics')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeView === 'analytics'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Subject Registers
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('configure')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeView === 'configure'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>Manage Offerings &amp; Streams</span>
+              </button>
+            </div>
+            {activeView === 'analytics' && (
+              <button
+                onClick={() => fetchSubjects(false)}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-darker hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-bold transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh Subjects</span>
+              </button>
+            )}
             {onOpenReportCardStudio && (
               <button
                 onClick={() => onOpenReportCardStudio(selectedGrade !== 'all' ? selectedGrade : '10', selectedStream !== 'All' ? selectedStream : 'Science')}
@@ -242,6 +271,10 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
         </div>
       </div>
 
+      {activeView === 'configure' ? (
+        <AcademicStreamsManager onUpdated={() => fetchSubjects(false)} />
+      ) : (
+        <>
       <IncompleteLearnerSubjects />
 
       {loadError && (
@@ -653,6 +686,8 @@ export const SchoolSubjectsManager: React.FC<SchoolSubjectsManagerProps> = ({
           </div>
         )}
       </Modal>
+        </>
+      )}
     </div>
   );
 };

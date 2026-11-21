@@ -246,7 +246,6 @@ exports.submitApplication = async (req, res) => {
 
     const schoolSlug = targetSchool.slug || 'fusion-high';
     const schoolName = targetSchool.name || 'Fusion High School';
-    const offeredLangs = targetSchool.offered_languages || ['English', 'Sepedi', 'isiZulu'];
     const homeLanguageInput = (body.home_language || '').trim();
 
     const applicationNumber = applicationService.generateApplicationNumber(schoolSlug);
@@ -256,7 +255,7 @@ exports.submitApplication = async (req, res) => {
     const academicYear = parseInt(body.academic_year, 10) || new Date().getFullYear();
     let stream = 'General';
     let selectedSubjects = [];
-    let homeLanguage = homeLanguageInput || 'English';
+    let homeLanguage = homeLanguageInput;
     let languageAdvisory = null;
     let subjectPackage = null;
     let academicStreamId = null;
@@ -287,13 +286,25 @@ exports.submitApplication = async (req, res) => {
         });
       }
     } else {
-      const isLangOffered = offeredLangs.some(l =>
-        l.toLowerCase().includes(homeLanguage.toLowerCase()) ||
-        homeLanguage.toLowerCase().includes(l.toLowerCase())
-      );
-      if (!isLangOffered) {
-        languageAdvisory = `Applicant selected ${homeLanguage}. ${schoolName} official language offerings include ${offeredLangs.join(', ')}. Learner will be accommodated under available language curriculum.`;
+      const schoolLangs = await academicStreams.readApplicantLanguages(schoolId, academicYear, gradeApplied);
+      const offeredHomeLangs = (schoolLangs.languages || []).filter((l) => l.level === 'Home Language');
+      if (!offeredHomeLangs.length) {
+        return res.status(400).json({
+          success: false,
+          error: `${schoolName} has not configured its offered Home Languages for Grade ${gradeApplied} yet. Please ask the school administrator to update the school's subject offerings before submitting.`
+        });
       }
+      const matchedHome = offeredHomeLangs.find((l) =>
+        l.language.toLowerCase() === homeLanguageInput.toLowerCase()
+        || `${l.language} home language`.toLowerCase() === homeLanguageInput.toLowerCase()
+      );
+      if (!matchedHome) {
+        return res.status(400).json({
+          success: false,
+          error: `Please select a Home Language offered by ${schoolName} for Grade ${gradeApplied}: ${offeredHomeLangs.map((l) => l.language).join(', ')}.`
+        });
+      }
+      homeLanguage = matchedHome.language;
       selectedSubjects = curriculumService.getSubjectsForGradeAndStream(gradeApplied, stream, homeLanguage);
     }
 

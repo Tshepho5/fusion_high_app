@@ -972,10 +972,12 @@ export const schoolRegistrationService = {
 };
 
 export const academicStreamService = {
-  configuration: (schoolId: number, year: number, grade: number) =>
+  configuration: (schoolId: number, year: number | 'auto', grade: number) =>
     api.get(`/api/schools/${schoolId}/academic-configuration`, { params: { year, grade } }).then(res => res.data),
   saveOfferings: (schoolId: number, data: unknown) =>
     api.put(`/api/schools/${schoolId}/academic-offerings`, data).then(res => res.data),
+  copyYear: (schoolId: number, source_year: number, target_year: number) =>
+    api.post(`/api/schools/${schoolId}/academic-offerings/copy-year`, { source_year, target_year }).then(res => res.data),
   saveStream: (schoolId: number, data: unknown, streamId?: number | null) =>
     streamId
       ? api.put(`/api/schools/${schoolId}/academic-streams/${streamId}`, data).then(res => res.data)

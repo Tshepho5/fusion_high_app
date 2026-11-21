@@ -3648,15 +3648,79 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
         const gradeFilter = req.query.grade ? parseInt(req.query.grade, 10) : null;
         const streamFilter = (req.query.stream || '').trim();
 
-        // Saved school offerings are the curriculum. Learner subject lists fill grades the offerings table does not cover.
+        // Saved school offerings (latest configured academic year per grade) are the curriculum.
+        // Learner subject lists fill grades the offerings table does not cover.
         const offerings = await db.query(
-            `SELECT id, subject_name AS name, NULL::text AS code, grade, NULL::text AS stream
-             FROM school_subject_offerings
-             WHERE school_id = $1 AND is_active = TRUE
-             ORDER BY grade ASC, subject_name ASC`,
+            `WITH latest_years AS (
+               SELECT grade, MAX(academic_year) AS max_year
+               FROM school_subject_offerings
+               WHERE school_id = $1 AND is_active = TRUE
+               GROUP BY grade
+             )
+             SELECT o.id,
+                    CASE
+                      WHEN o.category = 'language' AND COALESCE(o.language_level, '') <> ''
+                           AND LOWER(o.subject_name) NOT LIKE '%' || LOWER(o.language_level) || '%'
+                      THEN o.subject_name || ' ' || o.language_level
+                      ELSE o.subject_name
+                    END AS name,
+                    o.subject_name AS raw_name,
+                    o.category,
+                    o.language_level,
+                    o.academic_year,
+                    NULL::text AS code,
+                    o.grade,
+                    NULL::text AS stream
+             FROM school_subject_offerings o
+             JOIN latest_years ly ON ly.grade = o.grade AND ly.max_year = o.academic_year
+             WHERE o.school_id = $1 AND o.is_active = TRUE
+             ORDER BY o.grade ASC, o.category ASC, o.subject_name ASC`,
             [schoolId]
-        ).catch(() => ({ rows: [] }));
-        const coveredGrades = new Set(offerings.rows.map((row) => Number(row.grade)));
+        );
+
+        const streamsRes = await db.query(
+            `WITH latest_stream_years AS (
+               SELECT grade, MAX(academic_year) AS max_year
+               FROM academic_streams
+               WHERE school_id = $1 AND status <> 'archived'
+               GROUP BY grade
+             )
+             SELECT s.grade, s.name, s.mathematics_option, s.electives
+             FROM academic_streams s
+             JOIN latest_stream_years ly ON ly.grade = s.grade AND ly.max_year = s.academic_year
+             WHERE s.school_id = $1 AND s.status <> 'archived'`,
+            [schoolId]
+        );
+
+        const streamsByGrade = new Map();
+        for (const st of streamsRes.rows) {
+            const g = Number(st.grade);
+            if (!streamsByGrade.has(g)) streamsByGrade.set(g, []);
+            streamsByGrade.get(g).push(st);
+        }
+
+        const enrichedOfferings = offerings.rows.map((row) => {
+            const g = Number(row.grade);
+            if (g <= 9) {
+                return { ...row, stream: 'General' };
+            }
+            if (row.category === 'language') {
+                return { ...row, stream: 'All Streams (Language)' };
+            }
+            const gradeStreams = streamsByGrade.get(g) || [];
+            const matchedStreams = gradeStreams
+                .filter((st) =>
+                    String(st.mathematics_option || '').toLowerCase() === String(row.raw_name || row.name).toLowerCase()
+                    || (Array.isArray(st.electives) && st.electives.some((el) => String(el).toLowerCase() === String(row.raw_name || row.name).toLowerCase()))
+                )
+                .map((st) => st.name);
+            return {
+                ...row,
+                stream: matchedStreams.length ? matchedStreams.join(', ') : 'General'
+            };
+        });
+
+        const coveredGrades = new Set(enrichedOfferings.map((row) => Number(row.grade)));
         const enrolled = await db.query(
             `SELECT DISTINCT NULL::int AS id, subject_name AS name, NULL::text AS code, grade, stream
              FROM (
@@ -3668,7 +3732,7 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
              ORDER BY grade ASC, subject_name ASC`,
             [schoolId]
         ).catch(() => ({ rows: [] }));
-        let subjects = offerings.rows.concat(
+        let subjects = enrichedOfferings.concat(
             enrolled.rows.filter((row) => !coveredGrades.has(Number(row.grade)))
         );
 
@@ -3676,12 +3740,12 @@ exports.getSchoolSubjectsSummary = async (req, res) => {
             subjects = subjects.filter((row) => Number(row.grade) === gradeFilter);
         }
         if (streamFilter && streamFilter !== 'All') {
-            let normStream = streamFilter;
-            if (normStream.toLowerCase().includes('science')) normStream = 'Science';
-            else if (normStream.toLowerCase().includes('commerce')) normStream = 'Commerce';
-            else if (normStream.toLowerCase().includes('tourism')) normStream = 'Tourism';
-            else if (normStream.toLowerCase().includes('general')) normStream = 'General';
-            subjects = subjects.filter((row) => !row.stream || row.stream === normStream);
+            const needle = streamFilter.toLowerCase();
+            subjects = subjects.filter((row) =>
+                !row.stream
+                || String(row.stream).toLowerCase().includes(needle)
+                || String(row.stream).toLowerCase().includes('all streams')
+            );
         }
 
         // 2. Fetch all educators and their assigned subjects

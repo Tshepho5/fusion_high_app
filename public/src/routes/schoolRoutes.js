@@ -50,6 +50,7 @@ router.get('/catalogue/nsc', academicStreamController.catalogue);
 router.get('/:id/published-streams', academicStreamController.published);
 router.get('/:id/academic-configuration', auth, requireRole(['admin']), academicStreamController.configuration);
 router.put('/:id/academic-offerings', auth, requireRole(['admin']), academicStreamController.saveOfferings);
+router.post('/:id/academic-offerings/copy-year', auth, requireRole(['admin']), academicStreamController.copyYear);
 router.post('/:id/academic-streams', auth, requireRole(['admin']), academicStreamController.saveStream);
 router.put('/:id/academic-streams/:streamId', auth, requireRole(['admin']), academicStreamController.saveStream);
 router.post('/:id/academic-streams/:streamId/publish', auth, requireRole(['admin']), academicStreamController.publishStream);

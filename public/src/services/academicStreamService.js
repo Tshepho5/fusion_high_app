@@ -1,102 +1,292 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const db = require('../../../db/db');
 const { withTransaction } = require('../../../db/transaction');
 const rules = require('./nscCurriculum');
 
-let schemaReady = null;
+const CURRICULUM_MIGRATION_PATH = path.join(
+  __dirname,
+  '../../../db/migrations/20261121_curriculum_grades_8_12_upgrade.sql'
+);
 
-async function ensureSchema() {
-  if (!schemaReady) {
-    schemaReady = db.query(`
-      CREATE TABLE IF NOT EXISTS school_subject_offerings (
-        id SERIAL PRIMARY KEY,
-        school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-        academic_year INTEGER NOT NULL,
-        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
-        subject_name VARCHAR(80) NOT NULL,
-        category VARCHAR(20) NOT NULL CHECK (category IN ('language', 'mathematics', 'elective')),
-        language_level VARCHAR(40) NOT NULL DEFAULT '',
-        stream_name VARCHAR(80) NOT NULL DEFAULT '',
-        is_required BOOLEAN NOT NULL DEFAULT FALSE,
-        is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE UNIQUE INDEX IF NOT EXISTS school_subject_offerings_unique
-        ON school_subject_offerings (school_id, academic_year, grade, stream_name, subject_name, language_level);
-      CREATE INDEX IF NOT EXISTS school_subject_offerings_lookup
-        ON school_subject_offerings (school_id, academic_year, grade, is_active);
-
-      CREATE TABLE IF NOT EXISTS academic_streams (
-        id SERIAL PRIMARY KEY,
-        school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-        academic_year INTEGER NOT NULL,
-        grade INTEGER NOT NULL CHECK (grade BETWEEN 8 AND 12),
-        name VARCHAR(80) NOT NULL,
-        mathematics_option VARCHAR(40) NOT NULL,
-        electives TEXT[] NOT NULL,
-        status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-        created_by INTEGER,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-      CREATE UNIQUE INDEX IF NOT EXISTS academic_streams_active_name
-        ON academic_streams (school_id, academic_year, grade, lower(name))
-        WHERE status <> 'archived';
-      CREATE INDEX IF NOT EXISTS academic_streams_lookup
-        ON academic_streams (school_id, academic_year, grade, status);
-
-      CREATE TABLE IF NOT EXISTS subject_change_approvals (
-        id SERIAL PRIMARY KEY,
-        school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
-        id_number VARCHAR(20) NOT NULL,
-        academic_year INTEGER NOT NULL,
-        grade INTEGER NOT NULL,
-        academic_stream_id INTEGER REFERENCES academic_streams(id) ON DELETE CASCADE,
-        approved_by INTEGER,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      DO $$ BEGIN
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'applications') THEN
-          ALTER TABLE applications ADD COLUMN IF NOT EXISTS first_additional_language VARCHAR(80);
-          ALTER TABLE applications ADD COLUMN IF NOT EXISTS academic_stream_id INTEGER;
-          ALTER TABLE applications ADD COLUMN IF NOT EXISTS subject_package JSONB;
-        END IF;
-      END $$;
-    `).catch((error) => {
-      schemaReady = null;
-      throw error;
-    });
-  }
-  return schemaReady;
+/**
+ * Explicit schema migration helper for isolated tests and controlled maintenance scripts ONLY.
+ * Never called implicitly inside normal HTTP GET/PUT/POST request handlers.
+ */
+async function ensureSchema(executor = db) {
+  const sql = fs.readFileSync(CURRICULUM_MIGRATION_PATH, 'utf8');
+  await executor.query(sql);
 }
+
+const wrapSchemaError = rules.wrapCurriculumSchemaError;
 
 function groupOfferings(rows) {
   const languages = [];
   const mathematics = [];
   const electives = [];
+  const seenLang = new Set();
+  const seenMath = new Set();
+  const seenElective = new Set();
   rows.filter((row) => row.is_active !== false).forEach((row) => {
+    const name = String(row.subject_name || '').trim();
+    if (!name) return;
     if (row.category === 'language') {
-      languages.push({ language: row.subject_name, level: row.language_level, required: row.is_required });
+      const level = rules.normalizeLanguageLevel(row.language_level);
+      const key = `${name.toLowerCase()}|${level.toLowerCase()}`;
+      if (seenLang.has(key)) return;
+      seenLang.add(key);
+      languages.push({ language: name, level, required: Boolean(row.is_required) });
     } else if (row.category === 'mathematics') {
-      mathematics.push(row.subject_name);
+      const key = name.toLowerCase();
+      if (seenMath.has(key)) return;
+      seenMath.add(key);
+      mathematics.push(name);
     } else if (row.category === 'elective') {
-      electives.push(row.subject_name);
+      const key = name.toLowerCase();
+      if (seenElective.has(key)) return;
+      seenElective.add(key);
+      electives.push(name);
     }
   });
   return { languages, mathematics, electives };
 }
 
 async function readOfferings(schoolId, year, grade) {
-  await ensureSchema();
-  const result = await db.query(
-    `SELECT subject_name, category, language_level, is_required, is_active
-     FROM school_subject_offerings
-     WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND is_active = TRUE
-     ORDER BY category, subject_name, language_level`,
-    [schoolId, year, grade]
-  );
-  return groupOfferings(result.rows);
+  try {
+    const result = await db.query(
+      `SELECT subject_name, category, language_level, is_required, is_active
+       FROM school_subject_offerings
+       WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND is_active = TRUE
+       ORDER BY category, subject_name, language_level`,
+      [schoolId, year, grade]
+    );
+    return groupOfferings(result.rows);
+  } catch (error) {
+    wrapSchemaError(error, 'readOfferings');
+  }
+}
+
+async function getConfiguredYears(schoolId) {
+  try {
+    const res = await db.query(
+      `SELECT DISTINCT academic_year
+       FROM (
+         SELECT academic_year FROM school_subject_offerings WHERE school_id = $1 AND is_active = TRUE
+         UNION
+         SELECT academic_year FROM academic_streams WHERE school_id = $1 AND status <> 'archived'
+       ) years
+       ORDER BY academic_year DESC`,
+      [Number(schoolId)]
+    );
+    return res.rows.map((r) => Number(r.academic_year)).filter((y) => Number.isInteger(y));
+  } catch (error) {
+    wrapSchemaError(error, 'getConfiguredYears');
+  }
+}
+
+async function readAllGradeOfferings(schoolId, year) {
+  try {
+    const result = await db.query(
+      `SELECT grade, subject_name, category, language_level, is_required, is_active
+       FROM school_subject_offerings
+       WHERE school_id = $1 AND academic_year = $2 AND is_active = TRUE
+       ORDER BY grade, category, subject_name, language_level`,
+      [Number(schoolId), Number(year)]
+    );
+    const byGrade = {};
+    for (const g of [8, 9, 10, 11, 12]) {
+      byGrade[g] = groupOfferings(result.rows.filter((r) => Number(r.grade) === g));
+    }
+    return byGrade;
+  } catch (error) {
+    wrapSchemaError(error, 'readAllGradeOfferings');
+  }
+}
+
+async function getSchoolRegistrationProfile(schoolId) {
+  try {
+    const res = await db.query(
+      'SELECT offered_languages, offered_subjects, offered_streams FROM schools WHERE id = $1 LIMIT 1',
+      [Number(schoolId)]
+    );
+    const row = res.rows[0];
+    if (!row) return { languages: [], mathematics: [], electives: [], streams: [] };
+    const parsedLangs = rules.parseSchoolOfferedLanguages(row.offered_languages);
+    const parsedSubs = rules.parseSchoolOfferedSubjects(row.offered_subjects);
+    const mergedLangs = [...parsedLangs];
+    const seen = new Set(mergedLangs.map((l) => `${l.language.toLowerCase()}|${l.level.toLowerCase()}`));
+    for (const extra of parsedSubs.languages) {
+      const k = `${extra.language.toLowerCase()}|${extra.level.toLowerCase()}`;
+      if (!seen.has(k)) {
+        seen.add(k);
+        mergedLangs.push(extra);
+      }
+    }
+    let streams = [];
+    if (Array.isArray(row.offered_streams)) {
+      streams = row.offered_streams.filter(Boolean);
+    } else if (typeof row.offered_streams === 'string' && row.offered_streams.trim()) {
+      try {
+        const p = JSON.parse(row.offered_streams);
+        streams = Array.isArray(p) ? p.filter(Boolean) : row.offered_streams.split(',').map((s) => s.trim()).filter(Boolean);
+      } catch (_) {
+        streams = row.offered_streams.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    }
+    return {
+      languages: mergedLangs,
+      mathematics: parsedSubs.mathematics,
+      electives: parsedSubs.electives,
+      streams
+    };
+  } catch (_) {
+    return { languages: [], mathematics: [], electives: [], streams: [] };
+  }
+}
+
+async function syncSchoolProfileCurriculum(schoolId) {
+  try {
+    const sId = Number(schoolId);
+    const years = await getConfiguredYears(sId);
+    if (!years.length) return;
+    const latestYear = years[0];
+    const [offRes, streamRes] = await Promise.all([
+      db.query(
+        `SELECT subject_name, category, language_level
+         FROM school_subject_offerings
+         WHERE school_id = $1 AND academic_year = $2 AND is_active = TRUE
+         ORDER BY category, subject_name`,
+        [sId, latestYear]
+      ),
+      db.query(
+        `SELECT DISTINCT name
+         FROM academic_streams
+         WHERE school_id = $1 AND academic_year = $2 AND status <> 'archived'
+         ORDER BY name`,
+        [sId, latestYear]
+      )
+    ]);
+
+    const langs = [];
+    const seenLang = new Set();
+    const subjects = [];
+    const seenSub = new Set();
+
+    for (const row of offRes.rows) {
+      const name = String(row.subject_name || '').trim();
+      if (!name) continue;
+      if (row.category === 'language') {
+        const level = rules.normalizeLanguageLevel(row.language_level);
+        const label = level ? `${name} ${level}` : name;
+        if (!seenLang.has(label.toLowerCase())) {
+          seenLang.add(label.toLowerCase());
+          langs.push(label);
+        }
+      } else {
+        if (!seenSub.has(name.toLowerCase())) {
+          seenSub.add(name.toLowerCase());
+          subjects.push(name);
+        }
+      }
+    }
+    if (!seenSub.has(rules.LIFE_ORIENTATION.toLowerCase())) {
+      subjects.push(rules.LIFE_ORIENTATION);
+    }
+
+    const streamNames = streamRes.rows.map((r) => String(r.name || '').trim()).filter(Boolean);
+
+    const updates = [];
+    const params = [];
+    if (langs.length) {
+      params.push(langs);
+      updates.push(`offered_languages = $${params.length}`);
+    }
+    if (subjects.length) {
+      params.push(subjects);
+      updates.push(`offered_subjects = $${params.length}`);
+    }
+    if (streamNames.length) {
+      params.push(streamNames);
+      updates.push(`offered_streams = $${params.length}`);
+    }
+    if (!updates.length) return;
+    params.push(sId);
+    await db.query(
+      `UPDATE schools SET ${updates.join(', ')} WHERE id = $${params.length}`,
+      params
+    );
+  } catch (_) {
+    // Minimal test schemas may omit schools.offered_* columns; ignore safely.
+  }
+}
+
+async function seedOfferingsFromSchoolProfile(client, schoolId, { offeredLanguages, offeredSubjects, year } = {}) {
+  const tableCheck = await client.query(`SELECT to_regclass('public.school_subject_offerings') AS tbl`);
+  if (!tableCheck.rows[0]?.tbl) return;
+  const academicYear = Number(year) || new Date().getFullYear();
+  const parsedLangs = rules.parseSchoolOfferedLanguages(offeredLanguages);
+  const parsedSubs = rules.parseSchoolOfferedSubjects(offeredSubjects);
+
+  const mergedLangs = [...parsedLangs];
+  const seenLang = new Set(mergedLangs.map((l) => `${l.language.toLowerCase()}|${l.level.toLowerCase()}`));
+  for (const extra of parsedSubs.languages) {
+    const key = `${extra.language.toLowerCase()}|${extra.level.toLowerCase()}`;
+    if (!seenLang.has(key)) {
+      seenLang.add(key);
+      mergedLangs.push(extra);
+    }
+  }
+  if (!mergedLangs.length && !parsedSubs.mathematics.length && !parsedSubs.electives.length) return;
+
+  for (const grade of [8, 9, 10, 11, 12]) {
+    const isSenior = grade === 8 || grade === 9;
+    for (const lang of mergedLangs) {
+      await client.query(
+        `INSERT INTO school_subject_offerings
+          (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_required, is_active)
+         VALUES ($1, $2, $3, '', $4, 'language', $5, FALSE, TRUE)
+         ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
+         DO NOTHING`,
+        [schoolId, academicYear, grade, lang.language, lang.level]
+      );
+    }
+    if (isSenior) {
+      for (const core of rules.SENIOR_PHASE_COMPULSORY) {
+        const category = core === rules.MATHEMATICS ? 'mathematics' : 'elective';
+        await client.query(
+          `INSERT INTO school_subject_offerings
+            (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_required, is_active)
+           VALUES ($1, $2, $3, '', $4, $5, '', TRUE, TRUE)
+           ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
+           DO NOTHING`,
+          [schoolId, academicYear, grade, core, category]
+        );
+      }
+    } else {
+      for (const math of parsedSubs.mathematics) {
+        await client.query(
+          `INSERT INTO school_subject_offerings
+            (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_active)
+           VALUES ($1, $2, $3, '', $4, 'mathematics', '', TRUE)
+           ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
+           DO NOTHING`,
+          [schoolId, academicYear, grade, math]
+        );
+      }
+      for (const elective of parsedSubs.electives) {
+        await client.query(
+          `INSERT INTO school_subject_offerings
+            (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_active)
+           VALUES ($1, $2, $3, '', $4, 'elective', '', TRUE)
+           ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
+           DO NOTHING`,
+          [schoolId, academicYear, grade, elective]
+        );
+      }
+    }
+  }
 }
 
 const { parseSchoolOfferedLanguages } = rules;
@@ -109,7 +299,6 @@ const { parseSchoolOfferedLanguages } = rules;
  * 4. schools.offered_languages saved during school registration / curriculum setup
  */
 async function readApplicantLanguages(schoolId, year, grade) {
-  await ensureSchema();
   const sId = Number(schoolId);
   const yNum = Number(year) || null;
   const gNum = Number(grade) || null;
@@ -121,43 +310,48 @@ async function readApplicantLanguages(schoolId, year, grade) {
     }
   }
 
-  if (gNum) {
-    const sameGradeAnyYear = await db.query(
-      `SELECT academic_year, subject_name, category, language_level, is_required, is_active
-       FROM school_subject_offerings
-       WHERE school_id = $1 AND grade = $2 AND is_active = TRUE
-       ORDER BY academic_year DESC, category, subject_name, language_level`,
-      [sId, gNum]
-    );
-    if (sameGradeAnyYear.rows.length > 0) {
-      const latestYear = Number(sameGradeAnyYear.rows[0].academic_year);
-      const grouped = groupOfferings(sameGradeAnyYear.rows.filter((r) => Number(r.academic_year) === latestYear));
-      if (grouped.languages.length > 0) {
-        return { languages: grouped.languages, mathematics: grouped.mathematics, source: 'offerings_latest_year', year: latestYear };
+  try {
+    if (gNum) {
+      const sameGradeAnyYear = await db.query(
+        `SELECT academic_year, subject_name, category, language_level, is_required, is_active
+         FROM school_subject_offerings
+         WHERE school_id = $1 AND grade = $2 AND is_active = TRUE
+         ORDER BY academic_year DESC, category, subject_name, language_level`,
+        [sId, gNum]
+      );
+      if (sameGradeAnyYear.rows.length > 0) {
+        const latestYear = Number(sameGradeAnyYear.rows[0].academic_year);
+        const grouped = groupOfferings(sameGradeAnyYear.rows.filter((r) => Number(r.academic_year) === latestYear));
+        if (grouped.languages.length > 0) {
+          return { languages: grouped.languages, mathematics: grouped.mathematics, source: 'offerings_latest_year', year: latestYear };
+        }
       }
     }
-  }
 
-  const anyGrade = await db.query(
-    `SELECT academic_year, subject_name, category, language_level, is_required, is_active
-     FROM school_subject_offerings
-     WHERE school_id = $1 AND is_active = TRUE AND category = 'language'
-     ORDER BY academic_year DESC, subject_name, language_level`,
-    [sId]
-  );
-  if (anyGrade.rows.length > 0) {
-    const latestYear = Number(anyGrade.rows[0].academic_year);
-    const dedup = [];
-    const seen = new Set();
-    for (const row of anyGrade.rows.filter((r) => Number(r.academic_year) === latestYear)) {
-      const key = `${String(row.subject_name).toLowerCase()}|${String(row.language_level).toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      dedup.push({ language: row.subject_name, level: row.language_level, required: Boolean(row.is_required) });
+    const anyGrade = await db.query(
+      `SELECT academic_year, subject_name, category, language_level, is_required, is_active
+       FROM school_subject_offerings
+       WHERE school_id = $1 AND is_active = TRUE AND category = 'language'
+       ORDER BY academic_year DESC, subject_name, language_level`,
+      [sId]
+    );
+    if (anyGrade.rows.length > 0) {
+      const latestYear = Number(anyGrade.rows[0].academic_year);
+      const dedup = [];
+      const seen = new Set();
+      for (const row of anyGrade.rows.filter((r) => Number(r.academic_year) === latestYear)) {
+        const level = rules.normalizeLanguageLevel(row.language_level);
+        const key = `${String(row.subject_name).toLowerCase()}|${level.toLowerCase()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        dedup.push({ language: row.subject_name, level, required: Boolean(row.is_required) });
+      }
+      if (dedup.length > 0) {
+        return { languages: dedup, mathematics: [], source: 'offerings_school_wide', year: latestYear };
+      }
     }
-    if (dedup.length > 0) {
-      return { languages: dedup, mathematics: [], source: 'offerings_school_wide', year: latestYear };
-    }
+  } catch (error) {
+    wrapSchemaError(error, 'readApplicantLanguages');
   }
 
   try {
@@ -169,78 +363,175 @@ async function readApplicantLanguages(schoolId, year, grade) {
     if (parsed.length > 0) {
       return { languages: parsed, mathematics: [], source: 'school_profile', year: yNum };
     }
-  } catch (_) {}
+  } catch (error) {
+    if (error && error.code === '42703') {
+      // Minimal unit-test schemas omit schools.offered_languages; treat as absent school profile only.
+    } else {
+      throw error;
+    }
+  }
 
   return { languages: [], mathematics: [], source: 'unconfigured', year: yNum };
 }
 
 async function saveOfferings(schoolId, actorId, input) {
-  const checked = rules.validateOfferings(input);
-  if (!checked.ok) {
-    const error = new Error(checked.errors[0]);
-    error.status = 400;
-    error.errors = checked.errors;
-    throw error;
-  }
-  await ensureSchema();
-  const { academic_year: year, grade, languages, mathematics, electives } = checked.value;
-  const published = await db.query(
-    `SELECT name, mathematics_option, electives
-     FROM academic_streams
-     WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND status = 'published'`,
-    [schoolId, year, grade]
-  );
-  published.rows.forEach((stream) => {
-    const stillValid = rules.validateStream({
-      name: stream.name,
-      mathematics: stream.mathematics_option,
-      electives: stream.electives
-    }, { languages, mathematics, electives });
-    if (!stillValid.ok) {
-      const error = new Error(`Published stream ${stream.name} would become invalid. Archive it before removing those subjects.`);
+  const targetGrades = Array.isArray(input.apply_to_grades) && input.apply_to_grades.length
+    ? [...new Set(input.apply_to_grades.map(Number).filter((g) => [8, 9, 10, 11, 12].includes(g)))]
+    : [Number(input.grade)];
+
+  const validatedByGrade = [];
+  for (const targetGrade of targetGrades) {
+    const checked = rules.validateOfferings({ ...input, grade: targetGrade });
+    if (!checked.ok) {
+      const error = new Error(checked.errors[0]);
       error.status = 400;
+      error.errors = checked.errors;
       throw error;
     }
-  });
+    validatedByGrade.push(checked.value);
+  }
 
+  try {
+    for (const { academic_year: year, grade, languages, mathematics, electives } of validatedByGrade) {
+      const published = await db.query(
+        `SELECT name, mathematics_option, electives
+         FROM academic_streams
+         WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND status = 'published'`,
+        [schoolId, year, grade]
+      );
+      published.rows.forEach((stream) => {
+        const stillValid = rules.validateStream({
+          name: stream.name,
+          mathematics: stream.mathematics_option,
+          electives: stream.electives
+        }, { languages, mathematics, electives });
+        if (!stillValid.ok) {
+          const error = new Error(`Published stream ${stream.name} (Grade ${grade}) would become invalid. Archive it before removing those subjects.`);
+          error.status = 400;
+          throw error;
+        }
+      });
+    }
+
+    await withTransaction(async (client) => {
+      for (const { academic_year: year, grade, languages, mathematics, electives } of validatedByGrade) {
+        await client.query(
+          `UPDATE school_subject_offerings SET is_active = FALSE
+           WHERE school_id = $1 AND academic_year = $2 AND grade = $3`,
+          [schoolId, year, grade]
+        );
+        for (const row of languages) {
+          await client.query(
+            `INSERT INTO school_subject_offerings
+              (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_required, is_active)
+             VALUES ($1, $2, $3, '', $4, 'language', $5, $6, TRUE)
+             ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
+             DO UPDATE SET is_required = EXCLUDED.is_required, is_active = TRUE`,
+            [schoolId, year, grade, row.language, row.level, row.required]
+          );
+        }
+        for (const subject of mathematics) {
+          await client.query(
+            `INSERT INTO school_subject_offerings
+              (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_active)
+             VALUES ($1, $2, $3, '', $4, 'mathematics', '', TRUE)
+             ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
+             DO UPDATE SET is_active = TRUE`,
+            [schoolId, year, grade, subject]
+          );
+        }
+        for (const subject of electives) {
+          await client.query(
+            `INSERT INTO school_subject_offerings
+              (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_active)
+             VALUES ($1, $2, $3, '', $4, 'elective', '', TRUE)
+             ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
+             DO UPDATE SET is_active = TRUE`,
+            [schoolId, year, grade, subject]
+          );
+        }
+      }
+    });
+  } catch (error) {
+    wrapSchemaError(error, 'saveOfferings');
+  }
+  await syncSchoolProfileCurriculum(schoolId);
+  const primary = validatedByGrade[0];
+  return readOfferings(schoolId, primary.academic_year, primary.grade);
+}
+
+async function copyYearConfiguration(schoolId, actorId, sourceYear, targetYear) {
+  const sId = Number(schoolId);
+  const fromYear = Number(sourceYear);
+  const toYear = Number(targetYear);
+  if (!Number.isInteger(fromYear) || !Number.isInteger(toYear) || fromYear === toYear || toYear < 2020 || toYear > 2100) {
+    const err = new Error('Choose a valid source year and different target academic year.');
+    err.status = 400;
+    throw err;
+  }
+
+  let srcOfferings;
+  let srcStreams;
+  try {
+    [srcOfferings, srcStreams] = await Promise.all([
+      db.query(
+        `SELECT grade, stream_name, subject_name, category, language_level, is_required
+         FROM school_subject_offerings
+         WHERE school_id = $1 AND academic_year = $2 AND is_active = TRUE`,
+        [sId, fromYear]
+      ),
+      db.query(
+        `SELECT grade, name, mathematics_option, electives, status
+         FROM academic_streams
+         WHERE school_id = $1 AND academic_year = $2 AND status <> 'archived'`,
+        [sId, fromYear]
+      )
+    ]);
+  } catch (error) {
+    wrapSchemaError(error, 'copyYearConfiguration');
+  }
+
+  if (!srcOfferings.rows.length && !srcStreams.rows.length) {
+    const err = new Error(`No offerings or streams found for ${fromYear} to copy.`);
+    err.status = 404;
+    throw err;
+  }
+
+  let copiedOfferings = 0;
+  let copiedStreams = 0;
   await withTransaction(async (client) => {
-    await client.query(
-      `UPDATE school_subject_offerings SET is_active = FALSE
-       WHERE school_id = $1 AND academic_year = $2 AND grade = $3`,
-      [schoolId, year, grade]
-    );
-    for (const row of languages) {
+    for (const row of srcOfferings.rows) {
       await client.query(
         `INSERT INTO school_subject_offerings
           (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_required, is_active)
-         VALUES ($1, $2, $3, '', $4, 'language', $5, $6, TRUE)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE)
          ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
          DO UPDATE SET is_required = EXCLUDED.is_required, is_active = TRUE`,
-        [schoolId, year, grade, row.language, row.level, row.required]
+        [sId, toYear, row.grade, row.stream_name || '', row.subject_name, row.category, row.language_level || '', Boolean(row.is_required)]
       );
+      copiedOfferings += 1;
     }
-    for (const subject of mathematics) {
-      await client.query(
-        `INSERT INTO school_subject_offerings
-          (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_active)
-         VALUES ($1, $2, $3, '', $4, 'mathematics', '', TRUE)
-         ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
-         DO UPDATE SET is_active = TRUE`,
-        [schoolId, year, grade, subject]
+    for (const st of srcStreams.rows) {
+      const existing = await client.query(
+        `SELECT id FROM academic_streams
+         WHERE school_id = $1 AND academic_year = $2 AND grade = $3 AND LOWER(name) = LOWER($4) AND status <> 'archived'
+         LIMIT 1`,
+        [sId, toYear, st.grade, st.name]
       );
-    }
-    for (const subject of electives) {
-      await client.query(
-        `INSERT INTO school_subject_offerings
-          (school_id, academic_year, grade, stream_name, subject_name, category, language_level, is_active)
-         VALUES ($1, $2, $3, '', $4, 'elective', '', TRUE)
-         ON CONFLICT (school_id, academic_year, grade, stream_name, subject_name, language_level)
-         DO UPDATE SET is_active = TRUE`,
-        [schoolId, year, grade, subject]
-      );
+      if (!existing.rows.length) {
+        await client.query(
+          `INSERT INTO academic_streams
+            (school_id, academic_year, grade, name, mathematics_option, electives, status, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [sId, toYear, st.grade, st.name, st.mathematics_option, st.electives, st.status || 'published', actorId || null]
+        );
+        copiedStreams += 1;
+      }
     }
   });
-  return readOfferings(schoolId, year, grade);
+
+  await syncSchoolProfileCurriculum(sId);
+  return { source_year: fromYear, target_year: toYear, copied_offerings: copiedOfferings, copied_streams: copiedStreams };
 }
 
 function mapStream(row) {
@@ -257,25 +548,27 @@ function mapStream(row) {
 }
 
 async function listStreams(schoolId, year, grade, { publishedOnly } = {}) {
-  await ensureSchema();
-  const params = [schoolId];
-  let sql = `SELECT * FROM academic_streams WHERE school_id = $1 AND status <> 'archived'`;
-  if (year) {
-    params.push(Number(year));
-    sql += ` AND academic_year = $${params.length}`;
+  try {
+    const params = [schoolId];
+    let sql = `SELECT * FROM academic_streams WHERE school_id = $1 AND status <> 'archived'`;
+    if (year) {
+      params.push(Number(year));
+      sql += ` AND academic_year = $${params.length}`;
+    }
+    if (grade) {
+      params.push(Number(grade));
+      sql += ` AND grade = $${params.length}`;
+    }
+    if (publishedOnly) sql += ` AND status IN ('published', 'draft')`;
+    sql += ' ORDER BY grade, name';
+    const result = await db.query(sql, params);
+    return result.rows.map(mapStream);
+  } catch (error) {
+    wrapSchemaError(error, 'listStreams');
   }
-  if (grade) {
-    params.push(Number(grade));
-    sql += ` AND grade = $${params.length}`;
-  }
-  if (publishedOnly) sql += ` AND status IN ('published', 'draft')`;
-  sql += ' ORDER BY grade, name';
-  const result = await db.query(sql, params);
-  return result.rows.map(mapStream);
 }
 
 async function writeStream(schoolId, actorId, input, streamId) {
-  await ensureSchema();
   const year = Number(input.academic_year);
   const grade = Number(input.grade);
   const offerings = await readOfferings(schoolId, year, grade);
@@ -286,39 +579,44 @@ async function writeStream(schoolId, actorId, input, streamId) {
     error.errors = checked.errors;
     throw error;
   }
-  if (streamId) {
-    const existing = await db.query(
-      `SELECT id, status FROM academic_streams WHERE id = $1 AND school_id = $2`,
-      [streamId, schoolId]
-    );
-    if (!existing.rows.length) {
-      const error = new Error('Stream not found.');
-      error.status = 404;
-      throw error;
+  try {
+    if (streamId) {
+      const existing = await db.query(
+        `SELECT id, status FROM academic_streams WHERE id = $1 AND school_id = $2`,
+        [streamId, schoolId]
+      );
+      if (!existing.rows.length) {
+        const error = new Error('Stream not found.');
+        error.status = 404;
+        throw error;
+      }
+      const result = await db.query(
+        `UPDATE academic_streams
+         SET name = $1, academic_year = $2, grade = $3, mathematics_option = $4, electives = $5,
+             status = 'published',
+             updated_at = NOW()
+         WHERE id = $6 AND school_id = $7
+         RETURNING *`,
+        [checked.value.name, year, grade, checked.value.mathematics, checked.value.electives, streamId, schoolId]
+      );
+      await syncSchoolProfileCurriculum(schoolId);
+      return mapStream(result.rows[0]);
     }
     const result = await db.query(
-      `UPDATE academic_streams
-       SET name = $1, academic_year = $2, grade = $3, mathematics_option = $4, electives = $5,
-           status = 'published',
-           updated_at = NOW()
-       WHERE id = $6 AND school_id = $7
+      `INSERT INTO academic_streams
+        (school_id, academic_year, grade, name, mathematics_option, electives, status, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, 'published', $7)
        RETURNING *`,
-      [checked.value.name, year, grade, checked.value.mathematics, checked.value.electives, streamId, schoolId]
+      [schoolId, year, grade, checked.value.name, checked.value.mathematics, checked.value.electives, actorId || null]
     );
+    await syncSchoolProfileCurriculum(schoolId);
     return mapStream(result.rows[0]);
+  } catch (error) {
+    wrapSchemaError(error, 'writeStream');
   }
-  const result = await db.query(
-    `INSERT INTO academic_streams
-      (school_id, academic_year, grade, name, mathematics_option, electives, status, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, 'published', $7)
-     RETURNING *`,
-    [schoolId, year, grade, checked.value.name, checked.value.mathematics, checked.value.electives, actorId || null]
-  );
-  return mapStream(result.rows[0]);
 }
 
 async function setStreamStatus(schoolId, streamId, status) {
-  await ensureSchema();
   const existing = await db.query(
     `SELECT * FROM academic_streams WHERE id = $1 AND school_id = $2`,
     [streamId, schoolId]
@@ -347,6 +645,7 @@ async function setStreamStatus(schoolId, streamId, status) {
     `UPDATE academic_streams SET status = $1, updated_at = NOW() WHERE id = $2 AND school_id = $3 RETURNING *`,
     [status, streamId, schoolId]
   );
+  await syncSchoolProfileCurriculum(schoolId);
   return mapStream(result.rows[0]);
 }
 
@@ -390,7 +689,6 @@ async function streamsForApplicants(schoolId, year, grade) {
 }
 
 async function resolveApplicantPackage(input) {
-  await ensureSchema();
   const schoolId = Number(input.schoolId);
   const grade = Number(input.grade);
   const year = Number(input.academicYear);
@@ -451,42 +749,55 @@ async function resolveApplicantPackage(input) {
 }
 
 async function approveSubjectChange(schoolId, actorId, input) {
-  await ensureSchema();
-  const result = await db.query(
-    `INSERT INTO subject_change_approvals
-      (school_id, id_number, academic_year, grade, academic_stream_id, approved_by)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING id`,
-    [schoolId, String(input.id_number || '').trim(), Number(input.academic_year), Number(input.grade), Number(input.academic_stream_id), actorId || null]
-  );
-  return result.rows[0];
+  try {
+    const result = await db.query(
+      `INSERT INTO subject_change_approvals
+        (school_id, id_number, academic_year, grade, academic_stream_id, approved_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [schoolId, String(input.id_number || '').trim(), Number(input.academic_year), Number(input.grade), Number(input.academic_stream_id), actorId || null]
+    );
+    return result.rows[0];
+  } catch (error) {
+    wrapSchemaError(error, 'approveSubjectChange');
+  }
 }
 
 async function configurationSummary(schoolId, year) {
-  await ensureSchema();
-  const offerings = await db.query(
-    `SELECT grade, COUNT(*)::int AS total
-     FROM school_subject_offerings
-     WHERE school_id = $1 AND academic_year = $2 AND is_active = TRUE
-     GROUP BY grade ORDER BY grade`,
-    [schoolId, year]
-  );
-  const streams = await db.query(
-    `SELECT grade, status, COUNT(*)::int AS total
-     FROM academic_streams
-     WHERE school_id = $1 AND academic_year = $2 AND status <> 'archived'
-     GROUP BY grade, status ORDER BY grade`,
-    [schoolId, year]
-  );
-  return { offerings: offerings.rows, streams: streams.rows };
+  try {
+    const offerings = await db.query(
+      `SELECT grade, COUNT(*)::int AS total
+       FROM school_subject_offerings
+       WHERE school_id = $1 AND academic_year = $2 AND is_active = TRUE
+       GROUP BY grade ORDER BY grade`,
+      [schoolId, year]
+    );
+    const streams = await db.query(
+      `SELECT grade, status, COUNT(*)::int AS total
+       FROM academic_streams
+       WHERE school_id = $1 AND academic_year = $2 AND status <> 'archived'
+       GROUP BY grade, status ORDER BY grade`,
+      [schoolId, year]
+    );
+    return { offerings: offerings.rows, streams: streams.rows };
+  } catch (error) {
+    wrapSchemaError(error, 'configurationSummary');
+  }
 }
 
 module.exports = {
   ensureSchema,
+  wrapSchemaError,
   readOfferings,
+  readAllGradeOfferings,
+  getConfiguredYears,
+  getSchoolRegistrationProfile,
+  syncSchoolProfileCurriculum,
+  seedOfferingsFromSchoolProfile,
   readApplicantLanguages,
   parseSchoolOfferedLanguages,
   saveOfferings,
+  copyYearConfiguration,
   listStreams,
   streamsForApplicants,
   writeStream,
@@ -498,6 +809,8 @@ module.exports = {
     languages: rules.OFFICIAL_LANGUAGES,
     electives: rules.ELECTIVE_CATALOGUE,
     mathematics: [rules.MATHEMATICS, rules.MATHEMATICAL_LITERACY],
-    life_orientation: rules.LIFE_ORIENTATION
+    life_orientation: rules.LIFE_ORIENTATION,
+    senior_phase_compulsory: rules.SENIOR_PHASE_COMPULSORY,
+    senior_phase_electives: rules.SENIOR_PHASE_ELECTIVES
   }
 };

@@ -17,11 +17,17 @@ function schoolIdFrom(req) {
   return schoolId;
 }
 
-function sendError(res, error) {
+function sendError(res, error, fallbackMessage = 'The curriculum request could not be completed.') {
   const status = error.status || 500;
   if (status >= 500) console.error('[ACADEMIC STREAMS]', error.message);
+  if (error.code === 'SCHEMA_OUT_OF_DATE') {
+    return res.status(503).json({
+      error: error.message,
+      code: error.code
+    });
+  }
   return res.status(status).json({
-    error: status >= 500 ? 'The subject stream could not be saved.' : error.message,
+    error: status >= 500 ? fallbackMessage : error.message,
     errors: error.errors || undefined
   });
 }
@@ -71,23 +77,47 @@ exports.published = async (req, res) => {
       empty: available.streams.length === 0
     });
   } catch (error) {
-    sendError(res, error);
+    sendError(res, error, 'The school offerings could not be loaded.');
   }
 };
 
 exports.configuration = async (req, res) => {
   try {
     const schoolId = schoolIdFrom(req);
-    const year = parseInt(req.query.year, 10);
-    const grade = parseInt(req.query.grade, 10);
-    const [summary, offerings, configured] = await Promise.all([
+    const availableYears = await streams.getConfiguredYears(schoolId);
+    const now = new Date();
+    const defaultYear = now.getMonth() >= 9 ? now.getFullYear() + 1 : now.getFullYear();
+    const rawYear = req.query.year;
+    let year = (rawYear && rawYear !== 'auto') ? parseInt(rawYear, 10) : NaN;
+    if (!Number.isInteger(year)) {
+      year = availableYears.length ? availableYears[0] : defaultYear;
+    }
+    const rawGrade = parseInt(req.query.grade, 10);
+    const grade = [8, 9, 10, 11, 12].includes(rawGrade) ? rawGrade : 10;
+
+    const [summary, offerings, allGradeOfferings, configured, allStreams, registrationProfile] = await Promise.all([
       streams.configurationSummary(schoolId, year),
       streams.readOfferings(schoolId, year, grade),
-      streams.listStreams(schoolId, year, grade)
+      streams.readAllGradeOfferings(schoolId, year),
+      streams.listStreams(schoolId, year, grade),
+      streams.listStreams(schoolId, year, null),
+      streams.getSchoolRegistrationProfile(schoolId)
     ]);
-    res.json({ summary, offerings, streams: configured, catalogue: streams.catalogue });
+
+    res.json({
+      academic_year: year,
+      grade,
+      available_years: availableYears,
+      summary,
+      offerings,
+      all_grade_offerings: allGradeOfferings,
+      streams: configured,
+      all_streams: allStreams,
+      registration_profile: registrationProfile,
+      catalogue: streams.catalogue
+    });
   } catch (error) {
-    sendError(res, error);
+    sendError(res, error, 'The school academic configuration could not be loaded.');
   }
 };
 
@@ -96,6 +126,18 @@ exports.saveOfferings = async (req, res) => {
     const schoolId = schoolIdFrom(req);
     const offerings = await streams.saveOfferings(schoolId, req.user.id, req.body || {});
     res.json({ offerings });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+exports.copyYear = async (req, res) => {
+  try {
+    const schoolId = schoolIdFrom(req);
+    const sourceYear = parseInt(req.body?.source_year, 10);
+    const targetYear = parseInt(req.body?.target_year, 10);
+    const result = await streams.copyYearConfiguration(schoolId, req.user.id, sourceYear, targetYear);
+    res.json(result);
   } catch (error) {
     sendError(res, error);
   }

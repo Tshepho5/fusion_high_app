@@ -579,6 +579,19 @@ exports.reviewSchoolApplication = async (req, res) => {
         ]);
         const created = schoolInsert.rows[0];
         await ensureGradeClasses(created.id, client);
+        try {
+          await client.query('SAVEPOINT seed_school_offerings');
+          const academicStreamService = require('../services/academicStreamService');
+          await academicStreamService.seedOfferingsFromSchoolProfile(client, created.id, {
+            offeredLanguages: created.offered_languages,
+            offeredSubjects: created.offered_subjects,
+            year: new Date().getFullYear()
+          });
+          await client.query('RELEASE SAVEPOINT seed_school_offerings');
+        } catch (seedErr) {
+          await client.query('ROLLBACK TO SAVEPOINT seed_school_offerings').catch(() => {});
+          console.warn('[SCHOOL APPROVAL OFFERINGS SEED WARNING]:', seedErr.message);
+        }
         const userInsert = await client.query(`
         INSERT INTO users (
           email, password_hash, role_id, school_id, is_superadmin,

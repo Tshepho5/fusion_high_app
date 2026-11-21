@@ -248,20 +248,9 @@
           <div class="form-group">
             <label for="home_language">Official Home Language <span class="required">*</span></label>
             <select id="home_language" name="home_language" required>
-              <option value="" disabled selected>Select Official Home Language</option>
-              <option value="Sepedi">Sepedi (Sesotho sa Leboa)</option>
-              <option value="Setswana">Setswana</option>
-              <option value="Sesotho">Sesotho</option>
-              <option value="isiZulu">isiZulu</option>
-              <option value="isiXhosa">isiXhosa</option>
-              <option value="Xitsonga">Xitsonga (Tsonga)</option>
-              <option value="Tshivenda">Tshivenda (Venda)</option>
-              <option value="siSwati">siSwati (Swati)</option>
-              <option value="isiNdebele">isiNdebele (Ndebele)</option>
-              <option value="English">English (Home Language)</option>
-              <option value="Afrikaans">Afrikaans (Huistaal)</option>
+              <option value="" disabled selected>Select a school and grade to load Home Languages</option>
             </select>
-            <div class="hint">Choose a Home Language offered by the selected school.</div>
+            <div class="hint">Displays only Home Languages configured by the selected school for the chosen grade.</div>
             <div class="field-error"></div>
             <!-- School Language Compatibility & Referrals Banner -->
             <div id="language-referral-banner" style="margin-top: 10px; display: none;"></div>
@@ -644,7 +633,7 @@
   </div>
 
   <script src="/src/controller/saIDvalidations.js"></script>
-  <script src="/js/application.js"></script>
+  <script src="/js/application.js?v=20261121-1"></script>
   <script>
     (function () {
       var button = document.getElementById('theme-toggle');

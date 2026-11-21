@@ -1136,6 +1136,8 @@ function initGradeAndStream() {
   const packageReview = document.getElementById('subject-package-review');
   const policyHint = document.getElementById('language-policy-hint');
   let publishedStreams = [];
+  let offeringsRequestSeq = 0;
+  let lastLoadedSchoolId = '';
 
   if (yearSelect && !yearSelect.options.length) {
     const now = new Date();
@@ -1148,9 +1150,16 @@ function initGradeAndStream() {
     }
   }
 
-  function fillSelect(select, rows, placeholder) {
+  function normalizeLevel(rawLevel) {
+    const v = String(rawLevel || '').trim();
+    if (/^(home\s*language|hl|huistaal)$/i.test(v)) return 'Home Language';
+    if (/^(first\s*additional\s*language|fal|additional\s*language)$/i.test(v)) return 'First Additional Language';
+    return v;
+  }
+
+  function fillSelect(select, rows, placeholder, { preserveValue = true } = {}) {
     if (!select) return;
-    const current = select.value;
+    const current = preserveValue ? select.value : '';
     select.innerHTML = '';
     const blank = document.createElement('option');
     blank.value = '';
@@ -1162,7 +1171,9 @@ function initGradeAndStream() {
       option.textContent = row.label;
       select.appendChild(option);
     });
-    if ([...select.options].some((option) => option.value === current)) select.value = current;
+    if (preserveValue && current && [...select.options].some((option) => option.value === current)) {
+      select.value = current;
+    }
   }
 
   function renderPackage() {
@@ -1184,6 +1195,7 @@ function initGradeAndStream() {
   }
 
   async function loadPublishedStreams() {
+    const reqId = ++offeringsRequestSeq;
     const grade = parseInt(gradeSelect && gradeSelect.value, 10);
     const hasGrade = Number.isInteger(grade) && grade >= 8 && grade <= 12;
     const fet = hasGrade && grade >= 10;
@@ -1191,17 +1203,33 @@ function initGradeAndStream() {
     if (additionalGroup) additionalGroup.style.display = fet ? 'block' : 'none';
 
     const schoolId = schoolSelect && schoolSelect.value;
+    const schoolChanged = String(schoolId || '') !== lastLoadedSchoolId;
+    lastLoadedSchoolId = String(schoolId || '');
     const year = (yearSelect && yearSelect.value) || String(new Date().getFullYear());
     publishedStreams = [];
-    if (fet) fillSelect(streamSelect, [], 'Select an academic stream');
-    if (!schoolId) return;
 
     const langBanner = document.getElementById('language-referral-banner');
+    if (!schoolId) {
+      fillSelect(homeLangSelect, [], 'Select a school first to load offered Home Languages', { preserveValue: false });
+      if (fet) fillSelect(streamSelect, [], 'Select a school first', { preserveValue: false });
+      if (langBanner) langBanner.style.display = 'none';
+      if (emptyState) emptyState.style.display = 'none';
+      renderPackage();
+      return;
+    }
+
+    if (schoolChanged) {
+      fillSelect(homeLangSelect, [], 'Loading Home Languages offered by this school...', { preserveValue: false });
+      if (additionalSelect) fillSelect(additionalSelect, [], 'Loading First Additional Languages...', { preserveValue: false });
+    }
+    if (fet) fillSelect(streamSelect, [], 'Loading academic streams...', { preserveValue: false });
+
     try {
       const gradeParam = hasGrade ? `&grade=${encodeURIComponent(grade)}` : '';
-      const response = await fetch(`${API_BASE}/api/schools/${encodeURIComponent(schoolId)}/published-streams?year=${encodeURIComponent(year)}${gradeParam}`);
+      const response = await fetch(`${API_BASE}/api/schools/${encodeURIComponent(schoolId)}/published-streams?year=${encodeURIComponent(year)}${gradeParam}`, { cache: 'no-cache' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
+      if (reqId !== offeringsRequestSeq) return; // Discard stale response if user switched school/grade
 
       if (fet && data.academic_year && yearSelect && String(yearSelect.value) !== String(data.academic_year)) {
         const offeredYear = String(data.academic_year);
@@ -1214,21 +1242,29 @@ function initGradeAndStream() {
         yearSelect.value = offeredYear;
       }
 
-      const allLangs = Array.isArray(data.languages) ? data.languages : [];
+      const allLangs = Array.isArray(data.languages)
+        ? data.languages.map((row) => ({ ...row, level: normalizeLevel(row.level) }))
+        : [];
       const homes = allLangs.filter((row) => row.level === 'Home Language');
       const additionals = allLangs.filter((row) => row.level === 'First Additional Language');
 
       if (homes.length > 0) {
-        fillSelect(homeLangSelect, homes.map((row) => ({ value: row.language, label: row.language })), 'Select Official Home Language');
+        fillSelect(
+          homeLangSelect,
+          homes.map((row) => ({ value: row.language, label: row.language })),
+          'Select Official Home Language',
+          { preserveValue: !schoolChanged }
+        );
         if (homes.length === 1 && homeLangSelect && !homeLangSelect.value) {
           homeLangSelect.value = homes[0].language;
         }
         if (langBanner) langBanner.style.display = 'none';
       } else {
-        fillSelect(homeLangSelect, [], 'No Home Languages configured by this school yet');
+        fillSelect(homeLangSelect, [], 'No Home Languages configured by this school yet', { preserveValue: false });
         if (langBanner) {
           langBanner.style.display = 'block';
-          langBanner.innerHTML = `<div style="padding:10px 12px; background:rgba(245,158,11,0.14); border:1px solid rgba(245,158,11,0.45); border-radius:8px; color:#fcd34d; font-size:12px;">This school has not configured its offered languages yet. School administration must set Languages and Subject Streams under <strong>Admin Dashboard &rarr; Subject Streams</strong>.</div>`;
+          const gradeLabel = hasGrade ? ` for Grade ${grade}` : '';
+          langBanner.innerHTML = `<div style="padding:10px 12px; background:rgba(245,158,11,0.14); border:1px solid rgba(245,158,11,0.45); border-radius:8px; color:#fcd34d; font-size:12px;">This school has not configured its offered Home Languages${gradeLabel} yet. The school administrator must update the school's subject offerings under <strong>Admin Dashboard &rarr; School Curriculum &amp; Subjects</strong> (or <strong>Subject Offerings &amp; Streams</strong>).</div>`;
         }
       }
 
@@ -1236,7 +1272,8 @@ function initGradeAndStream() {
         fillSelect(
           additionalSelect,
           additionals.map((row) => ({ value: row.language, label: row.language })),
-          additionals.length > 0 ? 'Select a First Additional Language' : 'No First Additional Languages configured yet'
+          additionals.length > 0 ? 'Select a First Additional Language' : 'No First Additional Languages configured yet',
+          { preserveValue: !schoolChanged }
         );
         if (additionals.length === 1 && additionalSelect && !additionalSelect.value) {
           additionalSelect.value = additionals[0].language;
@@ -1247,29 +1284,36 @@ function initGradeAndStream() {
         }
         if (policyHint) {
           const yearNote = data.academic_year && String(data.academic_year) !== String(year)
-            ? `These streams are the ones this school has set up for ${data.academic_year}.`
+            ? `Showing streams configured by this school for ${data.academic_year}.`
             : '';
           const languageNote = required ? `This school requires ${required.language} First Additional Language.` : '';
           policyHint.textContent = [languageNote, yearNote].filter(Boolean).join(' ');
         }
-        publishedStreams = data.streams || [];
+        publishedStreams = Array.isArray(data.streams) ? data.streams : [];
         fillSelect(
           streamSelect,
           publishedStreams.map((stream) => ({
             value: String(stream.id),
             label: `${stream.name}: ${stream.mathematics}; ${stream.electives.join(', ')}`
           })),
-          publishedStreams.length > 0 ? 'Select an academic stream' : 'No academic streams configured for this grade yet'
+          publishedStreams.length > 0 ? 'Select an academic stream' : 'No academic streams configured for this grade yet',
+          { preserveValue: !schoolChanged }
         );
         if (publishedStreams.length === 1 && streamSelect) streamSelect.value = String(publishedStreams[0].id);
         if (emptyState) {
           emptyState.style.display = data.empty ? 'block' : 'none';
-          emptyState.textContent = `This school has not configured academic streams for Grade ${grade} yet. School administration can add Languages & Streams in Admin Dashboard → Subject Streams.`;
+          emptyState.textContent = `This school has not configured academic streams for Grade ${grade} yet. School administration can add Languages, Subjects & Streams in Admin Dashboard → School Curriculum & Subjects.`;
         }
       } else if (emptyState) {
         emptyState.style.display = 'none';
       }
     } catch (_) {
+      if (reqId !== offeringsRequestSeq) return;
+      fillSelect(homeLangSelect, [], 'Unable to load offered Home Languages right now', { preserveValue: false });
+      if (langBanner) {
+        langBanner.style.display = 'block';
+        langBanner.innerHTML = `<div style="padding:10px 12px; background:rgba(244,63,94,0.14); border:1px solid rgba(244,63,94,0.45); border-radius:8px; color:#fda4af; font-size:12px;">Could not load this school's offered Home Languages right now. Please refresh or try selecting the grade again.</div>`;
+      }
       if (fet && emptyState) {
         emptyState.style.display = 'block';
         emptyState.textContent = 'Subject streams could not be loaded for this school right now. Please contact the school or try again.';

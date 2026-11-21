@@ -32,17 +32,56 @@ const ELECTIVE_CATALOGUE = [
   'Design',
   'Dramatic Arts',
   'Economics',
+  'Electrical Technology',
   'Engineering Graphics and Design',
   'Geography',
   'History',
   'Hospitality Studies',
   'Information Technology',
   'Life Sciences',
+  'Mechanical Technology',
   'Music',
   'Physical Sciences',
+  'Religion Studies',
+  'Technical Sciences',
   'Tourism',
   'Visual Arts'
 ];
+
+const SENIOR_PHASE_COMPULSORY = [
+  'Mathematics',
+  'Natural Sciences',
+  'Social Sciences',
+  'Technology',
+  'Economic & Management Sciences (EMS)',
+  'Life Orientation',
+  'Creative Arts'
+];
+
+const SENIOR_PHASE_ELECTIVES = [
+  'Coding and Robotics',
+  'Computer Literacy',
+  'Agricultural Studies',
+  'Design and Technology',
+  'Dramatic Arts',
+  'Music',
+  'Religion Studies',
+  'Visual Arts'
+];
+
+const SUBJECT_ALIASES = new Map([
+  ['engineering graphics & design (egd)', 'Engineering Graphics and Design'],
+  ['engineering graphics & design', 'Engineering Graphics and Design'],
+  ['egd', 'Engineering Graphics and Design'],
+  ['information technology (it)', 'Information Technology'],
+  ['it', 'Information Technology'],
+  ['computer applications technology (cat)', 'Computer Applications Technology'],
+  ['cat', 'Computer Applications Technology'],
+  ['ems', 'Economic & Management Sciences (EMS)'],
+  ['economic and management sciences', 'Economic & Management Sciences (EMS)'],
+  ['economic & management sciences', 'Economic & Management Sciences (EMS)'],
+  ['technical mathematics', 'Mathematics']
+]);
 
 const RESERVED = new Set([
   LIFE_ORIENTATION.toLowerCase(),
@@ -60,8 +99,31 @@ function sameName(left, right) {
   return clean(left, 120).toLowerCase() === clean(right, 120).toLowerCase();
 }
 
+function normalizeLanguageLevel(rawLevel) {
+  const value = clean(rawLevel, 60);
+  if (!value) return '';
+  if (/^(home\s*language|hl|huistaal)$/i.test(value)) return HOME_LANGUAGE;
+  if (/^(first\s*additional\s*language|fal|additional\s*language)$/i.test(value)) return FIRST_ADDITIONAL;
+  return value;
+}
+
+function canonicalizeElective(name) {
+  const subject = clean(name, 80);
+  if (!subject) return '';
+  const aliased = SUBJECT_ALIASES.get(subject.toLowerCase()) || subject;
+  return ELECTIVE_CATALOGUE.find((item) => sameName(item, aliased)) || '';
+}
+
+function canonicalizeSeniorPhaseSubject(name) {
+  const subject = clean(name, 80);
+  if (!subject) return '';
+  const aliased = SUBJECT_ALIASES.get(subject.toLowerCase()) || subject;
+  const pool = [...SENIOR_PHASE_COMPULSORY, ...SENIOR_PHASE_ELECTIVES, ...ELECTIVE_CATALOGUE];
+  return pool.find((item) => sameName(item, aliased)) || '';
+}
+
 function languageSubject(language, level) {
-  return `${clean(language, 40)} ${level}`;
+  return `${clean(language, 40)} ${normalizeLanguageLevel(level) || level}`;
 }
 
 function assertElectiveName(name) {
@@ -71,6 +133,9 @@ function assertElectiveName(name) {
   }
   if (RESERVED.has(subject.toLowerCase()) || OFFICIAL_LANGUAGES.some((language) => sameName(language, subject))) {
     return `${subject} is not an elective subject.`;
+  }
+  if (!canonicalizeElective(subject)) {
+    return `${subject} is not in Geleza SA's recognised CAPS subject catalogue.`;
   }
   return '';
 }
@@ -86,24 +151,30 @@ function validateOfferings(input) {
   const languages = Array.isArray(input.languages) ? input.languages : [];
   const normalisedLanguages = [];
   languages.forEach((item) => {
-    const language = clean(item.language || item.name, 40);
-    const level = clean(item.level, 40);
-    if (!OFFICIAL_LANGUAGES.some((official) => sameName(official, language))) {
-      errors.push(`${language || 'A language'} is not an official language.`);
+    const rawLang = clean(item.language || item.name, 40);
+    const officialMatch = OFFICIAL_LANGUAGES.find((official) => sameName(official, rawLang));
+    const level = normalizeLanguageLevel(item.level);
+    if (!officialMatch) {
+      errors.push(`${rawLang || 'A language'} is not an official language.`);
       return;
     }
     if (level !== HOME_LANGUAGE && level !== FIRST_ADDITIONAL) {
-      errors.push(`${language} must be offered as Home Language or First Additional Language.`);
+      errors.push(`${officialMatch} must be offered as Home Language or First Additional Language.`);
       return;
     }
-    const key = `${language.toLowerCase()}|${level.toLowerCase()}`;
+    const key = `${officialMatch.toLowerCase()}|${level.toLowerCase()}`;
     if (normalisedLanguages.some((row) => `${row.language.toLowerCase()}|${row.level.toLowerCase()}` === key)) return;
-    normalisedLanguages.push({ language, level, required: Boolean(item.required) && level === FIRST_ADDITIONAL });
+    normalisedLanguages.push({ language: officialMatch, level, required: Boolean(item.required) && level === FIRST_ADDITIONAL });
   });
 
   const homeLanguages = normalisedLanguages.filter((row) => row.level === HOME_LANGUAGE);
   const additionalLanguages = normalisedLanguages.filter((row) => row.level === FIRST_ADDITIONAL);
-  if (!seniorPhase) {
+  if (seniorPhase) {
+    if (!homeLanguages.length) errors.push('Offer at least one Home Language for this grade.');
+    if (additionalLanguages.filter((row) => row.required).length > 1) {
+      errors.push('Only one First Additional Language can be required by the school.');
+    }
+  } else {
     if (!homeLanguages.length) errors.push('Offer at least one Home Language.');
     if (!additionalLanguages.length) errors.push('Offer at least one First Additional Language.');
     if (additionalLanguages.filter((row) => row.required).length > 1) {
@@ -124,16 +195,24 @@ function validateOfferings(input) {
 
   const electives = [];
   (Array.isArray(input.electives) ? input.electives : []).forEach((item) => {
-    const name = clean(item, 80);
-    if (!name) return;
+    const raw = clean(item, 80);
+    if (!raw) return;
     if (!seniorPhase) {
-      const problem = assertElectiveName(name);
+      const problem = assertElectiveName(raw);
       if (problem) {
         errors.push(problem);
         return;
       }
+      const canonical = canonicalizeElective(raw);
+      if (!electives.some((existing) => sameName(existing, canonical))) electives.push(canonical);
+    } else {
+      const canonical = canonicalizeSeniorPhaseSubject(raw);
+      if (!canonical) {
+        errors.push(`${raw} is not in Geleza SA's recognised Senior Phase subject catalogue.`);
+        return;
+      }
+      if (!electives.some((existing) => sameName(existing, canonical))) electives.push(canonical);
     }
-    if (!electives.some((existing) => sameName(existing, name))) electives.push(name);
   });
 
   if (seniorPhase) {
@@ -281,6 +360,75 @@ function parseSchoolOfferedLanguages(rawLanguages) {
   return results;
 }
 
+function parseSchoolOfferedSubjects(rawSubjects) {
+  let list = [];
+  if (Array.isArray(rawSubjects)) {
+    list = rawSubjects;
+  } else if (typeof rawSubjects === 'string' && rawSubjects.trim()) {
+    try {
+      const parsed = JSON.parse(rawSubjects);
+      list = Array.isArray(parsed) ? parsed : rawSubjects.split(',');
+    } catch (_) {
+      list = rawSubjects.split(',');
+    }
+  }
+  const mathematics = [];
+  const electives = [];
+  const extraLanguages = [];
+  for (const entry of list) {
+    const raw = clean(entry, 120);
+    if (!raw) continue;
+    if (sameName(raw, MATHEMATICS) || sameName(raw, 'Technical Mathematics')) {
+      if (!mathematics.includes(MATHEMATICS)) mathematics.push(MATHEMATICS);
+      continue;
+    }
+    if (sameName(raw, MATHEMATICAL_LITERACY)) {
+      if (!mathematics.includes(MATHEMATICAL_LITERACY)) mathematics.push(MATHEMATICAL_LITERACY);
+      continue;
+    }
+    if (sameName(raw, LIFE_ORIENTATION)) continue;
+    const canonical = canonicalizeElective(raw);
+    if (canonical && !electives.some((e) => sameName(e, canonical))) {
+      electives.push(canonical);
+      continue;
+    }
+    const langParsed = parseSchoolOfferedLanguages([raw]);
+    if (langParsed.length) {
+      extraLanguages.push(...langParsed);
+    }
+  }
+  return { mathematics, electives, languages: extraLanguages };
+}
+
+const MISSING_SCHEMA_CODES = new Set(['42P01', '42703', '42P10']);
+
+function isLegacyGradeCheckViolation(error) {
+  if (!error || error.code !== '23514') return false;
+  const constraint = String(error.constraint || '').toLowerCase();
+  if (constraint) {
+    return (
+      constraint.includes('grade')
+      && (constraint.includes('school_subject_offerings') || constraint.includes('academic_streams'))
+    );
+  }
+  const msg = String(error.message || '');
+  return /(school_subject_offerings|academic_streams)/i.test(msg) && /grade/i.test(msg);
+}
+
+function wrapCurriculumSchemaError(error, operation) {
+  if (error && (MISSING_SCHEMA_CODES.has(error.code) || isLegacyGradeCheckViolation(error))) {
+    const wrapped = new Error(
+      `Curriculum database schema is not up to date during ${operation} (${error.message}). Apply migration 20261121_curriculum_grades_8_12_upgrade.sql.`
+    );
+    wrapped.status = 503;
+    wrapped.code = 'SCHEMA_OUT_OF_DATE';
+    wrapped.pgCode = error.code;
+    wrapped.constraint = error.constraint || undefined;
+    throw wrapped;
+  }
+  throw error;
+}
+
 module.exports = {
   LIFE_ORIENTATION,
   MATHEMATICS,
@@ -289,11 +437,19 @@ module.exports = {
   FIRST_ADDITIONAL,
   OFFICIAL_LANGUAGES,
   ELECTIVE_CATALOGUE,
+  SENIOR_PHASE_COMPULSORY,
+  SENIOR_PHASE_ELECTIVES,
+  normalizeLanguageLevel,
+  canonicalizeElective,
+  canonicalizeSeniorPhaseSubject,
   validateOfferings,
   validateStream,
   validateLanguageChoice,
   buildPackage,
   packageElectives,
   parseSchoolOfferedLanguages,
+  parseSchoolOfferedSubjects,
+  isLegacyGradeCheckViolation,
+  wrapCurriculumSchemaError,
   sameName
 };

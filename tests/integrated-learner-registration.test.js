@@ -524,3 +524,186 @@ test('Application form school language parser and public/client application.js s
   assert.equal(pubAppJs, clientAppJs, 'public/js/application.js and client/public/js/application.js must stay synchronized');
   assert.match(pubAppJs, /schoolSelect\.dispatchEvent\(new Event\('change'\)\)/);
 });
+
+test('Phase D: No DDL in curriculum/registration read paths and safe caching headers + SW v2.9 enforced', () => {
+  // 1. Verify application.html pair is synchronized and loads versioned /js/application.js?v=...
+  const pubHtml = fs.readFileSync(path.join(__dirname, '../public/application.html'), 'utf8');
+  const clientHtml = fs.readFileSync(path.join(__dirname, '../client/public/application.html'), 'utf8');
+  assert.equal(pubHtml, clientHtml, 'public/application.html and client/public/application.html must stay synchronized');
+  assert.match(pubHtml, /<script src="\/js\/application\.js\?v=[^"]+"><\/script>/);
+  assert.doesNotMatch(pubHtml, /<option value="Sepedi">/i, 'application.html must not contain hardcoded fallback languages');
+
+  // 2. Verify firebase.json does not cache unversioned /js/** as immutable, while keeping /assets/** immutable
+  const fb = JSON.parse(fs.readFileSync(path.join(__dirname, '../firebase.json'), 'utf8'));
+  const headers = fb.hosting?.headers || [];
+  assert.equal(headers.some((h) => h.source === '**/*.@(js|css)'), false, 'firebase.json must not mark all JS/CSS immutable');
+  const jsRule = headers.find((h) => h.source === '/js/**');
+  assert.ok(jsRule, 'firebase.json must define explicit Cache-Control for /js/**');
+  assert.match(jsRule.headers[0].value, /no-cache/i);
+  const assetsRule = headers.find((h) => h.source === '/assets/**/*.@(js|css)');
+  assert.ok(assetsRule, 'firebase.json must retain immutable caching for fingerprinted /assets/**');
+  assert.match(assetsRule.headers[0].value, /immutable/i);
+
+  // 3. Verify service workers bumped to v2.9, byte-identical, and serve /js/ Network-First
+  const pubSw = fs.readFileSync(path.join(__dirname, '../public/sw.js'), 'utf8');
+  const clientSw = fs.readFileSync(path.join(__dirname, '../client/public/sw.js'), 'utf8');
+  assert.equal(pubSw, clientSw, 'public/sw.js and client/public/sw.js must be identical');
+  assert.match(pubSw, /CACHE_NAME\s*=\s*'geleza-sa-cache-v2\.9'/);
+  assert.match(pubSw, /url\.pathname\.startsWith\('\/js\/'\)/);
+
+  // 4. Verify academicStreamService.js does not call ensureSchema() in any runtime function
+  const streamSvc = fs.readFileSync(path.join(__dirname, '../public/src/services/academicStreamService.js'), 'utf8');
+  assert.equal(streamSvc.includes('await ensureSchema('), false, 'academicStreamService must never call ensureSchema() during runtime requests');
+  assert.match(streamSvc, /20261121_curriculum_grades_8_12_upgrade\.sql/);
+
+  // 5. Verify learnerRegistrationService.js does not invoke ensureRegistrationSchema in ANY request handler
+  const regSvc = fs.readFileSync(path.join(__dirname, '../public/src/services/learnerRegistrationService.js'), 'utf8');
+  assert.equal(regSvc.includes('await ensureRegistrationSchema('), false, 'learnerRegistrationService must never invoke ensureRegistrationSchema during HTTP requests');
+
+  // 6. Verify error classification in wrapCurriculumSchemaError distinguishes schema drift from validation/permission/connectivity/tx errors
+  const { wrapCurriculumSchemaError } = require('../public/src/services/nscCurriculum');
+  for (const schemaErr of [
+    { code: '42P01', message: 'relation "school_subject_offerings" does not exist' },
+    { code: '42703', message: 'column "stream_name" does not exist' },
+    { code: '42P10', message: 'there is no unique or exclusion constraint matching the ON CONFLICT specification' },
+    { code: '23514', constraint: 'school_subject_offerings_grade_check', message: 'new row violates check constraint "school_subject_offerings_grade_check"' },
+    { code: '23514', constraint: 'academic_streams_grade_range', message: 'new row violates check constraint "academic_streams_grade_range"' }
+  ]) {
+    assert.throws(
+      () => wrapCurriculumSchemaError(Object.assign(new Error(schemaErr.message), schemaErr), 'unitTest'),
+      (e) => e.code === 'SCHEMA_OUT_OF_DATE' && e.status === 503
+    );
+  }
+  for (const nonSchemaErr of [
+    { code: '23514', constraint: 'school_subject_offerings_category_check', message: 'violates check constraint "school_subject_offerings_category_check"' },
+    { code: '23514', constraint: 'academic_streams_status_check', message: 'violates check constraint "academic_streams_status_check"' },
+    { code: '42501', message: 'permission denied for table school_subject_offerings' },
+    { code: '25P02', message: 'current transaction is aborted' },
+    { code: '08006', message: 'connection failure' }
+  ]) {
+    assert.throws(
+      () => wrapCurriculumSchemaError(Object.assign(new Error(nonSchemaErr.message), nonSchemaErr), 'unitTest'),
+      (e) => e.code === nonSchemaErr.code && e.code !== 'SCHEMA_OUT_OF_DATE'
+    );
+  }
+
+  // 7. Verify migration SQL files exist and do not insert synthetic school data
+  const upSql = fs.readFileSync(path.join(__dirname, '../db/migrations/20261121_curriculum_grades_8_12_upgrade.sql'), 'utf8');
+  const downSql = fs.readFileSync(path.join(__dirname, '../db/migrations/20261121_curriculum_grades_8_12_upgrade.down.sql'), 'utf8');
+  assert.doesNotMatch(upSql, /\bINSERT\s+INTO\b/i, 'Upgrade migration must not insert synthetic records');
+  assert.match(upSql, /MIGRATION ABORTED: Duplicate rows detected/);
+  assert.doesNotMatch(downSql, /\bDELETE\s+FROM\b/i, 'Rollback migration must never delete rows');
+  assert.match(downSql, /ROLLBACK REFUSED/);
+});
+
+test('Phase F: Production preflight diagnostic SQL is strictly single-statement read-only SELECT with complete runbook', () => {
+  const diagPath = path.join(__dirname, '../db/diagnostics/20261121_curriculum_production_preflight.sql');
+  const readmePath = path.join(__dirname, '../db/diagnostics/README_curriculum_production_preflight.md');
+  const rawSql = fs.readFileSync(diagPath, 'utf8');
+  const readme = fs.readFileSync(readmePath, 'utf8');
+
+  // Helper: strip SQL comments and string literals (retaining dollar-quoted inner SQL separately for recursive inspection)
+  function stripCommentsAndStrings(sqlText) {
+    const innerDollarBlocks = [];
+    let cleaned = sqlText
+      // Remove block comments
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      // Remove line comments
+      .replace(/--[^\n]*/g, ' ');
+    // Extract & replace dollar-quoted blocks ($tag$...$tag$)
+    cleaned = cleaned.replace(/\$([a-zA-Z0-9_]*)\$([\s\S]*?)\$\1\$/g, (_m, _tag, inner) => {
+      innerDollarBlocks.push(inner);
+      return ' __DOLLAR_SQL__ ';
+    });
+    // Replace single-quoted string literals (handling doubled '' escapes)
+    cleaned = cleaned.replace(/'(?:''|[^'])*'/g, " '' ");
+    return { cleaned, innerDollarBlocks };
+  }
+
+  const prohibitedPattern = /\b(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE|TRUNCATE|SET|DO|GRANT|REVOKE|VACUUM|COPY|LOCK|MERGE|CALL|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|ANALYZE|CLUSTER|REINDEX|REFRESH)\b/i;
+
+  const outer = stripCommentsAndStrings(rawSql);
+  // Must be exactly one SQL statement (trailing semicolon optional)
+  const statements = outer.cleaned
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  assert.equal(statements.length, 1, `Preflight diagnostic must be a single SELECT statement, found ${statements.length}`);
+  assert.match(statements[0], /^WITH\b/i, 'Preflight diagnostic must begin with WITH ... SELECT');
+  assert.doesNotMatch(statements[0], prohibitedPattern, 'Outer preflight SQL contains a prohibited write/DDL/session keyword');
+
+  // Inspect every embedded dynamic read-only query inside $q$...$q$ blocks as well
+  assert.ok(outer.innerDollarBlocks.length >= 3, 'Expected dynamic read-only inspection queries for curriculum tables');
+  for (const [idx, innerSql] of outer.innerDollarBlocks.entries()) {
+    const inner = stripCommentsAndStrings(innerSql);
+    const innerStmts = inner.cleaned.split(';').map((s) => s.trim()).filter(Boolean);
+    assert.equal(innerStmts.length, 1, `Inner query #${idx + 1} must be a single statement`);
+    assert.match(innerStmts[0], /^(WITH|SELECT)\b/i, `Inner query #${idx + 1} must start with WITH or SELECT`);
+    assert.doesNotMatch(innerStmts[0], prohibitedPattern, `Inner query #${idx + 1} contains a prohibited write/DDL/session keyword`);
+  }
+
+  // Verify runbook covers required operator guidance
+  assert.match(readme, /DO NOT EXECUTE THE MIGRATION/i);
+  assert.match(readme, /Supabase/i);
+  assert.match(readme, /OVERALL_MIGRATION_PREREQUISITE_VERDICT/);
+  assert.match(readme, /FAIL.*UNKNOWN|UNKNOWN.*FAIL/i);
+  assert.match(readme, /Copy as JSON|CSV/i);
+});
+
+test('Phase G: Post-migration verification SQL is strictly read-only, migration guards mixed CHECK constraints, and staged release runbook is complete', () => {
+  const postSqlPath = path.join(__dirname, '../db/diagnostics/20261121_curriculum_post_migration_verify.sql');
+  const releaseDocPath = path.join(__dirname, '../db/diagnostics/README_curriculum_production_release.md');
+  const migrationPath = path.join(__dirname, '../db/migrations/20261121_curriculum_grades_8_12_upgrade.sql');
+
+  const postSql = fs.readFileSync(postSqlPath, 'utf8');
+  const releaseDoc = fs.readFileSync(releaseDocPath, 'utf8');
+  const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+
+  // Fail-closed mixed-constraint guard in migration SQL
+  assert.match(migrationSql, /MIGRATION ABORTED: Refusing to drop mixed CHECK constraint .* on school_subject_offerings/);
+  assert.match(migrationSql, /MIGRATION ABORTED: Refusing to drop mixed CHECK constraint .* on academic_streams/);
+
+  // Statement-level read-only audit of post-migration verification SQL
+  function stripCommentsAndStrings(sqlText) {
+    const innerDollarBlocks = [];
+    let cleaned = sqlText
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/--[^\n]*/g, ' ');
+    cleaned = cleaned.replace(/\$([a-zA-Z0-9_]*)\$([\s\S]*?)\$\1\$/g, (_m, _tag, inner) => {
+      innerDollarBlocks.push(inner);
+      return ' __DOLLAR_SQL__ ';
+    });
+    cleaned = cleaned.replace(/'(?:''|[^'])*'/g, " '' ");
+    return { cleaned, innerDollarBlocks };
+  }
+
+  const prohibitedPattern = /\b(CREATE|ALTER|DROP|INSERT|UPDATE|DELETE|TRUNCATE|SET|DO|GRANT|REVOKE|VACUUM|COPY|LOCK|MERGE|CALL|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|ANALYZE|CLUSTER|REINDEX|REFRESH)\b/i;
+
+  const outer = stripCommentsAndStrings(postSql);
+  const outerStmts = outer.cleaned.split(';').map((s) => s.trim()).filter(Boolean);
+  assert.equal(outerStmts.length, 1, `Post-migration verifier must be a single SELECT statement, found ${outerStmts.length}`);
+  assert.match(outerStmts[0], /^WITH\b/i);
+  assert.doesNotMatch(outerStmts[0], prohibitedPattern, 'Outer post-migration SQL contains prohibited keyword');
+
+  assert.ok(outer.innerDollarBlocks.length >= 2, 'Expected dynamic read-only data integrity & count queries');
+  for (const [idx, innerSql] of outer.innerDollarBlocks.entries()) {
+    const inner = stripCommentsAndStrings(innerSql);
+    const innerStmts = inner.cleaned.split(';').map((s) => s.trim()).filter(Boolean);
+    assert.equal(innerStmts.length, 1, `Inner post-verify query #${idx + 1} must be a single statement`);
+    assert.match(innerStmts[0], /^(WITH|SELECT)\b/i);
+    assert.doesNotMatch(innerStmts[0], prohibitedPattern, `Inner post-verify query #${idx + 1} contains prohibited keyword`);
+  }
+
+  // Verify all 9 stages and key operational gates in release runbook
+  for (let stage = 1; stage <= 9; stage += 1) {
+    assert.match(releaseDoc, new RegExp(`##\\s+Stage\\s+${stage}\\b`), `Release runbook missing Stage ${stage}`);
+  }
+  assert.match(releaseDoc, /No stage automatically authorizes the next/i);
+  assert.match(releaseDoc, /\/api\/schools\/13\/published-streams/);
+  assert.match(releaseDoc, /\/api\/schools\/14\/published-streams/);
+  assert.match(releaseDoc, /\/api\/schools\/13\/academic-configuration/);
+  assert.match(releaseDoc, /geleza-sa-cache-v2\.9/);
+  assert.match(releaseDoc, /geleza-sa-cache-v2\.8/);
+  assert.match(releaseDoc, /\/js\/application\.js\?v=20261121-1/);
+  assert.match(releaseDoc, /POST_MIGRATION_VERIFICATION_VERDICT/);
+});
