@@ -1092,18 +1092,18 @@ export const ParentChildren: React.FC<ParentChildrenProps> = ({ childId, onNavig
                     <span className="text-white font-bold">{createdCredentials.learner_email}</span>
                   </div>
                   <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400">Initial Password:</span>
-                    <span className="text-amber-300 font-bold">{createdCredentials.generated_password}</span>
+                    <span className="text-slate-400">Learner Password:</span>
+                    <span className="text-emerald-300 font-semibold">Set privately by learner after registration</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 pt-2">
                   <button
-                    onClick={() => handleCopyCredentials(`Email: ${createdCredentials.learner_email}\nPassword: ${createdCredentials.generated_password}\nLearner Number: ${createdCredentials.learner_number}`)}
+                    onClick={() => handleCopyCredentials(`Learner Number: ${createdCredentials.learner_number}`)}
                     className="flex-1 py-2.5 rounded-xl bg-surface-dark hover:bg-white/10 text-white font-bold text-xs border border-white/10 flex items-center justify-center gap-1.5 transition-all"
                   >
                     <Copy className="w-3.5 h-3.5" />
-                    <span>{copiedKey ? 'Credentials Copied!' : 'Copy Login Details'}</span>
+                    <span>{copiedKey ? 'Learner Number Copied!' : 'Copy Learner Number'}</span>
                   </button>
 
                   <button

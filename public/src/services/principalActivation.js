@@ -36,7 +36,7 @@ async function issue(runner, userId) {
      SET activation_token_hash = $1,
          activation_expires_at = NOW() + ($3::int * INTERVAL '1 hour'),
          password_hash = NULL
-     WHERE id = $2 AND is_superadmin = FALSE
+     WHERE id = $2 AND COALESCE(is_superadmin, FALSE) = FALSE
      RETURNING id`,
     [created.hash, userId, ACTIVATION_HOURS]
   );

@@ -129,6 +129,7 @@ export const App: React.FC = () => {
                 <Route path="/register" element={<PortalFormScene><RegisterPage /></PortalFormScene>} />
                 <Route path="/forgot-password" element={<PortalFormScene><ForgotPasswordPage /></PortalFormScene>} />
                 <Route path="/activate" element={<ActivateAccountPage />} />
+                <Route path="/verify-email" element={<ActivateAccountPage />} />
                 <Route path="/tester-invite" element={<TesterInvitePage />} />
 
                 {/* Dashboard Routes */}

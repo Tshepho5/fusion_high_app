@@ -225,4 +225,84 @@ const requireRole = (roles) => async (req, res, next) => {
  */
 const isAdmin = requireRole('admin');
 
-module.exports = { auth, authenticateToken: auth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie, ensureActiveSessionColumn };
+/**
+ * Optional authentication middleware:
+ * - If no Authorization Bearer header or session cookie is supplied, proceeds as unauthenticated (`req.user = null`).
+ * - If an explicit Authorization Bearer header IS supplied, validates it strictly and returns 401/403 on invalid/expired tokens
+ *   so an authenticated parent never silently downgrades to an unauthenticated submission.
+ */
+const optionalAuth = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const bearer = authHeader && authHeader.split(' ')[1];
+    const hasExplicitBearer = Boolean(bearer && bearer !== 'null' && bearer !== 'undefined');
+    const cookieToken = readSessionToken(req);
+    const token = hasExplicitBearer ? bearer : cookieToken;
+
+    if (!token || token === 'null' || token === 'undefined') {
+        req.user = null;
+        return next();
+    }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        return res.status(500).json({ error: 'Server signing secret is not configured.' });
+    }
+
+    jwt.verify(token, secret, async (err, user) => {
+        if (err) {
+            if (hasExplicitBearer) {
+                return res.status(401).json({ error: 'Your session has expired. Please sign in again.', code: 'session_expired' });
+            }
+            req.user = null;
+            return next();
+        }
+        try {
+            await ensureActiveSessionColumn();
+            const loaded = await loadAuthoritativeAccount(db.query, user.id);
+            if (loaded.state !== 'active') {
+                clearSessionCookie(res);
+                if (hasExplicitBearer) {
+                    return res.status(401).json({
+                        error: accountUnavailable(loaded.state),
+                        code: loaded.state === 'missing' ? 'account_missing' : loaded.state
+                    });
+                }
+                req.user = null;
+                return next();
+            }
+            const activeSessionId = loaded.account.active_session_id;
+            if (!user.sid || !activeSessionId || activeSessionId !== user.sid) {
+                clearSessionCookie(res);
+                if (hasExplicitBearer) {
+                    return res.status(401).json({
+                        error: 'You were signed out because this account signed in on another device or tab.',
+                        code: 'session_replaced'
+                    });
+                }
+                req.user = null;
+                return next();
+            }
+            req.user = {
+                id: loaded.account.id,
+                role: loaded.account.role,
+                email: loaded.account.email,
+                full_name: loaded.account.full_name || user.full_name,
+                surname: loaded.account.surname || '',
+                school_id: loaded.account.school_id,
+                is_superadmin: hasDatabaseSuperadmin(loaded.account),
+                sid: user.sid,
+                authoritative: true
+            };
+            return next();
+        } catch (sessionErr) {
+            console.error('[OPTIONAL AUTH SESSION]', sessionErr.message);
+            if (hasExplicitBearer) {
+                return res.status(500).json({ error: 'Could not confirm this sign-in.' });
+            }
+            req.user = null;
+            return next();
+        }
+    });
+};
+
+module.exports = { auth, authenticateToken: auth, optionalAuth, isAdmin, requireRole, attachSessionCookie, clearSessionCookie, ensureActiveSessionColumn };

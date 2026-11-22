@@ -314,6 +314,25 @@
         </div>
 
         <!-- PRIMARY PARENT / NEXT OF KIN 1 -->
+        <div id="existing-parent-auth-banner" style="display: none; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <div style="font-size: 0.88rem; color: #a7f3d0; line-height: 1.5;">
+              <strong>Signed in as Existing Parent:</strong> <span id="existing-parent-email-label"></span>.<br>
+              Your existing Parent account and password will be reused safely for this application.
+            </div>
+            <button type="button" id="btn-parent-signout-app" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">Sign out</button>
+          </div>
+        </div>
+
+        <div id="existing-parent-login-prompt" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <div style="font-size: 0.86rem; color: #e0f2fe; line-height: 1.5;">
+              <strong>Already have a Geleza SA Parent account?</strong> Sign in first so this additional learner is linked directly to your existing account without creating a duplicate.
+            </div>
+            <button type="button" id="btn-existing-parent-login" class="btn btn-primary" style="padding: 8px 14px; font-size: 0.82rem; white-space: nowrap;">Sign In &amp; Continue</button>
+          </div>
+        </div>
+
         <h3 style="font-size: 1.1rem; color: #38bdf8; margin-bottom: 16px; border-bottom: 1px dashed #334155; padding-bottom: 6px;">
           Primary Parent / Legal Guardian Details (Main Contact)
         </h3>
@@ -399,6 +418,40 @@
             <textarea id="primary_parent_address" name="primary_parent_address" rows="2" required
                       placeholder="e.g., Stand 402, Ext 4, Soshanguve, Pretoria, 0152"></textarea>
             <div class="field-error"></div>
+          </div>
+        </div>
+
+        <!-- NEW PARENT ACCOUNT PASSWORD CREATION (Hidden automatically for signed-in Existing Parents; NEVER collects Learner password) -->
+        <div id="parent-password-section" style="margin-top: 22px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 18px 20px;">
+          <h4 style="font-size: 1rem; color: #38bdf8; margin: 0 0 6px 0;">Create Your Parent Account Password</h4>
+          <p style="font-size: 0.83rem; color: #cbd5e1; margin: 0 0 14px 0; line-height: 1.5;">
+            You will verify your email address after submitting and then sign in with this password to track your application, respond to document requests, and complete registration if approved.
+            <strong style="color: #fde68a;">Do not create a Learner password here</strong> — the Learner will personally create their own private password after school registration.
+          </p>
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="parent_password">Parent Password <span class="required">*</span></label>
+              <div style="position: relative; display: flex; align-items: center;">
+                <input type="password" id="parent_password" name="parent_password" autocomplete="new-password" required
+                       placeholder="At least 8 chars (A-Z, a-z, 0-9, symbol)" style="padding-right: 64px; width: 100%;">
+                <button type="button" id="toggle-parent-password" aria-label="Show parent password"
+                        style="position: absolute; right: 8px; background: transparent; border: 1px solid rgba(148,163,184,0.4); color: #cbd5e1; border-radius: 6px; padding: 3px 8px; font-size: 0.75rem; cursor: pointer;">Show</button>
+              </div>
+              <div class="hint">Minimum 8 characters with uppercase, lowercase, number, and symbol.</div>
+              <div class="field-error"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="confirm_parent_password">Confirm Parent Password <span class="required">*</span></label>
+              <div style="position: relative; display: flex; align-items: center;">
+                <input type="password" id="confirm_parent_password" name="confirm_parent_password" autocomplete="new-password" required
+                       placeholder="Re-enter your Parent password" style="padding-right: 64px; width: 100%;">
+                <button type="button" id="toggle-confirm-parent-password" aria-label="Show confirm parent password"
+                        style="position: absolute; right: 8px; background: transparent; border: 1px solid rgba(148,163,184,0.4); color: #cbd5e1; border-radius: 6px; padding: 3px 8px; font-size: 0.75rem; cursor: pointer;">Show</button>
+              </div>
+              <div class="hint">Must match your Parent password above.</div>
+              <div class="field-error"></div>
+            </div>
           </div>
         </div>
 
@@ -625,15 +678,15 @@
       <h2 id="modalTitle" class="modal-title">Application Submitted</h2>
       <div id="modalRef" class="ref-box" style="display: none;"></div>
       <p id="modalBody" class="modal-body">Processing your admission application...</p>
-      <div style="display: flex; justify-content: center; gap: 12px;">
-        <a id="modalCta" href="/register" class="btn btn-primary" style="display: none;">Continue to Registration & Link Child</a>
+      <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+        <a id="modalCta" href="/login" class="btn btn-primary" style="display: none;">Sign In to Track Application</a>
         <button type="button" class="btn btn-secondary" onclick="document.getElementById('resultModal').classList.remove('active');">Close</button>
       </div>
     </div>
   </div>
 
   <script src="/src/controller/saIDvalidations.js"></script>
-  <script src="/js/application.js?v=20261121-1"></script>
+  <script src="/js/application.js?v=20261122-m2"></script>
   <script>
     (function () {
       var button = document.getElementById('theme-toggle');

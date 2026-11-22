@@ -43,21 +43,7 @@ export const CircularActionMenu: React.FC<CircularActionMenuProps> = ({ onReplay
       bg: 'bg-emerald-600 hover:bg-emerald-500 text-white',
       border: 'border-emerald-400/40',
       badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-      // Center item straight up (0px x, -135px y)
-      desktopStyle: { transform: isOpen ? 'translate(0px, -130px) scale(1)' : 'translate(0px, 0px) scale(0)' },
-      mobileStyle: { transform: isOpen ? 'translate(0px, -120px) scale(1)' : 'translate(0px, 0px) scale(0)' }
-    },
-    {
-      id: 'register',
-      title: 'Register',
-      subtitle: 'Create Account',
-      to: '/register',
-      isExternal: false,
-      icon: UserPlus,
-      bg: 'bg-cyan-600 hover:bg-cyan-500 text-white',
-      border: 'border-cyan-400/40',
-      badge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-      // Right item (+110px x, -90px y)
+      // Right item (+110px x, -85px y)
       desktopStyle: { transform: isOpen ? 'translate(115px, -85px) scale(1)' : 'translate(0px, 0px) scale(0)' },
       mobileStyle: { transform: isOpen ? 'translate(95px, -80px) scale(1)' : 'translate(0px, 0px) scale(0)' }
     }

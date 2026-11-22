@@ -843,7 +843,66 @@ export const RegisterPage: React.FC = () => {
   // TEACHER ONBOARDING LIFECYCLE (Apply -> Await Principal Approval -> Register & Set Password)
   if (isTeacherFlow) {
     if (teacherLoading) {
-      return (
+      // Phase M2.5 — Public Parent & Learner self-registration has been retired.
+  // Invited Teachers (?role=teacher&invite=...) remain fully supported above.
+  if (!isTeacherFlow) {
+    return (
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/15 p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-9 h-9" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold">
+              Unified Secure Admissions &amp; Onboarding
+            </span>
+            <h1 className="text-2xl font-extrabold font-display text-white">
+              Apply &amp; Register Through the Official Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Public parent and learner self-registration has been retired for your family&apos;s security. New parents create and verify their own password directly during admission application submission, and learners activate their own private password after registration is completed.
+            </p>
+          </div>
+          <div className="space-y-2.5 text-left text-xs text-slate-300 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <p><strong className="text-emerald-300">1. New Family:</strong> Submit your admission application and set your Parent password at <code className="text-cyan-300">/application.html</code>.</p>
+            <p><strong className="text-cyan-300">2. Existing Parent or Accepted Learner:</strong> Sign in at <code className="text-cyan-300">/login</code> to track applications, upload documents, or complete learner registration.</p>
+            <p><strong className="text-amber-300">3. Invited Educators:</strong> Open the official invitation link emailed by your School Principal.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <a
+              href="/application.html"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Start Admission Application</span>
+            </a>
+            <Link
+              to="/login"
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsSchoolModalOpen(true)}
+              className="text-amber-300 hover:text-amber-200 font-bold underline underline-offset-2 cursor-pointer"
+            >
+              Register a New School
+            </button>
+            <Link to="/" className="text-slate-400 hover:text-white font-semibold">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+        <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
+      </div>
+    );
+  }
+
+  return (
         <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
           <div className="text-center space-y-4 animate-fade-in">
             <div className="w-12 h-12 border-3 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -855,7 +914,66 @@ export const RegisterPage: React.FC = () => {
     }
 
     if (teacherError && !teacherInvite) {
-      return (
+      // Phase M2.5 — Public Parent & Learner self-registration has been retired.
+  // Invited Teachers (?role=teacher&invite=...) remain fully supported above.
+  if (!isTeacherFlow) {
+    return (
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/15 p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-9 h-9" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold">
+              Unified Secure Admissions &amp; Onboarding
+            </span>
+            <h1 className="text-2xl font-extrabold font-display text-white">
+              Apply &amp; Register Through the Official Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Public parent and learner self-registration has been retired for your family&apos;s security. New parents create and verify their own password directly during admission application submission, and learners activate their own private password after registration is completed.
+            </p>
+          </div>
+          <div className="space-y-2.5 text-left text-xs text-slate-300 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <p><strong className="text-emerald-300">1. New Family:</strong> Submit your admission application and set your Parent password at <code className="text-cyan-300">/application.html</code>.</p>
+            <p><strong className="text-cyan-300">2. Existing Parent or Accepted Learner:</strong> Sign in at <code className="text-cyan-300">/login</code> to track applications, upload documents, or complete learner registration.</p>
+            <p><strong className="text-amber-300">3. Invited Educators:</strong> Open the official invitation link emailed by your School Principal.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <a
+              href="/application.html"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Start Admission Application</span>
+            </a>
+            <Link
+              to="/login"
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsSchoolModalOpen(true)}
+              className="text-amber-300 hover:text-amber-200 font-bold underline underline-offset-2 cursor-pointer"
+            >
+              Register a New School
+            </button>
+            <Link to="/" className="text-slate-400 hover:text-white font-semibold">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+        <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
+      </div>
+    );
+  }
+
+  return (
         <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
           <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mx-auto text-rose-400">
@@ -891,7 +1009,66 @@ export const RegisterPage: React.FC = () => {
 
     // Phase: Registered / Active
     if (teacherRegistered || teacherInvite?.status === 'registered' || teacherInvite?.status === 'accepted') {
-      return (
+      // Phase M2.5 — Public Parent & Learner self-registration has been retired.
+  // Invited Teachers (?role=teacher&invite=...) remain fully supported above.
+  if (!isTeacherFlow) {
+    return (
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/15 p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-9 h-9" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold">
+              Unified Secure Admissions &amp; Onboarding
+            </span>
+            <h1 className="text-2xl font-extrabold font-display text-white">
+              Apply &amp; Register Through the Official Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Public parent and learner self-registration has been retired for your family&apos;s security. New parents create and verify their own password directly during admission application submission, and learners activate their own private password after registration is completed.
+            </p>
+          </div>
+          <div className="space-y-2.5 text-left text-xs text-slate-300 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <p><strong className="text-emerald-300">1. New Family:</strong> Submit your admission application and set your Parent password at <code className="text-cyan-300">/application.html</code>.</p>
+            <p><strong className="text-cyan-300">2. Existing Parent or Accepted Learner:</strong> Sign in at <code className="text-cyan-300">/login</code> to track applications, upload documents, or complete learner registration.</p>
+            <p><strong className="text-amber-300">3. Invited Educators:</strong> Open the official invitation link emailed by your School Principal.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <a
+              href="/application.html"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Start Admission Application</span>
+            </a>
+            <Link
+              to="/login"
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsSchoolModalOpen(true)}
+              className="text-amber-300 hover:text-amber-200 font-bold underline underline-offset-2 cursor-pointer"
+            >
+              Register a New School
+            </button>
+            <Link to="/" className="text-slate-400 hover:text-white font-semibold">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+        <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
+      </div>
+    );
+  }
+
+  return (
         <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
           <div className="max-w-md w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-glow-emerald">
@@ -922,7 +1099,66 @@ export const RegisterPage: React.FC = () => {
 
     // Phase: Submitted & Awaiting Principal Approval
     if (teacherAppSubmitted || teacherInvite?.status === 'applied') {
-      return (
+      // Phase M2.5 — Public Parent & Learner self-registration has been retired.
+  // Invited Teachers (?role=teacher&invite=...) remain fully supported above.
+  if (!isTeacherFlow) {
+    return (
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/15 p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-9 h-9" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold">
+              Unified Secure Admissions &amp; Onboarding
+            </span>
+            <h1 className="text-2xl font-extrabold font-display text-white">
+              Apply &amp; Register Through the Official Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Public parent and learner self-registration has been retired for your family&apos;s security. New parents create and verify their own password directly during admission application submission, and learners activate their own private password after registration is completed.
+            </p>
+          </div>
+          <div className="space-y-2.5 text-left text-xs text-slate-300 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <p><strong className="text-emerald-300">1. New Family:</strong> Submit your admission application and set your Parent password at <code className="text-cyan-300">/application.html</code>.</p>
+            <p><strong className="text-cyan-300">2. Existing Parent or Accepted Learner:</strong> Sign in at <code className="text-cyan-300">/login</code> to track applications, upload documents, or complete learner registration.</p>
+            <p><strong className="text-amber-300">3. Invited Educators:</strong> Open the official invitation link emailed by your School Principal.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <a
+              href="/application.html"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Start Admission Application</span>
+            </a>
+            <Link
+              to="/login"
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsSchoolModalOpen(true)}
+              className="text-amber-300 hover:text-amber-200 font-bold underline underline-offset-2 cursor-pointer"
+            >
+              Register a New School
+            </button>
+            <Link to="/" className="text-slate-400 hover:text-white font-semibold">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+        <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
+      </div>
+    );
+  }
+
+  return (
         <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
           <div className="max-w-lg w-full portal-glass rounded-3xl border border-slate-800 p-8 text-center space-y-6 shadow-2xl animate-fade-in">
             <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto shadow-glow-amber">
@@ -970,7 +1206,66 @@ export const RegisterPage: React.FC = () => {
     }
 
     // Phase: Confirm Invitation, Review Assigned Subjects & Set Password
+    // Phase M2.5 — Public Parent & Learner self-registration has been retired.
+  // Invited Teachers (?role=teacher&invite=...) remain fully supported above.
+  if (!isTeacherFlow) {
     return (
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/15 p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-9 h-9" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold">
+              Unified Secure Admissions &amp; Onboarding
+            </span>
+            <h1 className="text-2xl font-extrabold font-display text-white">
+              Apply &amp; Register Through the Official Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Public parent and learner self-registration has been retired for your family&apos;s security. New parents create and verify their own password directly during admission application submission, and learners activate their own private password after registration is completed.
+            </p>
+          </div>
+          <div className="space-y-2.5 text-left text-xs text-slate-300 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <p><strong className="text-emerald-300">1. New Family:</strong> Submit your admission application and set your Parent password at <code className="text-cyan-300">/application.html</code>.</p>
+            <p><strong className="text-cyan-300">2. Existing Parent or Accepted Learner:</strong> Sign in at <code className="text-cyan-300">/login</code> to track applications, upload documents, or complete learner registration.</p>
+            <p><strong className="text-amber-300">3. Invited Educators:</strong> Open the official invitation link emailed by your School Principal.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <a
+              href="/application.html"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Start Admission Application</span>
+            </a>
+            <Link
+              to="/login"
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsSchoolModalOpen(true)}
+              className="text-amber-300 hover:text-amber-200 font-bold underline underline-offset-2 cursor-pointer"
+            >
+              Register a New School
+            </button>
+            <Link to="/" className="text-slate-400 hover:text-white font-semibold">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+        <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
+      </div>
+    );
+  }
+
+  return (
       <div className="relative z-10 min-h-screen flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl w-full mx-auto portal-glass rounded-3xl border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl">
           {/* Header Banner */}
@@ -1184,8 +1479,126 @@ export const RegisterPage: React.FC = () => {
     );
   }
 
-  if (success && submittedApp) {
+  // Phase M2.5 — Public Parent & Learner self-registration has been retired.
+  // Invited Teachers (?role=teacher&invite=...) remain fully supported above.
+  if (!isTeacherFlow) {
     return (
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/15 p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-9 h-9" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold">
+              Unified Secure Admissions &amp; Onboarding
+            </span>
+            <h1 className="text-2xl font-extrabold font-display text-white">
+              Apply &amp; Register Through the Official Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Public parent and learner self-registration has been retired for your family&apos;s security. New parents create and verify their own password directly during admission application submission, and learners activate their own private password after registration is completed.
+            </p>
+          </div>
+          <div className="space-y-2.5 text-left text-xs text-slate-300 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <p><strong className="text-emerald-300">1. New Family:</strong> Submit your admission application and set your Parent password at <code className="text-cyan-300">/application.html</code>.</p>
+            <p><strong className="text-cyan-300">2. Existing Parent or Accepted Learner:</strong> Sign in at <code className="text-cyan-300">/login</code> to track applications, upload documents, or complete learner registration.</p>
+            <p><strong className="text-amber-300">3. Invited Educators:</strong> Open the official invitation link emailed by your School Principal.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <a
+              href="/application.html"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Start Admission Application</span>
+            </a>
+            <Link
+              to="/login"
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsSchoolModalOpen(true)}
+              className="text-amber-300 hover:text-amber-200 font-bold underline underline-offset-2 cursor-pointer"
+            >
+              Register a New School
+            </button>
+            <Link to="/" className="text-slate-400 hover:text-white font-semibold">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+        <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
+      </div>
+    );
+  }
+
+  if (success && submittedApp) {
+    // Phase M2.5 — Public Parent & Learner self-registration has been retired.
+  // Invited Teachers (?role=teacher&invite=...) remain fully supported above.
+  if (!isTeacherFlow) {
+    return (
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/15 p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-9 h-9" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold">
+              Unified Secure Admissions &amp; Onboarding
+            </span>
+            <h1 className="text-2xl font-extrabold font-display text-white">
+              Apply &amp; Register Through the Official Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Public parent and learner self-registration has been retired for your family&apos;s security. New parents create and verify their own password directly during admission application submission, and learners activate their own private password after registration is completed.
+            </p>
+          </div>
+          <div className="space-y-2.5 text-left text-xs text-slate-300 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <p><strong className="text-emerald-300">1. New Family:</strong> Submit your admission application and set your Parent password at <code className="text-cyan-300">/application.html</code>.</p>
+            <p><strong className="text-cyan-300">2. Existing Parent or Accepted Learner:</strong> Sign in at <code className="text-cyan-300">/login</code> to track applications, upload documents, or complete learner registration.</p>
+            <p><strong className="text-amber-300">3. Invited Educators:</strong> Open the official invitation link emailed by your School Principal.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <a
+              href="/application.html"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Start Admission Application</span>
+            </a>
+            <Link
+              to="/login"
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsSchoolModalOpen(true)}
+              className="text-amber-300 hover:text-amber-200 font-bold underline underline-offset-2 cursor-pointer"
+            >
+              Register a New School
+            </button>
+            <Link to="/" className="text-slate-400 hover:text-white font-semibold">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+        <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
+      </div>
+    );
+  }
+
+  return (
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
         <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/10 p-8 text-center space-y-6 shadow-2xl animate-fade-in relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -1251,6 +1664,65 @@ export const RegisterPage: React.FC = () => {
             </Link>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Phase M2.5 — Public Parent & Learner self-registration has been retired.
+  // Invited Teachers (?role=teacher&invite=...) remain fully supported above.
+  if (!isTeacherFlow) {
+    return (
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-lg w-full portal-glass rounded-3xl border border-white/15 p-8 text-center space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-9 h-9" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 rounded-full bg-cyan-500/15 text-cyan-200 border border-cyan-400/30 font-bold">
+              Unified Secure Admissions &amp; Onboarding
+            </span>
+            <h1 className="text-2xl font-extrabold font-display text-white">
+              Apply &amp; Register Through the Official Portal
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Public parent and learner self-registration has been retired for your family&apos;s security. New parents create and verify their own password directly during admission application submission, and learners activate their own private password after registration is completed.
+            </p>
+          </div>
+          <div className="space-y-2.5 text-left text-xs text-slate-300 bg-slate-950/60 border border-white/10 rounded-2xl p-4">
+            <p><strong className="text-emerald-300">1. New Family:</strong> Submit your admission application and set your Parent password at <code className="text-cyan-300">/application.html</code>.</p>
+            <p><strong className="text-cyan-300">2. Existing Parent or Accepted Learner:</strong> Sign in at <code className="text-cyan-300">/login</code> to track applications, upload documents, or complete learner registration.</p>
+            <p><strong className="text-amber-300">3. Invited Educators:</strong> Open the official invitation link emailed by your School Principal.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-1">
+            <a
+              href="/application.html"
+              className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Start Admission Application</span>
+            </a>
+            <Link
+              to="/login"
+              className="px-5 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Portal</span>
+            </Link>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+            <button
+              type="button"
+              onClick={() => setIsSchoolModalOpen(true)}
+              className="text-amber-300 hover:text-amber-200 font-bold underline underline-offset-2 cursor-pointer"
+            >
+              Register a New School
+            </button>
+            <Link to="/" className="text-slate-400 hover:text-white font-semibold">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+        <SchoolRegistrationModal isOpen={isSchoolModalOpen} onClose={() => setIsSchoolModalOpen(false)} />
       </div>
     );
   }

@@ -45,6 +45,18 @@ router.get('/parents', auth, isAdmin, adminController.getAllParents);
 router.post('/parents', auth, isAdmin, adminController.createParent);
 router.post('/register-parent', auth, isAdmin, adminController.createParent);
 
+// Controlled School Admin Legacy Learner Linkage (replaces retired public /register)
+router.post('/legacy-learners/link', auth, isAdmin, async (req, res) => {
+  try {
+    const { linkLegacyLearnerToParent } = require('../services/legacyLearnerLinkService');
+    const result = await linkLegacyLearnerToParent({ req, actor: req.user, payload: req.body || {} });
+    return res.json(result);
+  } catch (err) {
+    const status = Number(err?.status) || 500;
+    return res.status(status).json({ error: err?.message || 'Could not link legacy learner.' });
+  }
+});
+
 // Learner Management (matching children table in schema.sql)
 router.get('/learners', auth, isAdmin, adminController.getAllLearners);
 router.post('/learners', auth, isAdmin, adminController.createLearner);

@@ -11,6 +11,10 @@ router.get('/applications/:applicationId/context', auth, controller.getRegistrat
 router.post('/applications/:applicationId/complete', auth, controller.completeRegistration);
 router.get('/applications/:applicationId/acceptance-letter', auth, controller.downloadAcceptanceLetter);
 
+// Phase M2.4 — Authenticated Parent-initiated short-lived single-use Learner Password Setup / Reset Handoff
+router.post('/applications/:applicationId/learner-setup-session', auth, controller.createLearnerSetupSession);
+router.post('/children/:childId/learner-reset-session', auth, controller.createLearnerResetSession);
+
 // School Admin / Principal registration oversight
 router.get('/school', auth, controller.getSchoolDashboard);
 

@@ -65,6 +65,45 @@ export const LearnerRegistrationPanel: React.FC<LearnerRegistrationPanelProps> =
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
+  // Phase M2.4 — Parent-initiated short-lived single-use Learner password setup/reset handoff
+  const [handoffBusyKey, setHandoffBusyKey] = useState<string | null>(null);
+  const [handoffSession, setHandoffSession] = useState<{
+    mode: 'setup' | 'reset';
+    handoff_url: string;
+    learner_number: string;
+    learner_name: string;
+    expires_in_minutes: number;
+    instructions: string;
+  } | null>(null);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+
+  const handleStartLearnerHandoff = async (child: any, mode: 'setup' | 'reset') => {
+    const key = `${mode}:${child.child_id}`;
+    setHandoffBusyKey(key);
+    setHandoffError(null);
+    setHandoffSession(null);
+    try {
+      const res =
+        mode === 'setup' && child.application_id
+          ? await learnerRegistrationService.createLearnerSetupSession(child.application_id)
+          : await learnerRegistrationService.createLearnerResetSession(child.child_id);
+      setHandoffSession({
+        mode,
+        handoff_url: res.handoff_url,
+        learner_number: res.learner_number || child.learner_number,
+        learner_name: res.learner_name || `${child.full_name} ${child.surname}`.trim(),
+        expires_in_minutes: res.expires_in_minutes || 15,
+        instructions:
+          res.instructions ||
+          'Hand the device to the learner so they can personally enter and confirm their private password.'
+      });
+    } catch (err: any) {
+      setHandoffError(err?.response?.data?.error || 'Could not start Learner password handoff session.');
+    } finally {
+      setHandoffBusyKey(null);
+    }
+  };
+
   // Deregistration / Transfer form state
   const [deregChildId, setDeregChildId] = useState<number | null>(null);
   const [deregType, setDeregType] = useState<'deregistration' | 'transfer'>('deregistration');
@@ -836,7 +875,50 @@ export const LearnerRegistrationPanel: React.FC<LearnerRegistrationPanelProps> =
           </div>
         )}
 
-        {/* Active Enrollments Eligible for Controlled Deregistration */}
+        {handoffError && (
+          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{handoffError}</span>
+          </div>
+        )}
+
+        {handoffSession && (
+          <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/35 space-y-3" data-testid="learner-handoff-card">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
+                  {handoffSession.mode === 'reset' ? 'Learner Password Reset Ready' : 'Learner Private Password Setup Ready'}
+                </p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                  {handoffSession.learner_name} &bull; Official Learner No:{' '}
+                  <span className="font-mono text-cyan-700 dark:text-cyan-300">{handoffSession.learner_number}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHandoffSession(null)}
+                className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+            <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+              {handoffSession.instructions} (Valid for {handoffSession.expires_in_minutes} minutes, single-use.)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={handoffSession.handoff_url}
+                data-testid="open-learner-handoff-btn"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-colors"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Hand Device to Learner — Open Private Setup
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Active Enrollments Eligible for Learner Password Handoff & Controlled Deregistration */}
         {data.active_enrollments.filter((c) => c.is_active !== false).length > 0 && (
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -848,28 +930,71 @@ export const LearnerRegistrationPanel: React.FC<LearnerRegistrationPanelProps> =
                       Number(r.child_id) === Number(child.child_id) &&
                       ['pending_teacher_review', 'pending_admin_approval'].includes(String(r.status).toLowerCase())
                   );
+                  const needsLearnerPassword = child.learner_has_password === false;
                   return (
                     <div
                       key={child.child_id}
-                      className="p-4 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 flex items-center justify-between gap-3"
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 flex flex-col gap-3"
                     >
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                          {child.full_name} {child.surname}
-                        </p>
-                        <p className="text-xs text-slate-600 dark:text-slate-300">
-                          {child.school_name || 'Current School'} &bull; Grade {child.grade}
-                          {child.class_name ? ` (${child.class_name})` : ''}
-                        </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                            {child.full_name} {child.surname}
+                          </p>
+                          <p className="text-xs text-slate-600 dark:text-slate-300">
+                            {child.school_name || 'Current School'} &bull; Grade {child.grade}
+                            {child.class_name ? ` (${child.class_name})` : ''}
+                          </p>
+                          {child.learner_number && (
+                            <p className="text-[11px] font-mono font-bold text-cyan-700 dark:text-cyan-300 mt-0.5">
+                              Official Learner No: {child.learner_number}
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            needsLearnerPassword
+                              ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                              : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                          }`}
+                        >
+                          {needsLearnerPassword ? 'Learner Login Pending' : 'Learner Login Active'}
+                        </span>
                       </div>
-                      <button
-                        type="button"
-                        disabled={hasOpenRequest}
-                        onClick={() => setDeregChildId(Number(child.child_id))}
-                        className="shrink-0 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-50 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-xs font-bold cursor-pointer"
-                      >
-                        {hasOpenRequest ? 'Request Pending' : 'Request Deregistration'}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {roleLabel === 'Parent' && needsLearnerPassword && (
+                          <button
+                            type="button"
+                            disabled={handoffBusyKey === `setup:${child.child_id}`}
+                            onClick={() => handleStartLearnerHandoff(child, 'setup')}
+                            data-testid={`setup-learner-login-${child.child_id}`}
+                            className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs font-bold cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            {handoffBusyKey === `setup:${child.child_id}` ? 'Starting…' : 'Set Up Learner Login'}
+                          </button>
+                        )}
+                        {roleLabel === 'Parent' && !needsLearnerPassword && (
+                          <button
+                            type="button"
+                            disabled={handoffBusyKey === `reset:${child.child_id}`}
+                            onClick={() => handleStartLearnerHandoff(child, 'reset')}
+                            data-testid={`reset-learner-login-${child.child_id}`}
+                            className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/15 disabled:opacity-50 text-slate-800 dark:text-slate-200 text-xs font-bold cursor-pointer inline-flex items-center gap-1.5"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            {handoffBusyKey === `reset:${child.child_id}` ? 'Starting…' : 'Reset Learner Password'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={hasOpenRequest}
+                          onClick={() => setDeregChildId(Number(child.child_id))}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 disabled:opacity-50 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-xs font-bold cursor-pointer"
+                        >
+                          {hasOpenRequest ? 'Request Pending' : 'Request Deregistration'}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

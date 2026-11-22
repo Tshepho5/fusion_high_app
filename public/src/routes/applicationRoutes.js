@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const applicationController = require('../controller/applicationController');
 const rateLimit = require('express-rate-limit');
-const { auth: authenticateToken, isAdmin } = require('../../../authMiddleware');
+const { auth: authenticateToken, optionalAuth, isAdmin } = require('../../../authMiddleware');
 
 const paymentAccessLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -13,8 +13,8 @@ const paymentAccessLimiter = rateLimit({
   validate: { xForwardedForHeader: false, default: false }
 });
 
-// Public Admissions & Application Routes
-router.post('/apply', applicationController.uploadApplicationDocs, applicationController.submitApplication);
+// Public (or Authenticated Existing Parent) Admissions & Application Routes
+router.post('/apply', optionalAuth, applicationController.uploadApplicationDocs, applicationController.submitApplication);
 router.get('/capacity', applicationController.getCapacity);
 router.get('/resume/:token', applicationController.getApplicationByToken);
 router.post('/resume/:token', applicationController.uploadApplicationDocs, applicationController.resubmitApplication);

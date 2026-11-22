@@ -27,6 +27,7 @@ const {
   evaluateLearnerDashboardAccess,
   redactSensitiveFields
 } = require('../../../lib/applicationLifecycle');
+const { resolveFrontendOrigin } = require('../../../lib/authSecurity');
 
 function advisoryLockKeyForYear(academicYear) {
   const seed = `geleza_learner_number_seq:${Number(academicYear) || new Date().getFullYear()}`;
@@ -368,59 +369,39 @@ async function notifySchoolAdmins(schoolId, { type, title, message, metadata = {
 }
 
 /**
- * PHASE A/B: Post-submission onboarding & Email 1 (Application Received Confirmation).
- * Provisions secure passwordless Parent (and optional Learner) dashboard tracking access
- * immediately after application persistence, records timeline entry, and dispatches Email 1.
+ * PHASE M2.3: Post-submission onboarding & Email 1 (Application Received Confirmation).
+ * - Never creates a Learner password or Learner activation link during public submission.
+ * - Never allocates an Official Learner Number during submission.
+ * - For new Parents: includes the single-use email verification link (`/verify-email?token=...`)
+ *   so the Parent verifies email ownership before signing in.
+ * - For existing authenticated Parents: reuses their existing account untouched and links
+ *   directly to their Parent Dashboard.
  */
-async function handleApplicationSubmitted({ applicationId, baseUrl = '' }) {
+async function handleApplicationSubmitted({
+  applicationId,
+  baseUrl = '',
+  parentUserId = null,
+  parentVerificationToken = null,
+  isExistingParent = false
+}) {
   const appRes = await db.query('SELECT * FROM applications WHERE id = $1 LIMIT 1', [Number(applicationId)]);
   const app = appRes.rows[0];
   if (!app) return null;
 
   const school = await fetchSchoolDetails(db, app.school_id);
   const academicYear = Number(app.academic_year || new Date().getFullYear());
-  const cleanBaseUrl = String(baseUrl || process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
-
-  // Ensure secure passwordless Parent account (and Learner account if distinct learner email was provided)
-  let parentAccount = { user: null, activationToken: null, pendingActivation: false };
-  if (app.primary_parent_email) {
-    parentAccount = await ensurePasswordlessAccount(db, {
-      email: app.primary_parent_email,
-      fullName: app.primary_parent_name || 'Parent',
-      surname: app.primary_parent_surname || app.surname || '',
-      phone: app.primary_parent_phone || null,
-      idNumber: app.primary_parent_id_number || null,
-      roleName: 'parent',
-      fallbackRoleId: 4,
-      schoolId: app.school_id
-    });
-  }
-
-  let learnerAccount = { user: null, activationToken: null, pendingActivation: false };
-  const cleanLearnerEmail = normalizeEmail(app.email || app.learner_email);
+  const cleanBaseUrl = String(baseUrl || resolveFrontendOrigin(null)).replace(/\/+$/, '');
   const cleanParentEmail = normalizeEmail(app.primary_parent_email);
-  if (cleanLearnerEmail && cleanLearnerEmail !== cleanParentEmail) {
-    learnerAccount = await ensurePasswordlessAccount(db, {
-      email: cleanLearnerEmail,
-      fullName: app.first_name || 'Applicant',
-      surname: app.surname || '',
-      phone: app.phone || null,
-      idNumber: app.id_number || null,
-      roleName: 'learner',
-      fallbackRoleId: 3,
-      schoolId: app.school_id
-    });
-  }
+  const effectiveParentUserId = parentUserId || app.parent_user_id || null;
 
-  // Persist user linkage & academic_year on applications safely
+  // Persist user linkage & academic_year on applications safely (NO premature learner account/password creation)
   try {
     await db.query(
       `UPDATE applications
        SET academic_year = COALESCE(academic_year, $1),
-           parent_user_id = COALESCE(parent_user_id, $2),
-           applicant_user_id = COALESCE(applicant_user_id, $3)
-       WHERE id = $4`,
-      [academicYear, parentAccount.user?.id || null, learnerAccount.user?.id || null, app.id]
+           parent_user_id = COALESCE(parent_user_id, $2)
+       WHERE id = $3`,
+      [academicYear, effectiveParentUserId, app.id]
     );
   } catch (err) {
     if (err?.code !== '42703') console.warn('[APP LINKAGE UPDATE WARNING]:', err.message);
@@ -431,7 +412,7 @@ async function handleApplicationSubmitted({ applicationId, baseUrl = '' }) {
     schoolId: app.school_id,
     fromStatus: null,
     toStatus: app.status || 'submitted',
-    actorId: parentAccount.user?.id || learnerAccount.user?.id || null,
+    actorId: effectiveParentUserId,
     actorRole: 'parent',
     reason: 'Admission application submitted online and queued for school administration review.',
     metadata: {
@@ -441,19 +422,15 @@ async function handleApplicationSubmitted({ applicationId, baseUrl = '' }) {
     }
   });
 
-  const parentActivationUrl = parentAccount.activationToken
-    ? `${cleanBaseUrl}/activate?token=${encodeURIComponent(parentAccount.activationToken)}`
-    : null;
-  const learnerActivationUrl = learnerAccount.activationToken
-    ? `${cleanBaseUrl}/activate?token=${encodeURIComponent(learnerAccount.activationToken)}`
+  const verificationUrl = parentVerificationToken
+    ? `${cleanBaseUrl}/verify-email?token=${encodeURIComponent(parentVerificationToken)}`
     : null;
 
   const dashboardUrl = `${cleanBaseUrl}/dashboard/parent?tab=registration&applicationId=${encodeURIComponent(app.id)}`;
-  const learnerDashboardUrl = `${cleanBaseUrl}/dashboard/learner?tab=applications`;
   const learnerFullName = `${app.first_name || ''} ${app.surname || ''}`.trim();
   const parentFullName = `${app.primary_parent_name || ''} ${app.primary_parent_surname || ''}`.trim();
 
-  // Email 1 — Application Received (Parent)
+  // Email 1 — Application Received (Parent) — Application Reference ONLY (NO Official Learner Number yet!)
   const emailResult = await dispatchIdempotentEmail({
     applicationId: app.id,
     schoolId: app.school_id,
@@ -471,7 +448,7 @@ async function handleApplicationSubmitted({ applicationId, baseUrl = '' }) {
       schoolPhone: school?.contact_phone || null,
       schoolAddress: school?.physical_address || null,
       applicationNumber: app.application_number,
-      learnerNumber: app.provisional_learner_number || null,
+      learnerNumber: null, // Official Learner Number is allocated ONLY upon approval
       grade: Number(app.grade_applied),
       academicYear,
       stream: app.stream || null,
@@ -481,7 +458,9 @@ async function handleApplicationSubmitted({ applicationId, baseUrl = '' }) {
       submittedAt: app.created_at || new Date(),
       statusLabel: getStatusLabel(app.status || 'submitted'),
       dashboardUrl,
-      activationUrl: parentActivationUrl
+      verificationUrl,
+      activationUrl: null,
+      isExistingParent: Boolean(isExistingParent)
     })
   });
 
@@ -490,40 +469,6 @@ async function handleApplicationSubmitted({ applicationId, baseUrl = '' }) {
       'UPDATE applications SET confirmation_email_sent_at = COALESCE(confirmation_email_sent_at, NOW()) WHERE id = $1',
       [app.id]
     ).catch(() => {});
-  }
-
-  // If the learner has their own distinct email, also send them their own restricted-dashboard onboarding confirmation
-  if (cleanLearnerEmail && cleanLearnerEmail !== cleanParentEmail) {
-    await dispatchIdempotentEmail({
-      applicationId: app.id,
-      schoolId: app.school_id,
-      eventType: 'application_received_learner',
-      recipientEmail: cleanLearnerEmail,
-      idempotencyKey: `app_received_learner:${app.id}:${cleanLearnerEmail}`,
-      sendFn: () => emailService.sendApplicationReceivedConfirmation({
-        recipientEmail: cleanLearnerEmail,
-        recipientName: learnerFullName || 'Applicant',
-        learnerName: learnerFullName,
-        parentName: parentFullName,
-        parentContact: app.primary_parent_phone || app.primary_parent_email,
-        schoolName: school?.name || 'Geleza SA Partner School',
-        schoolEmail: school?.contact_email || null,
-        schoolPhone: school?.contact_phone || null,
-        schoolAddress: school?.physical_address || null,
-        applicationNumber: app.application_number,
-        learnerNumber: app.provisional_learner_number || null,
-        grade: Number(app.grade_applied),
-        academicYear,
-        stream: app.stream || null,
-        homeLanguage: app.home_language || null,
-        firstAdditionalLanguage: app.first_additional_language || null,
-        selectedSubjects: Array.isArray(app.selected_subjects) ? app.selected_subjects : [],
-        submittedAt: app.created_at || new Date(),
-        statusLabel: getStatusLabel(app.status || 'submitted'),
-        dashboardUrl: learnerDashboardUrl,
-        activationUrl: learnerActivationUrl
-      })
-    });
   }
 
   await notifySchoolAdmins(app.school_id, {
@@ -535,10 +480,11 @@ async function handleApplicationSubmitted({ applicationId, baseUrl = '' }) {
 
   return {
     applicationId: app.id,
-    parentUserId: parentAccount.user?.id || null,
-    learnerUserId: learnerAccount.user?.id || null,
-    parentActivationRequired: Boolean(parentActivationUrl),
-    learnerActivationRequired: Boolean(learnerActivationUrl),
+    parentUserId: effectiveParentUserId,
+    learnerUserId: null,
+    parentVerificationRequired: Boolean(verificationUrl),
+    parentActivationRequired: false,
+    learnerActivationRequired: false,
     confirmationEmailSent: emailResult.sent
   };
 }
@@ -559,7 +505,7 @@ async function approveApplication({
   assignedClassId = null,
   adminNotes = null
 }) {
-  const cleanBaseUrl = String(baseUrl || process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
+  const cleanBaseUrl = String(baseUrl || resolveFrontendOrigin(null)).replace(/\/+$/, '');
 
   const txResult = await withTransaction(async (client) => {
     const appRes = await client.query(
@@ -669,9 +615,19 @@ async function approveApplication({
       throw err;
     }
 
-    // Ensure Parent & (if distinct email) Learner passwordless accounts
+    // Ensure Parent account exists (reusing existing account safely; never overwrites password).
+    // Do NOT issue a Learner password-activation token at approval: Learner activates ONLY AFTER registration!
     let parentAccount = { user: null, activationToken: null, pendingActivation: false };
-    if (app.primary_parent_email) {
+    if (app.parent_user_id) {
+      const pRes = await client.query(
+        'SELECT id, email, full_name, surname, password_hash, school_id, COALESCE(is_superadmin, FALSE) AS is_superadmin FROM users WHERE id = $1 LIMIT 1',
+        [app.parent_user_id]
+      );
+      if (pRes.rows[0]) {
+        parentAccount = { user: pRes.rows[0], activationToken: null, pendingActivation: !pRes.rows[0].password_hash };
+      }
+    }
+    if (!parentAccount.user && app.primary_parent_email) {
       parentAccount = await ensurePasswordlessAccount(client, {
         email: app.primary_parent_email,
         fullName: app.primary_parent_name || 'Parent',
@@ -680,24 +636,20 @@ async function approveApplication({
         idNumber: app.primary_parent_id_number || null,
         roleName: 'parent',
         fallbackRoleId: 4,
-        schoolId: app.school_id
+        schoolId: app.school_id,
+        issueTokenIfPasswordless: true
       });
     }
 
     let learnerAccount = { user: null, activationToken: null, pendingActivation: false };
-    const cleanLearnerEmail = normalizeEmail(app.email);
-    const cleanParentEmail = normalizeEmail(app.primary_parent_email);
-    if (cleanLearnerEmail && cleanLearnerEmail !== cleanParentEmail) {
-      learnerAccount = await ensurePasswordlessAccount(client, {
-        email: cleanLearnerEmail,
-        fullName: app.first_name || 'Learner',
-        surname: app.surname || '',
-        phone: app.phone || null,
-        idNumber: app.id_number || null,
-        roleName: 'learner',
-        fallbackRoleId: 3,
-        schoolId: app.school_id
-      });
+    if (app.applicant_user_id) {
+      const lRes = await client.query(
+        'SELECT id, email, full_name, surname, password_hash, school_id FROM users WHERE id = $1 LIMIT 1',
+        [app.applicant_user_id]
+      );
+      if (lRes.rows[0]) {
+        learnerAccount = { user: lRes.rows[0], activationToken: null, pendingActivation: !lRes.rows[0].password_hash };
+      }
     }
 
     const updatedAppRes = await client.query(
@@ -1046,7 +998,7 @@ async function declineApplication({ applicationId, actor, baseUrl = '', reason =
   const academicYear = Number(application.academic_year || new Date().getFullYear());
   const learnerFullName = `${application.first_name || ''} ${application.surname || ''}`.trim();
   const parentFullName = `${application.primary_parent_name || ''} ${application.primary_parent_surname || ''}`.trim();
-  const cleanBaseUrl = String(baseUrl || process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
+  const cleanBaseUrl = String(baseUrl || resolveFrontendOrigin(null)).replace(/\/+$/, '');
 
   const emailResult = await dispatchIdempotentEmail({
     applicationId: application.id,
@@ -1168,7 +1120,7 @@ async function createDocumentRequest({ applicationId, actor, baseUrl = '', body 
   });
 
   const { application, docRequest, school } = txResult;
-  const cleanBaseUrl = String(baseUrl || process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
+  const cleanBaseUrl = String(baseUrl || resolveFrontendOrigin(null)).replace(/\/+$/, '');
   const learnerFullName = `${application.first_name || ''} ${application.surname || ''}`.trim();
   const parentFullName = `${application.primary_parent_name || ''} ${application.primary_parent_surname || ''}`.trim();
   const dashboardUrl = `${cleanBaseUrl}/dashboard/parent?tab=registration&applicationId=${encodeURIComponent(application.id)}`;
@@ -1349,7 +1301,7 @@ async function uploadApplicationDocument({
 
   const { application, document, request, school } = txResult;
   const learnerFullName = `${application.first_name || ''} ${application.surname || ''}`.trim();
-  const cleanBaseUrl = String(baseUrl || process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
+  const cleanBaseUrl = String(baseUrl || resolveFrontendOrigin(null)).replace(/\/+$/, '');
 
   // Notify school admins in-app + Email 3 (Documentation Submitted to School Reviewer)
   const admins = await notifySchoolAdmins(application.school_id, {
@@ -1491,7 +1443,7 @@ async function reviewDocumentRequest({ applicationId, requestId, actor, outcome,
   const { application, request, school } = txResult;
   const learnerFullName = `${application.first_name || ''} ${application.surname || ''}`.trim();
   const parentFullName = `${application.primary_parent_name || ''} ${application.primary_parent_surname || ''}`.trim();
-  const cleanBaseUrl = String(baseUrl || process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
+  const cleanBaseUrl = String(baseUrl || resolveFrontendOrigin(null)).replace(/\/+$/, '');
   const dashboardUrl = `${cleanBaseUrl}/dashboard/parent?tab=registration&applicationId=${encodeURIComponent(application.id)}`;
 
   // Email 4 — Documentation Reviewed

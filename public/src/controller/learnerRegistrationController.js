@@ -47,14 +47,54 @@ exports.completeRegistration = async (req, res) => {
     if (!Number.isInteger(applicationId) || applicationId <= 0) {
       return res.status(400).json({ error: 'Invalid application ID.' });
     }
+    const { resolveFrontendOrigin } = require('../../../lib/authSecurity');
     const result = await registrationService.completeLearnerRegistration({
       applicationId,
       actor: req.user,
-      payload: req.body || {}
+      payload: req.body || {},
+      baseUrl: resolveFrontendOrigin(req)
     });
     return res.json(result);
   } catch (err) {
     return handleServiceError(res, err, 'Failed to complete learner registration.');
+  }
+};
+
+exports.createLearnerSetupSession = async (req, res) => {
+  try {
+    const applicationId = parseInt(req.params.applicationId, 10);
+    if (!Number.isInteger(applicationId) || applicationId <= 0) {
+      return res.status(400).json({ error: 'Invalid application ID.' });
+    }
+    const { resolveFrontendOrigin } = require('../../../lib/authSecurity');
+    const session = await registrationService.createLearnerHandoffSession({
+      applicationId,
+      actor: req.user,
+      mode: 'setup',
+      baseUrl: resolveFrontendOrigin(req)
+    });
+    return res.status(201).json(session);
+  } catch (err) {
+    return handleServiceError(res, err, 'Failed to start Learner password setup session.');
+  }
+};
+
+exports.createLearnerResetSession = async (req, res) => {
+  try {
+    const childId = parseInt(req.params.childId, 10);
+    if (!Number.isInteger(childId) || childId <= 0) {
+      return res.status(400).json({ error: 'Invalid learner record ID.' });
+    }
+    const { resolveFrontendOrigin } = require('../../../lib/authSecurity');
+    const session = await registrationService.createLearnerHandoffSession({
+      childId,
+      actor: req.user,
+      mode: 'reset',
+      baseUrl: resolveFrontendOrigin(req)
+    });
+    return res.status(201).json(session);
+  } catch (err) {
+    return handleServiceError(res, err, 'Failed to start Learner password reset session.');
   }
 };
 

@@ -200,12 +200,12 @@ export const AboutUsPage: React.FC = () => {
             <Sparkles className="w-3.5 h-3.5" />
             View Terms and Conditions
           </Link>
-          <Link
-            to="/register"
+          <a
+            href="/application.html"
             className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs transition-all shadow-glow-indigo"
           >
-            Create an Account / Apply
-          </Link>
+            Apply for Admission
+          </a>
         </div>
       </main>
 

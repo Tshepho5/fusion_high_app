@@ -221,7 +221,7 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// Rate Limiters (configured with validate.xForwardedForHeader = false for reverse proxy compatibility)
+const { isOriginAllowed } = require('./lib/authSecurity');
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 60, // Limit each IP to 60 auth attempts per 15 minutes
@@ -251,8 +251,8 @@ const supportLimiter = rateLimit({
 
 const activationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { error: 'Too many activation attempts. Please wait 15 minutes and try again.' },
+  max: 20,
+  message: { error: 'Too many activation or verification attempts. Please wait 15 minutes and try again.' },
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, default: false }
@@ -261,15 +261,22 @@ const activationLimiter = rateLimit({
 app.use('/api/system/tester-invites', activationLimiter);
 app.use('/api/activate', activationLimiter);
 app.use('/api/activation/resend', activationLimiter);
+app.use('/api/verify-email', activationLimiter);
 app.use('/api/auth/activate', activationLimiter);
 app.use('/api/auth/activation/resend', activationLimiter);
+app.use('/api/auth/verify-email', activationLimiter);
 app.use('/api/login', authLimiter);
+app.use('/api/auth/login', authLimiter);
 app.use('/api/webauthn/login', authLimiter);
 app.use('/api/auth/webauthn/login', authLimiter);
 app.use('/api/forgot-password', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/verify-otp', authLimiter);
+app.use('/api/auth/verify-otp', authLimiter);
 app.use('/api/reset-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 app.use('/api/register', authLimiter);
+app.use('/api/auth/register', authLimiter);
 // Limit only public support submissions (not admin inbox GETs)
 app.post('/api/support/tickets', supportLimiter);
 app.use('/api/', apiLimiter);
@@ -286,41 +293,10 @@ if (isStagingReadOnly()) {
   });
 }
 
-// General Middleware
-const productionOrigins = [
-  'https://fusion-high-app.web.app',
-  'https://fusion-high-app.firebaseapp.com',
-];
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:4000,http://127.0.0.1:4000')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-if (process.env.APP_URL) allowedOrigins.push(process.env.APP_URL.trim());
-if (process.env.CLIENT_URL) allowedOrigins.push(process.env.CLIENT_URL.trim());
-for (const origin of productionOrigins) {
-  if (!allowedOrigins.includes(origin)) allowedOrigins.push(origin);
-}
-
+// General Middleware — explicit safe CORS allowlist (no wildcard/permissive credential reflection)
 app.use(cors({
   origin(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    try {
-      const url = new URL(origin);
-      if (
-        url.hostname === 'localhost' ||
-        url.hostname === '127.0.0.1' ||
-        /^192\.168\./.test(url.hostname) ||
-        /^10\./.test(url.hostname) ||
-        url.hostname.endsWith('.web.app') ||
-        url.hostname.endsWith('.firebaseapp.com') ||
-        url.hostname.endsWith('.vercel.app') ||
-        url.hostname.endsWith('.onrender.com')
-      ) {
-        return callback(null, true);
-      }
-    } catch (_) {}
-    callback(null, true); // Permissive fallback so browser clients are never blocked by CORS
+    return callback(null, isOriginAllowed(origin, process.env));
   },
   credentials: true,
 }));

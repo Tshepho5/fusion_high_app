@@ -333,22 +333,25 @@ describe('Application Lifecycle End-to-End Integration (Disposable PostgreSQL DB
       [schoolAId]
     );
 
-    // Apply all three additive SQL migrations
+    // Apply all four additive SQL migrations (including Phase M2.1 auth hardening)
     const migrations = [
       '20261121_curriculum_grades_8_12_upgrade.sql',
       '20261121_integrated_learner_registration.sql',
-      '20261121_application_lifecycle_remediation.sql'
+      '20261121_application_lifecycle_remediation.sql',
+      '20261122_auth_hardening_and_parent_onboarding.sql'
     ];
     for (const file of migrations) {
       const sql = fs.readFileSync(path.join(__dirname, '..', 'db', 'migrations', file), 'utf8');
       await db.query(sql);
     }
-    // Re-apply lifecycle migration a second time to verify strict idempotency
-    const lifecycleSql = fs.readFileSync(
-      path.join(__dirname, '..', 'db', 'migrations', '20261121_application_lifecycle_remediation.sql'),
-      'utf8'
-    );
-    await db.query(lifecycleSql);
+    // Re-apply lifecycle & M2.1 migrations a second time to verify strict idempotency
+    for (const file of ['20261121_application_lifecycle_remediation.sql', '20261122_auth_hardening_and_parent_onboarding.sql']) {
+      const idempSql = fs.readFileSync(
+        path.join(__dirname, '..', 'db', 'migrations', file),
+        'utf8'
+      );
+      await db.query(idempSql);
+    }
 
     const legacyCheck = await db.query(
       `SELECT application_number, academic_year, status FROM applications WHERE application_number = 'APP-LEGACY-001'`
@@ -482,42 +485,63 @@ describe('Application Lifecycle End-to-End Integration (Disposable PostgreSQL DB
   let uploadedDocId;
   let docRequestId;
 
-  test('Step 1: Application submission provisions passwordless tracking accounts, records history, and sends Email 1 without plaintext passwords', async () => {
+  test('Step 1: Application submission links Parent account with chosen password, records history, and sends Email 1 with /verify-email without plaintext passwords or premature Learner accounts', async () => {
+    const bcrypt = require('bcryptjs');
+    const accountTokenService = require('../public/src/services/accountTokenService');
+    const parentRoleId = (await db.query(`SELECT id FROM roles WHERE LOWER(name) = 'parent' LIMIT 1`)).rows[0].id;
+    const parentPwHash = await bcrypt.hash('SecureParentPass#2027!', 10);
+    const createdParent = (await db.query(
+      `INSERT INTO users (email, password_hash, password_set_at, email_verified_at, email_verification_status, role_id, full_name, surname, phone, school_id)
+       VALUES ('lerato.dlamini@test.local', $1, NOW(), NULL, 'pending_verification', $2, 'Lerato', 'Dlamini', '0825550101', $3)
+       RETURNING id, email, full_name, surname, school_id`,
+      [parentPwHash, parentRoleId, schoolAId]
+    )).rows[0];
+
     const ins = await db.query(
       `INSERT INTO applications (
          school_id, application_number, first_name, surname, id_number, dob, gender,
          email, learner_email, home_language, first_additional_language, grade_applied, academic_year,
          stream, academic_stream_id, selected_subjects,
          primary_parent_name, primary_parent_surname, primary_parent_email, primary_parent_phone,
-         primary_parent_relationship, physical_address, status
+         primary_parent_relationship, physical_address, parent_user_id, status
        ) VALUES (
          $1, 'APP-2027-0101', 'Sipho', 'Dlamini', '1104155123089', '2011-04-15', 'Male',
          'sipho.dlamini@test.local', 'sipho.dlamini@test.local', 'Sepedi Home Language', 'English First Additional Language', 10, 2027,
          'Science', $2, ARRAY['Sepedi Home Language', 'English First Additional Language', 'Mathematics', 'Physical Sciences', 'Life Sciences', 'Geography', 'Life Orientation'],
          'Lerato', 'Dlamini', 'lerato.dlamini@test.local', '0825550101',
-         'Mother', '22 Oak Ave, Polokwane', 'submitted'
+         'Mother', '22 Oak Ave, Polokwane', $3, 'submitted'
        ) RETURNING id`,
-      [schoolAId, streamScienceId]
+      [schoolAId, streamScienceId, createdParent.id]
     );
     mainAppId = ins.rows[0].id;
 
-    const result = await lifecycleService.handleApplicationSubmitted({ applicationId: mainAppId });
+    const { token: parentVerifyToken } = await accountTokenService.issueActionToken(db, {
+      userId: createdParent.id,
+      purpose: accountTokenService.TOKEN_PURPOSES.PARENT_EMAIL_VERIFY,
+      ttlMinutes: 72 * 60,
+      applicationId: mainAppId
+    });
+
+    const result = await lifecycleService.handleApplicationSubmitted({
+      applicationId: mainAppId,
+      parentUserId: createdParent.id,
+      parentVerificationToken: parentVerifyToken
+    });
     assert.equal(result.applicationId, mainAppId);
     assert.equal(result.confirmationEmailSent, true);
-    assert.ok(result.parentUserId > 0);
-    assert.ok(result.learnerUserId > 0);
+    assert.equal(result.parentUserId, createdParent.id);
+    assert.equal(result.learnerUserId, null, 'Learner account must NOT be provisioned before registration');
 
     parentUser = { id: result.parentUserId, role: 'parent', email: 'lerato.dlamini@test.local', full_name: 'Lerato', surname: 'Dlamini', school_id: schoolAId };
-    learnerUser = { id: result.learnerUserId, role: 'learner', email: 'sipho.dlamini@test.local', full_name: 'Sipho', surname: 'Dlamini', school_id: schoolAId };
 
-    // Email 1 dispatched to parent and learner without plaintext passwords
+    // Email 1 dispatched to parent with /verify-email link and without plaintext passwords
     const email1List = capturedEmails.filter((e) => e.subject.includes('APP-2027-0101') && /Application Received/i.test(e.subject));
     assert.ok(email1List.length >= 1, 'Email 1 must be dispatched on submission');
     for (const mail of email1List) {
       assert.match(mail.body, /APP-2027-0101/);
       assert.match(mail.body, /does not mean admission has been approved/i);
-      assert.match(mail.body, /\/activate\?token=/);
-      assert.doesNotMatch(mail.body, /Parent@2026|Temporary Password/i);
+      assert.match(mail.body, /\/verify-email\?token=/);
+      assert.doesNotMatch(mail.body, /Parent@2026|Temporary Password|SecureParentPass#2027!/i);
     }
 
     // Audit log & email log must never store raw tokens or passwords
@@ -525,59 +549,60 @@ describe('Application Lifecycle End-to-End Integration (Disposable PostgreSQL DB
     assert.ok(emailLogs.rows.length >= 1);
     for (const row of emailLogs.rows) {
       const serialized = JSON.stringify(row);
-      assert.doesNotMatch(serialized, /activate\?token=[a-zA-Z0-9_-]{10,}/);
-      assert.doesNotMatch(serialized, /Parent@2026/);
+      assert.doesNotMatch(serialized, /verify-email\?token=[a-zA-Z0-9_-]{10,}/);
+      assert.doesNotMatch(serialized, /Parent@2026|SecureParentPass#2027!/);
     }
   });
 
-  test('Step 2: Secure activation token works once via principalActivationController, rejects reuse, and rejects expired tokens', async () => {
+  test('Step 2: Single-use email verification token and activation token work once, reject reuse, and reject expired tokens', async () => {
     const activationCtrl = require('../public/src/controller/principalActivationController');
     const parentMail = capturedEmails.find((e) => e.to === 'lerato.dlamini@test.local');
-    const tokMatch = parentMail.body.match(/\/activate\?token=([a-zA-Z0-9_-]+)/i);
-    assert.ok(tokMatch && tokMatch[1], 'Activation link must carry a single-use token');
-    const rawToken = tokMatch[1];
+    const tokMatch = parentMail.body.match(/\/verify-email\?token=([a-zA-Z0-9_-]+)/i);
+    assert.ok(tokMatch && tokMatch[1], 'Verification link must carry a single-use token');
+    const rawVerifyToken = tokMatch[1];
 
-    const callActivate = (body) => new Promise((resolve, reject) => {
-      const req = { body };
+    const invokeCtrl = (fn, body) => new Promise((resolve, reject) => {
+      const req = { body, query: {} };
       const res = {
         statusCode: 200,
         status(code) { this.statusCode = code; return this; },
         json(data) { resolve({ statusCode: this.statusCode, data }); return this; }
       };
-      activationCtrl.activate(req, res).catch(reject);
+      fn(req, res).catch(reject);
     });
 
-    const first = await callActivate({ token: rawToken, password: 'SecureParentPass#2027!' });
-    assert.equal(first.statusCode, 200);
+    const firstVerify = await invokeCtrl(activationCtrl.verifyEmail, { token: rawVerifyToken });
+    assert.equal(firstVerify.statusCode, 200);
 
-    // Reusing the same token must fail (single-use enforcement)
-    const reused = await callActivate({ token: rawToken, password: 'AnotherPass#2027!' });
-    assert.notEqual(reused.statusCode, 200);
+    // Reusing the same verification token must fail (single-use enforcement)
+    const reusedVerify = await invokeCtrl(activationCtrl.verifyEmail, { token: rawVerifyToken });
+    assert.notEqual(reusedVerify.statusCode, 200);
 
-    // Expired token must fail
-    const learnerTok = await principalActivation.issue(db, learnerUser.id);
-    await db.query(`UPDATE users SET activation_expires_at = NOW() - INTERVAL '1 hour' WHERE id = $1`, [learnerUser.id]);
-    const expired = await callActivate({ token: learnerTok, password: 'ExpiredTry#2027!' });
+    // Expired legacy activation token on a passwordless account must fail
+    const staffRoleId = (await db.query(`SELECT id FROM roles WHERE LOWER(name) = 'principal' LIMIT 1`)).rows[0].id;
+    const tempPrincipal = (await db.query(
+      `INSERT INTO users (email, password_hash, role_id, full_name, surname, school_id)
+       VALUES ('expired.principal@waltershigh.test', NULL, $1, 'Expired', 'Test', $2) RETURNING id`,
+      [staffRoleId, schoolAId]
+    )).rows[0];
+    const expiredTok = await principalActivation.issue(db, tempPrincipal.id);
+    await db.query(`UPDATE users SET activation_expires_at = NOW() - INTERVAL '1 hour' WHERE id = $1`, [tempPrincipal.id]);
+    const expired = await invokeCtrl(activationCtrl.activate, { token: expiredTok, password: 'ExpiredTry#2027!', confirm_password: 'ExpiredTry#2027!' });
     assert.notEqual(expired.statusCode, 200);
   });
 
-  test('Step 3: Un-enrolled learner stays in Restricted Applicant Dashboard and unrelated parents cannot read applications', async () => {
-    const access = await lifecycleService.getLearnerAccessStatus(learnerUser);
-    assert.equal(access.mode, 'restricted_applicant');
-    assert.equal(access.isRestrictedApplicant, true);
-    assert.equal(access.hasActiveEnrollment, false);
-    assert.deepEqual(access.allowedModules, ['applications', 'registration', 'profile', 'settings']);
-
+  test('Step 3: Unrelated parents cannot read applications while owning Parent tracks submission', async () => {
     const parentTracked = await lifecycleService.getMyTrackedApplications(parentUser);
     assert.equal(parentTracked.applications.length, 1);
     assert.equal(parentTracked.applications[0].application_number, 'APP-2027-0101');
     assert.equal(parentTracked.applications[0].status, 'submitted');
 
-    const learnerTracked = await lifecycleService.getMyTrackedApplications(learnerUser);
-    assert.equal(learnerTracked.applications.length, 1);
-
     const outsiderTracked = await lifecycleService.getMyTrackedApplications(unrelatedParent);
     assert.equal(outsiderTracked.applications.length, 0);
+
+    // Learner account must still not exist prior to registration
+    const learnerCount = (await db.query(`SELECT COUNT(*)::int AS cnt FROM users WHERE LOWER(email) = 'sipho.dlamini@test.local'`)).rows[0].cnt;
+    assert.equal(learnerCount, 0);
   });
 
   test('Step 4: Documentation Request, Cross-School & Unrelated-Family Isolation, Upload, Resubmission & Acceptance (Emails 2, 3, 4)', async () => {
@@ -710,9 +735,6 @@ describe('Application Lifecycle End-to-End Integration (Disposable PostgreSQL DB
     const allowParent = await invokeFile(parentUser);
     assert.equal(allowParent.statusCode, 200);
 
-    const allowLearner = await invokeFile(learnerUser);
-    assert.equal(allowLearner.statusCode, 200);
-
     const blockAdminB = await invokeFile(principalB);
     assert.equal(blockAdminB.statusCode, 403);
 
@@ -819,12 +841,7 @@ describe('Application Lifecycle End-to-End Integration (Disposable PostgreSQL DB
     assert.equal(regCount.rows[0].cnt, 0, 'Declined application must NEVER create a learner_registrations row');
   });
 
-  test('Step 8: Complete Learner Registration preserves Learner Number, sends Email 7, unlocks Full Learner Dashboard, and isolates teachers to same school', async () => {
-    // Before registration completes, learner is STILL restricted even after approval!
-    const preRegAccess = await lifecycleService.getLearnerAccessStatus(learnerUser);
-    assert.equal(preRegAccess.mode, 'restricted_applicant');
-    assert.equal(preRegAccess.hasApprovedApplication, true);
-
+  test('Step 8: Complete Learner Registration preserves Learner Number, sends Email 7a & 7b, provisions Learner activation, unlocks Full Learner Dashboard, and isolates teachers to same school', async () => {
     const completed = await registrationService.completeLearnerRegistration({
       applicationId: mainAppId,
       actor: parentUser,
@@ -847,6 +864,12 @@ describe('Application Lifecycle End-to-End Integration (Disposable PostgreSQL DB
     });
     assert.equal(completed.learner_number, approvedLearnerNumber);
     assert.ok(completed.child_id > 0);
+    assert.equal(completed.learner_activation_mode, 'email_sent');
+
+    // Learner user is provisioned ONLY NOW upon registration
+    const childRow = (await db.query(`SELECT learner_user_id FROM children WHERE id = $1`, [completed.child_id])).rows[0];
+    assert.ok(childRow?.learner_user_id > 0, 'Learner user account must be provisioned upon registration');
+    learnerUser = { id: childRow.learner_user_id, role: 'learner', email: 'sipho.dlamini@test.local', full_name: 'Sipho', surname: 'Dlamini', school_id: schoolAId };
 
     // Idempotent second registration call must NOT duplicate children
     const replay = await registrationService.completeLearnerRegistration({
@@ -856,12 +879,38 @@ describe('Application Lifecycle End-to-End Integration (Disposable PostgreSQL DB
     });
     assert.equal(replay.idempotent_replay, true);
 
-    // Email 7 dispatched with Learner Number, Class 10-A, and real registered subjects
+    // Email 7a dispatched with Learner Number, Class 10-A, and real registered subjects
     const email7 = capturedEmails.find((e) => /Registration Complete/i.test(e.subject) && e.subject.includes(approvedLearnerNumber));
-    assert.ok(email7, 'Email 7 must be dispatched upon completing registration');
+    assert.ok(email7, 'Email 7a must be dispatched upon completing registration');
     assert.ok(email7.body.includes('10-A'));
     assert.ok(email7.body.includes('Physical Sciences'));
     assert.doesNotMatch(email7.body, /Parent@2026|Temporary Password/i);
+
+    // Email 7b dispatched to Learner personal email with single-use /activate token
+    const email7b = capturedEmails.find((e) => e.to === 'sipho.dlamini@test.local' && /Activate Your Learner/i.test(e.subject));
+    assert.ok(email7b, 'Email 7b must be dispatched to Learner after registration');
+    const learnerTokMatch = email7b.body.match(/\/activate\?token=([a-zA-Z0-9_-]+)/i);
+    assert.ok(learnerTokMatch && learnerTokMatch[1]);
+
+    // Learner activates own private password via single-use token
+    const activationCtrl = require('../public/src/controller/principalActivationController');
+    const actRes = await new Promise((resolve, reject) => {
+      const req = {
+        body: {
+          token: learnerTokMatch[1],
+          password: 'SiphoPrivatePass!2027',
+          confirm_password: 'SiphoPrivatePass!2027',
+          learner_number: approvedLearnerNumber
+        }
+      };
+      const res = {
+        statusCode: 200,
+        status(code) { this.statusCode = code; return this; },
+        json(data) { resolve({ statusCode: this.statusCode, data }); return this; }
+      };
+      activationCtrl.activate(req, res).catch(reject);
+    });
+    assert.equal(actRes.statusCode, 200);
 
     // Full Learner Dashboard NOW unlocks!
     const postRegAccess = await lifecycleService.getLearnerAccessStatus(learnerUser);

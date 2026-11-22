@@ -11,14 +11,6 @@ function digitsOnly(value) {
   return String(value || '').replace(/\D/g, '');
 }
 
-function learnerPasswordFromId(idNumber) {
-  const cleanId = digitsOnly(idNumber);
-  if (cleanId.length < 6) return '123456';
-  let password = '';
-  for (let i = 0; i < cleanId.length; i += 3) password += cleanId[i];
-  return password || cleanId;
-}
-
 const CHILD_MATCH_SQL = `
   SELECT c.id, c.learner_user_id, c.full_name, c.surname, c.grade, c.stream, c.subjects,
          c.learner_number, c.parent_id, c.secondary_parent_id, c.application_number,
@@ -152,12 +144,10 @@ async function materializeAcceptedLearner(match, { parentUserId = null, schoolId
 
   const school = schoolId || match.school_id || null;
   const idNumber = digitsOnly(match.id_number);
-  const plainPassword = learnerPasswordFromId(idNumber);
-  const passwordHash = await bcrypt.hash(plainPassword, 10);
   let learnerEmail = String(match.learner_email || '').trim().toLowerCase();
   const parentInbox = String(parentEmail || '').trim().toLowerCase();
   if (!learnerEmail || (parentInbox && learnerEmail === parentInbox)) {
-    learnerEmail = `${compactRef(learnerNumber) || 'learner'}@fusionhigh.co.za`;
+    learnerEmail = `learner.${compactRef(learnerNumber) || 'student'}@${String(school || '0')}.geleza.local`;
   }
 
   const roleRes = await db.query("SELECT id FROM roles WHERE LOWER(name) = 'learner' LIMIT 1");
@@ -176,15 +166,14 @@ async function materializeAcceptedLearner(match, { parentUserId = null, schoolId
   const created = await withTransaction(async (client) => {
     const userRes = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1', [learnerEmail]);
     let learnerUserId = userRes.rows[0]?.id;
-    let createdPassword = null;
     if (!learnerUserId) {
+      // NEVER create predictable ID-derived passwords; learner personally sets their own password after registration
       const inserted = await client.query(
-        `INSERT INTO users (email, password_hash, role_id, full_name, surname, id_number, school_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [learnerEmail, passwordHash, learnerRoleId, match.full_name, match.surname, idNumber, school]
+        `INSERT INTO users (email, password_hash, email_verification_status, role_id, full_name, surname, id_number, school_id)
+         VALUES ($1, NULL, 'pending_verification', $2, $3, $4, $5, $6) RETURNING id`,
+        [learnerEmail, learnerRoleId, match.full_name, match.surname, idNumber, school]
       );
       learnerUserId = inserted.rows[0].id;
-      createdPassword = plainPassword;
     }
     const childRes = await client.query(
       `INSERT INTO children (
@@ -207,7 +196,7 @@ async function materializeAcceptedLearner(match, { parentUserId = null, schoolId
         [match.application_number, learnerNumber]
       );
     }
-    return { id: childRes.rows[0].id, learnerUserId, createdPassword, subjects };
+    return { id: childRes.rows[0].id, learnerUserId, subjects };
   });
 
   return {
@@ -218,7 +207,7 @@ async function materializeAcceptedLearner(match, { parentUserId = null, schoolId
     parent_id: parentUserId,
     subjects: created.subjects,
     learner_email: learnerEmail,
-    generated_password: created.createdPassword
+    activation_required: true
   };
 }
 

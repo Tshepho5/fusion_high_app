@@ -23,6 +23,15 @@ const {
 } = require('../../../lib/applicationLifecycle');
 const { isControlLocked } = require('./systemController');
 const { ensureDatabaseSchema } = require('../../../db/schemaEnsurer');
+const { withTransaction } = require('../../../db/transaction');
+const { validatePassword } = require('./authController');
+const accountTokenService = require('../services/accountTokenService');
+const {
+  TOKEN_PURPOSES,
+  normalizeIdDigitsOrCode,
+  resolveFrontendOrigin
+} = require('../../../lib/authSecurity');
+const { isParentRole } = require('../../../lib/learnerRegistrationWorkflow');
 
 // Ensure upload directory exists
 const appUploadDir = path.join(process.cwd(), 'uploads', 'applications');
@@ -216,21 +225,7 @@ function validateFormFields(body) {
   return errors;
 }
 
-const getRequestBaseUrl = (req) => {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
-  const origin = req.get('origin');
-  if (origin && !origin.includes('localhost')) return origin.replace(/\/$/, '');
-  const referer = req.get('referer');
-  if (referer && !referer.includes('localhost')) {
-    try {
-      const u = new URL(referer);
-      return `${u.protocol}//${u.host}`;
-    } catch (_) {}
-  }
-  const proto = req.get('x-forwarded-proto') || req.protocol || 'http';
-  const host = req.get('x-forwarded-host') || req.get('host') || 'localhost:4000';
-  return `${proto}://${host}`;
-};
+const getRequestBaseUrl = (req) => resolveFrontendOrigin(req);
 
 /**
  * Submit New Learner Admission Application
@@ -254,7 +249,37 @@ exports.submitApplication = async (req, res) => {
     const body = req.body;
 
     // 1. Validate Form Fields
+    const isAuthenticatedParent = Boolean(req.user && req.user.id && isParentRole(req.user.role));
+    if (req.user && req.user.id && !isAuthenticatedParent) {
+      return res.status(403).json({
+        success: false,
+        code: 'PARENT_ACCOUNT_REQUIRED',
+        error: 'Please sign in with a Parent account or sign out before submitting a new family admission application.'
+      });
+    }
+
+    // Bind authenticated existing parent's authoritative email so an existing parent reuses their exact account
+    if (isAuthenticatedParent && req.user.email) {
+      body.primary_parent_email = String(req.user.email).trim().toLowerCase();
+    }
+
     const fieldErrors = validateFormFields(body);
+
+    // New unauthenticated Parent MUST create & confirm their own strong password on submission (NEVER Learner password)
+    const rawParentPassword = String(body.parent_password || '');
+    const rawConfirmParentPassword = String(body.confirm_parent_password || '');
+    if (!isAuthenticatedParent) {
+      const pwProblem = validatePassword(rawParentPassword);
+      if (pwProblem) {
+        fieldErrors.push({ field: 'parent_password', message: pwProblem });
+      }
+      if (!rawConfirmParentPassword) {
+        fieldErrors.push({ field: 'confirm_parent_password', message: 'Please confirm your parent account password.' });
+      } else if (rawParentPassword !== rawConfirmParentPassword) {
+        fieldErrors.push({ field: 'confirm_parent_password', message: 'Parent password and confirmation password do not match.' });
+      }
+    }
+
     if (fieldErrors.length > 0) {
       return res.status(400).json({
         success: false,
@@ -468,136 +493,271 @@ exports.submitApplication = async (req, res) => {
       applicationStatus = 'submitted';
     }
 
-    // 5. Insert Application Record into Database
-    const insertQuery = `
-      INSERT INTO applications (
-        application_number,
-        correction_token,
-        status,
-        first_name,
-        surname,
-        id_number,
-        dob,
-        gender,
-        citizenship,
-        phone,
-        email,
-        physical_address,
-        grade_applied,
-        stream,
-        selected_subjects,
-        previous_school,
-        previous_grade,
-        transfer_reason,
-        medical_info,
-        special_needs,
-        primary_parent_name,
-        primary_parent_surname,
-        primary_parent_relationship,
-        primary_parent_id_number,
-        primary_parent_phone,
-        primary_parent_email,
-        primary_parent_address,
-        primary_parent_occupation,
-        primary_parent_employer,
-        has_secondary_parent,
-        secondary_parent_name,
-        secondary_parent_surname,
-        secondary_parent_relationship,
-        secondary_parent_id_number,
-        secondary_parent_phone,
-        secondary_parent_email,
-        secondary_parent_address,
-        secondary_parent_occupation,
-        secondary_parent_employer,
-        ai_verification_status,
-        ai_verification_notes,
-        assigned_class_id,
-        provisional_learner_number,
-        home_language,
-        school_id,
-        application_fee_amount,
-        application_fee_status,
-        application_fee_paid_at,
-        application_fee_due_date,
-        registration_fee_amount,
-        registration_fee_status,
-        scenario,
-        existing_parent_id,
-        existing_learner_id,
-        payment_method,
-        payment_reference
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
-        $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
-        $41, $42, $43, $44, $45, $46, $47, $48, $49, $50,
-        $51, $52, $53, $54, $55, $56
-      ) RETURNING id;
-    `;
+    // 5. Atomically validate duplicate active applications, create/reuse Parent account, and persist Application
+    //    NEVER store plaintext passwords in applications, logs, Firestore, or emails.
+    const normalizedParentEmail = body.primary_parent_email.toLowerCase().trim();
+    const normalizedLearnerId = normalizeIdDigitsOrCode(body.id_number);
+    const parentPasswordHash = !isAuthenticatedParent ? await bcrypt.hash(rawParentPassword, 10) : null;
 
-    const values = [
-      applicationNumber,
-      correctionToken,
-      applicationStatus,
-      body.first_name.trim(),
-      body.surname.trim(),
-      body.id_number.trim(),
-      body.dob || null,
-      body.gender || 'Other',
-      body.citizenship || 'South Africa',
-      body.phone ? body.phone.trim() : null,
-      body.email ? body.email.toLowerCase().trim() : null,
-      body.physical_address.trim(),
-      gradeApplied,
-      stream,
-      selectedSubjects,
-      body.previous_school || null,
-      body.previous_grade ? parseInt(body.previous_grade, 10) : null,
-      body.transfer_reason || null,
-      body.medical_info || null,
-      body.special_needs || null,
-      body.primary_parent_name.trim(),
-      body.primary_parent_surname.trim(),
-      body.primary_parent_relationship.trim(),
-      body.primary_parent_id_number.trim(),
-      body.primary_parent_phone.trim(),
-      body.primary_parent_email.toLowerCase().trim(),
-      body.primary_parent_address.trim(),
-      body.primary_parent_occupation || null,
-      body.primary_parent_employer || null,
-      body.has_secondary_parent === 'true' || body.has_secondary_parent === true,
-      body.secondary_parent_name ? body.secondary_parent_name.trim() : null,
-      body.secondary_parent_surname ? body.secondary_parent_surname.trim() : null,
-      body.secondary_parent_relationship ? body.secondary_parent_relationship.trim() : null,
-      body.secondary_parent_id_number ? body.secondary_parent_id_number.trim() : null,
-      body.secondary_parent_phone ? body.secondary_parent_phone.trim() : null,
-      body.secondary_parent_email ? body.secondary_parent_email.toLowerCase().trim() : null,
-      body.secondary_parent_address ? body.secondary_parent_address.trim() : null,
-      body.secondary_parent_occupation || null,
-      body.secondary_parent_employer || null,
-      aiVerification.isValid ? 'passed' : 'flagged',
-      JSON.stringify(aiVerification.issues),
-      null,
-      provisionalLearnerNumber,
-      homeLanguage,
-      schoolId,
-      appFeeAmount,
-      feeStatus,
-      feePaidAt,
-      feeDueDate,
-      regFeeAmount,
-      'waived',
-      body.scenario || 'public_new_applicant',
-      body.existing_parent_id ? parseInt(body.existing_parent_id, 10) : null,
-      body.existing_learner_id ? parseInt(body.existing_learner_id, 10) : null,
-      hold.method,
-      paymentRef
-    ];
+    let applicationId = null;
+    let resolvedParentUserId = isAuthenticatedParent ? Number(req.user.id) : null;
+    let parentVerificationToken = null;
 
-    const appInsertResult = await db.query(insertQuery, values);
-    const applicationId = appInsertResult.rows[0].id;
+    try {
+      const persisted = await withTransaction(async (client) => {
+        // Advisory lock on Parent email + Learner active-application key to prevent concurrent duplicate races
+        await client.query('SELECT pg_advisory_xact_lock(hashtext(lower($1)))', [normalizedParentEmail]);
+        await client.query(
+          'SELECT pg_advisory_xact_lock(hashtext($1))',
+          [`active_app:${schoolId}:${normalizedLearnerId}:${academicYear}`]
+        );
+
+        // 5a. Prevent duplicate active application for same Learner + School + Academic Year
+        const dupAppRes = await client.query(
+          `SELECT id, application_number, status
+           FROM applications
+           WHERE school_id = $1
+             AND COALESCE(academic_year, 0) = $2
+             AND UPPER(REGEXP_REPLACE(TRIM(COALESCE(id_number, '')), '[^A-Za-z0-9]', '', 'g')) = $3
+             AND COALESCE(LOWER(status), '') NOT IN ('rejected', 'declined', 'withdrawn', 'cancelled')
+           LIMIT 1`,
+          [schoolId, academicYear, normalizedLearnerId]
+        );
+        if (dupAppRes.rows.length > 0) {
+          const dupErr = new Error(
+            `An active admission application (${dupAppRes.rows[0].application_number}) already exists for this learner at ${schoolName} for ${academicYear}.`
+          );
+          dupErr.status = 409;
+          dupErr.code = 'DUPLICATE_ACTIVE_APPLICATION';
+          throw dupErr;
+        }
+
+        // 5b. For unauthenticated submission: refuse if Parent email already exists (must sign in first!)
+        let txParentUserId = resolvedParentUserId;
+        let txVerifyToken = null;
+
+        if (!isAuthenticatedParent) {
+          const existingParent = await client.query(
+            'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+            [normalizedParentEmail]
+          );
+          if (existingParent.rows.length > 0) {
+            const existsErr = new Error(
+              'An account with this email already exists. Please sign in to your existing Parent account before applying for another learner.'
+            );
+            existsErr.status = 409;
+            existsErr.code = 'EXISTING_ACCOUNT_LOGIN_REQUIRED';
+            existsErr.login_url = '/login?next=/application.html';
+            throw existsErr;
+          }
+
+          const roleRes = await client.query("SELECT id FROM roles WHERE LOWER(name) = 'parent' LIMIT 1");
+          const parentRoleId = roleRes.rows[0]?.id || 4;
+          const insertedParent = await client.query(
+            `INSERT INTO users (
+               email, password_hash, password_set_at, email_verified_at, email_verification_status,
+               role_id, full_name, surname, id_number, phone, physical_address, parent_type, school_id
+             ) VALUES (
+               $1, $2, NOW(), NULL, 'pending_verification',
+               $3, $4, $5, $6, $7, $8, $9, $10
+             )
+             RETURNING id`,
+            [
+              normalizedParentEmail,
+              parentPasswordHash,
+              parentRoleId,
+              body.primary_parent_name.trim(),
+              body.primary_parent_surname.trim(),
+              body.primary_parent_id_number.trim(),
+              body.primary_parent_phone.trim(),
+              body.primary_parent_address.trim(),
+              body.primary_parent_relationship.trim(),
+              schoolId
+            ]
+          );
+          txParentUserId = insertedParent.rows[0].id;
+        }
+
+        // 5c. Insert Application record (provisional_learner_number stays NULL until Admin approval!)
+        const insertQuery = `
+          INSERT INTO applications (
+            application_number,
+            correction_token,
+            status,
+            first_name,
+            surname,
+            id_number,
+            dob,
+            gender,
+            citizenship,
+            phone,
+            email,
+            physical_address,
+            grade_applied,
+            stream,
+            selected_subjects,
+            previous_school,
+            previous_grade,
+            transfer_reason,
+            medical_info,
+            special_needs,
+            primary_parent_name,
+            primary_parent_surname,
+            primary_parent_relationship,
+            primary_parent_id_number,
+            primary_parent_phone,
+            primary_parent_email,
+            primary_parent_address,
+            primary_parent_occupation,
+            primary_parent_employer,
+            has_secondary_parent,
+            secondary_parent_name,
+            secondary_parent_surname,
+            secondary_parent_relationship,
+            secondary_parent_id_number,
+            secondary_parent_phone,
+            secondary_parent_email,
+            secondary_parent_address,
+            secondary_parent_occupation,
+            secondary_parent_employer,
+            ai_verification_status,
+            ai_verification_notes,
+            assigned_class_id,
+            provisional_learner_number,
+            home_language,
+            school_id,
+            application_fee_amount,
+            application_fee_status,
+            application_fee_paid_at,
+            application_fee_due_date,
+            registration_fee_amount,
+            registration_fee_status,
+            scenario,
+            existing_parent_id,
+            existing_learner_id,
+            payment_method,
+            payment_reference,
+            academic_year,
+            parent_user_id
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+            $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+            $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+            $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
+            $41, $42, $43, $44, $45, $46, $47, $48, $49, $50,
+            $51, $52, $53, $54, $55, $56, $57, $58
+          ) RETURNING id;
+        `;
+
+        const values = [
+          applicationNumber,
+          correctionToken,
+          applicationStatus,
+          body.first_name.trim(),
+          body.surname.trim(),
+          body.id_number.trim(),
+          body.dob || null,
+          body.gender || 'Other',
+          body.citizenship || 'South Africa',
+          body.phone ? body.phone.trim() : null,
+          body.email ? body.email.toLowerCase().trim() : null,
+          body.physical_address.trim(),
+          gradeApplied,
+          stream,
+          selectedSubjects,
+          body.previous_school || null,
+          body.previous_grade ? parseInt(body.previous_grade, 10) : null,
+          body.transfer_reason || null,
+          body.medical_info || null,
+          body.special_needs || null,
+          body.primary_parent_name.trim(),
+          body.primary_parent_surname.trim(),
+          body.primary_parent_relationship.trim(),
+          body.primary_parent_id_number.trim(),
+          body.primary_parent_phone.trim(),
+          normalizedParentEmail,
+          body.primary_parent_address.trim(),
+          body.primary_parent_occupation || null,
+          body.primary_parent_employer || null,
+          body.has_secondary_parent === 'true' || body.has_secondary_parent === true,
+          body.secondary_parent_name ? body.secondary_parent_name.trim() : null,
+          body.secondary_parent_surname ? body.secondary_parent_surname.trim() : null,
+          body.secondary_parent_relationship ? body.secondary_parent_relationship.trim() : null,
+          body.secondary_parent_id_number ? body.secondary_parent_id_number.trim() : null,
+          body.secondary_parent_phone ? body.secondary_parent_phone.trim() : null,
+          body.secondary_parent_email ? body.secondary_parent_email.toLowerCase().trim() : null,
+          body.secondary_parent_address ? body.secondary_parent_address.trim() : null,
+          body.secondary_parent_occupation || null,
+          body.secondary_parent_employer || null,
+          aiVerification.isValid ? 'passed' : 'flagged',
+          JSON.stringify(aiVerification.issues),
+          null,
+          null, // NEVER allocate Official Learner Number during public application submission
+          homeLanguage,
+          schoolId,
+          appFeeAmount,
+          feeStatus,
+          feePaidAt,
+          feeDueDate,
+          regFeeAmount,
+          'waived',
+          isAuthenticatedParent ? 'authenticated_existing_parent' : (body.scenario || 'public_new_applicant'),
+          isAuthenticatedParent ? txParentUserId : null,
+          body.existing_learner_id ? parseInt(body.existing_learner_id, 10) : null,
+          hold.method,
+          paymentRef,
+          academicYear,
+          txParentUserId
+        ];
+
+        const appInsertResult = await client.query(insertQuery, values);
+        const txAppId = appInsertResult.rows[0].id;
+
+        if (!isAuthenticatedParent && txParentUserId) {
+          const issued = await accountTokenService.issueActionToken(client, {
+            userId: txParentUserId,
+            purpose: TOKEN_PURPOSES.PARENT_EMAIL_VERIFY,
+            applicationId: txAppId,
+            schoolId
+          });
+          txVerifyToken = issued.token;
+        }
+
+        return { txAppId, txParentUserId, txVerifyToken };
+      });
+
+      applicationId = persisted.txAppId;
+      resolvedParentUserId = persisted.txParentUserId;
+      parentVerificationToken = persisted.txVerifyToken;
+    } catch (txErr) {
+      if (txErr.status) {
+        return res.status(txErr.status).json({
+          success: false,
+          code: txErr.code || undefined,
+          error: txErr.message,
+          login_url: txErr.login_url || undefined
+        });
+      }
+      if (txErr.code === '23505') {
+        const constraint = String(txErr.constraint || '');
+        if (constraint.includes('uniq_active_application_per_school_year')) {
+          return res.status(409).json({
+            success: false,
+            code: 'DUPLICATE_ACTIVE_APPLICATION',
+            error: `An active admission application already exists for this learner at ${schoolName} for ${academicYear}.`
+          });
+        }
+        if (constraint.includes('users_email')) {
+          return res.status(409).json({
+            success: false,
+            code: 'EXISTING_ACCOUNT_LOGIN_REQUIRED',
+            error: 'An account with this email already exists. Please sign in to your existing Parent account before applying for another learner.',
+            login_url: '/login?next=/application.html'
+          });
+        }
+      }
+      throw txErr;
+    }
     if (academicStreamId) {
       await db.query(
         `UPDATE applications
@@ -705,7 +865,10 @@ exports.submitApplication = async (req, res) => {
     try {
       submissionLifecycle = await applicationLifecycleService.handleApplicationSubmitted({
         applicationId,
-        baseUrl
+        baseUrl,
+        parentUserId: resolvedParentUserId,
+        parentVerificationToken,
+        isExistingParent: isAuthenticatedParent
       });
     } catch (mailErr) {
       console.warn('[EMAIL/LIFECYCLE WARNING handleApplicationSubmitted]:', mailErr.message);
@@ -714,7 +877,7 @@ exports.submitApplication = async (req, res) => {
     if (applicationStatus === 'waitlisted') {
       try {
         await emailService.sendApplicationWaitlisted({
-          parentEmail: body.primary_parent_email,
+          parentEmail: normalizedParentEmail,
           parentName: primaryParentFullName,
           learnerName: learnerFullName,
           grade: gradeApplied,
@@ -734,8 +897,12 @@ exports.submitApplication = async (req, res) => {
         application_fee_amount: appFeeAmount,
         banking_details: paymentHold.publicBank(bankingInfo),
         tracking_enabled: true,
-        activation_required: Boolean(submissionLifecycle?.parentActivationRequired),
-        message: `Application received! Grade ${gradeApplied} is currently at maximum capacity (< 30 per class). The applicant has been placed on the priority waiting list.`
+        email_verification_required: !isAuthenticatedParent,
+        existing_parent: isAuthenticatedParent,
+        login_url: '/login',
+        message: !isAuthenticatedParent
+          ? `Application received! Grade ${gradeApplied} is currently at capacity so the learner is on the waiting list. Please verify your email address using the link sent to your inbox before signing in.`
+          : `Application received! Grade ${gradeApplied} is currently at capacity so the learner is on the waiting list. You can track this application immediately in your Parent Dashboard.`
       });
     }
 
@@ -756,8 +923,12 @@ exports.submitApplication = async (req, res) => {
       payment_held: false,
       payment_method: 'fee_waived',
       tracking_enabled: true,
-      activation_required: Boolean(submissionLifecycle?.parentActivationRequired),
-      message: 'Application submitted successfully! Submission confirms receipt only and is now awaiting review by the School Principal / Administration. Check your email for your application reference and tracking instructions.'
+      email_verification_required: !isAuthenticatedParent,
+      existing_parent: isAuthenticatedParent,
+      login_url: '/login',
+      message: !isAuthenticatedParent
+        ? 'Application submitted successfully! Check your email for your Application Reference and click the verification link to verify your email address before signing in to track your application.'
+        : 'Application submitted successfully and linked to your existing Parent account! You can track its review status immediately in your Parent Dashboard.'
     });
 
   } catch (err) {
@@ -1191,9 +1362,9 @@ exports.listApplications = async (req, res) => {
  */
 exports.reviewApplication = async (req, res) => {
   const { id } = req.params;
-  const { status, admin_notes, assigned_class_id, reason, required_documents, instructions, deadline } = req.body;
+  const { status, decision, admin_notes, assigned_class_id, reason, required_documents, instructions, deadline } = req.body;
   const baseUrl = getRequestBaseUrl(req);
-  const canonicalTarget = normalizeApplicationStatus(status);
+  const canonicalTarget = normalizeApplicationStatus(status || decision);
 
   try {
     if (canonicalTarget === 'approved') {

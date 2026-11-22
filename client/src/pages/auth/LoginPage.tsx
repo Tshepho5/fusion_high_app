@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FusionAppIcon } from '../../components/common/FusionAppIcon';
@@ -23,8 +23,38 @@ import { startAuthentication, browserSupportsWebAuthn, platformAuthenticatorIsAv
 import { authService } from '../../services/api';
 import { describeLoginFailure } from '../../utils/loginFeedback';
 
+const ALLOWLISTED_NEXT_PATHS = [
+  '/application.html',
+  '/dashboard/parent',
+  '/dashboard/learner',
+  '/dashboard/teacher',
+  '/dashboard/admin',
+  '/activate',
+  '/verify-email',
+];
+
+function sanitizeNextRedirect(rawNext: string | null): string | null {
+  if (!rawNext || typeof rawNext !== 'string') return null;
+  const trimmed = rawNext.trim();
+  if (!trimmed || trimmed.length > 300) return null;
+  if (/[\u0000-\u001F\u007F\\]/.test(trimmed)) return null;
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return null;
+  try {
+    const parsed = new URL(trimmed, 'https://geleza.local');
+    if (parsed.origin !== 'https://geleza.local') return null;
+    if (!ALLOWLISTED_NEXT_PATHS.includes(parsed.pathname)) return null;
+    if (parsed.search.includes('://') || parsed.search.toLowerCase().includes('javascript:')) return null;
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const safeNextPath = sanitizeNextRedirect(searchParams.get('next'));
   const { login, establishSession } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -181,6 +211,18 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const redirectAfterLogin = (roleName: string) => {
+    if (safeNextPath) {
+      if (safeNextPath.startsWith('/application.html')) {
+        window.location.assign(safeNextPath);
+        return;
+      }
+      navigate(safeNextPath);
+      return;
+    }
+    navigate(`/dashboard/${roleName}`);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -188,8 +230,8 @@ export const LoginPage: React.FC = () => {
     const trimmedPass = password.trim();
 
     if (!trimmedId) {
-      setFieldErrors((prev) => ({ ...prev, identifier: 'Please enter your email or learner ID.' }));
-      setError('Please enter your email or learner ID before submitting.');
+      setFieldErrors((prev) => ({ ...prev, identifier: 'Please enter your email or official learner number.' }));
+      setError('Please enter your email or official learner number before submitting.');
       return;
     }
 
@@ -217,7 +259,7 @@ export const LoginPage: React.FC = () => {
         setError('This account has no portal role assigned. Ask the school office to finish setup.');
         return;
       }
-      navigate(`/dashboard/${session.role}`);
+      redirectAfterLogin(session.role);
     } catch (err: any) {
       console.error('Login error:', err);
       const code = err.response?.data?.code;
@@ -227,17 +269,14 @@ export const LoginPage: React.FC = () => {
       if (!failure.blameFields) {
         setFieldErrors({});
         setError(msg);
-      } else if (code === 'account_not_found') {
-        setFieldErrors({ identifier: msg });
-        setError(msg);
-      } else if (code === 'password_incorrect') {
-        setFieldErrors({ password: msg });
-        setError('The email or learner ID is recognized, but the password is incorrect.');
+      } else if (code === 'email_verification_required') {
+        setFieldErrors({});
+        setError('Please verify your email address using the link sent to your inbox before signing in. You can also resend a verification link below.');
       } else {
-        setError(msg);
+        setError(msg || 'Invalid login credentials. Please check your email or learner number and password.');
         setFieldErrors({
-          identifier: 'Please verify your registered email or learner ID.',
-          password: 'Password may be incorrect or account is unauthorized.',
+          identifier: 'Check your email or official learner number.',
+          password: 'Check your password.',
         });
       }
     } finally {
@@ -261,7 +300,7 @@ export const LoginPage: React.FC = () => {
         setError('This account has no portal role assigned. Ask the school office to finish setup.');
         return;
       }
-      navigate(`/dashboard/${session.role}`);
+      redirectAfterLogin(session.role);
     } catch (err: any) {
       const cancelled = err?.name === 'NotAllowedError' || err?.code === 'ERROR_CEREMONY_ABORTED';
       const message = cancelled
@@ -591,16 +630,28 @@ export const LoginPage: React.FC = () => {
                   </span>
                 </label>
 
-                <Link
-                  to="/forgot-password"
-                  className={`font-bold text-[11px] underline underline-offset-2 px-2 py-1 rounded-full transition-colors ${
-                    isLight
-                      ? 'text-[#0F172A] bg-white/85 hover:bg-white hover:text-[#1D4ED8]'
-                      : 'text-cyan-300 hover:text-white drop-shadow-sm'
-                  }`}
-                >
-                  Forgot Password?
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/activate"
+                    className={`font-bold text-[11px] underline underline-offset-2 px-2 py-1 rounded-full transition-colors ${
+                      isLight
+                        ? 'text-[#0F172A] bg-white/85 hover:bg-white hover:text-[#1D4ED8]'
+                        : 'text-emerald-300 hover:text-white drop-shadow-sm'
+                    }`}
+                  >
+                    Verify / Activate
+                  </Link>
+                  <Link
+                    to="/forgot-password"
+                    className={`font-bold text-[11px] underline underline-offset-2 px-2 py-1 rounded-full transition-colors ${
+                      isLight
+                        ? 'text-[#0F172A] bg-white/85 hover:bg-white hover:text-[#1D4ED8]'
+                        : 'text-cyan-300 hover:text-white drop-shadow-sm'
+                    }`}
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
               </div>
               <p
                 id="remember-me-hint"

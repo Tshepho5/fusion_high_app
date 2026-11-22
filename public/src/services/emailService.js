@@ -847,9 +847,7 @@ const emailService = {
             <tr>
               <td style="padding: 3px 0; color: #94a3b8;">Learner login:</td>
               <td>
-                ${l.generated_password
-                  ? `<span style="display: inline-block; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.4); color: #c7d2fe; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-weight: 800; letter-spacing: 1px;">${l.generated_password}</span>`
-                  : `<span style="color: #cbd5e1;">This learner already has a portal login.</span>`}
+                <span style="color: #cbd5e1;">Learner sets their own private password securely after registration and signs in using their Official Learner Number.</span>
               </td>
             </tr>
           </table>
@@ -1836,7 +1834,7 @@ const emailService = {
       };
     },
 
-    // 11c. Email 1 — Immediate Application Submission Confirmation (No fake fees, explicit pending-review notice)
+    // 11c. Email 1 — Immediate Application Submission Confirmation (Application Reference ONLY; Parent Email Verification CTA)
     applicationReceivedConfirmation: ({
       recipientName,
       learnerName,
@@ -1857,7 +1855,9 @@ const emailService = {
       submittedAt,
       statusLabel,
       dashboardUrl,
-      activationUrl
+      verificationUrl,
+      activationUrl,
+      isExistingParent = false
     }) => {
       const submittedDisplay = submittedAt
         ? new Date(submittedAt).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -1871,17 +1871,35 @@ const emailService = {
         ? selectedSubjects.join(', ')
         : [homeLanguage ? `${homeLanguage} (Home Language)` : null, firstAdditionalLanguage ? `${firstAdditionalLanguage} (FAL)` : null].filter(Boolean).join(', ');
 
-      const activationBlock = activationUrl
+      const verificationBlock = verificationUrl
         ? `
-          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 16px; margin: 18px 0;">
-            <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px; font-weight: 700;">Activate Your Application Tracking Account</h4>
+          <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 16px; margin: 18px 0;">
+            <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px; font-weight: 700;">Verify Your Email Address to Activate Login</h4>
             <p style="margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
-              Create your private password using this single-use link (valid for 72 hours) to track your application progress, view school messages, and upload any requested documents securely.
+              Before you can sign in with the Parent password you created, confirm your email ownership using this single-use verification link (valid for 72 hours).
             </p>
-            <a href="${activationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Set Password &amp; Track Application</a>
+            <a href="${verificationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Verify Email Address</a>
           </div>
         `
-        : '';
+        : activationUrl
+          ? `
+            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 16px; margin: 18px 0;">
+              <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px; font-weight: 700;">Activate Your Application Tracking Account</h4>
+              <p style="margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+                Create your private password using this single-use link (valid for 72 hours) to track your application progress, view school messages, and upload any requested documents securely.
+              </p>
+              <a href="${activationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Set Password &amp; Track Application</a>
+            </div>
+          `
+          : isExistingParent
+            ? `
+              <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 14px 16px; margin: 16px 0;">
+                <p style="margin: 0; font-size: 13px; color: #bae6fd; line-height: 1.5;">
+                  <strong>Linked to Your Existing Parent Account:</strong> Sign in with your existing Parent email and password at any time to track this application and upload requested documents.
+                </p>
+              </div>
+            `
+            : '';
 
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName || parentName || 'Parent / Guardian'}</strong>,</p>
@@ -1893,7 +1911,7 @@ const emailService = {
             <tr><td style="color: #94a3b8; padding: 4px 0; width: 42%;">School Applied To:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${schoolName}</td></tr>
             ${schoolContacts.length ? `<tr><td style="color: #94a3b8; padding: 4px 0;">School Contact:</td><td style="color: #cbd5e1; padding: 4px 0;">${schoolContacts.join(' &bull; ')}</td></tr>` : ''}
             <tr><td style="color: #94a3b8; padding: 4px 0;">Application Reference:</td><td style="color: #38bdf8; font-family: monospace; font-size: 15px; font-weight: 800; padding: 4px 0;">${applicationNumber}</td></tr>
-            ${learnerNumber ? `<tr><td style="color: #94a3b8; padding: 4px 0;">Provisional Learner No:</td><td style="color: #34d399; font-family: monospace; font-weight: 700; padding: 4px 0;">${learnerNumber}</td></tr>` : ''}
+            ${learnerNumber ? `<tr><td style="color: #94a3b8; padding: 4px 0;">Official Learner Number:</td><td style="color: #34d399; font-family: monospace; font-weight: 700; padding: 4px 0;">${learnerNumber}</td></tr>` : ''}
             <tr><td style="color: #94a3b8; padding: 4px 0;">Learner Full Name:</td><td style="color: #ffffff; font-weight: 700; padding: 4px 0;">${learnerName}</td></tr>
             <tr><td style="color: #94a3b8; padding: 4px 0;">Parent / Guardian:</td><td style="color: #e2e8f0; padding: 4px 0;">${parentName || 'Parent / Guardian'}${parentContact ? ` (${parentContact})` : ''}</td></tr>
             <tr><td style="color: #94a3b8; padding: 4px 0;">Grade &amp; Academic Year:</td><td style="color: #e2e8f0; font-weight: 700; padding: 4px 0;">Grade ${grade} (${academicYear})</td></tr>
@@ -1905,10 +1923,10 @@ const emailService = {
         </div>
         <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 14px 16px; margin: 16px 0;">
           <p style="margin: 0; font-size: 13px; color: #fde68a; line-height: 1.5;">
-            <strong>Important Notice:</strong> Submitting an application confirms receipt only and <strong>does not mean admission has been approved</strong>. The school Principal or authorized School Administrator will review your application and notify you if additional documentation is needed or once a formal decision is made.
+            <strong>Important Notice:</strong> Submitting an application confirms receipt only and <strong>does not mean admission has been approved</strong>. Your Official Learner Number will only be issued if and when the School Principal or Admissions Office approves this application.
           </p>
         </div>
-        ${activationBlock}
+        ${verificationBlock}
       `;
 
       return {
@@ -1918,8 +1936,8 @@ const emailService = {
           title: 'Application Received',
           subtitle: `${schoolName} • Grade ${grade} (${academicYear})`,
           contentHtml,
-          ctaText: 'Open Application Tracking Dashboard',
-          ctaLink: dashboardUrl
+          ctaText: verificationUrl ? 'Verify Email Address' : 'Open Application Tracking Dashboard',
+          ctaLink: verificationUrl || dashboardUrl
         })
       };
     },
@@ -2041,7 +2059,7 @@ const emailService = {
       };
     },
 
-    // 11g. Email 7 — Registration Completed Confirmation (No Plaintext Passwords)
+    // 11g. Email 7a — Registration Completed Confirmation (Parent) (Zero Plaintext Passwords)
     registrationCompletedConfirmation: ({
       recipientName,
       learnerName,
@@ -2055,25 +2073,43 @@ const emailService = {
       classTeacherName,
       selectedSubjects = [],
       dashboardUrl,
-      activationUrl
+      activationUrl,
+      learnerActivationMode = 'parent_handoff'
     }) => {
       const subjectsHtml = (Array.isArray(selectedSubjects) && selectedSubjects.length > 0)
         ? selectedSubjects.map((s) => `<li style="padding: 2px 0; color: #e2e8f0;">${s}</li>`).join('')
         : '<li style="color: #94a3b8;">Subjects linked from school curriculum</li>';
-      const activationSection = activationUrl
+
+      const learnerLoginGuidance = activationUrl
         ? `
           <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 16px; margin: 18px 0;">
             <h4 style="margin: 0 0 6px 0; color: #34d399; font-size: 14px;">Activate Learner Portal Access</h4>
-            <p style="margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1;">Use this secure single-use link (valid 72 hours) to set your portal password and access the full Learner Dashboard.</p>
-            <a href="${activationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Set Password &amp; Activate Learner Account</a>
+            <p style="margin: 0 0 12px 0; font-size: 13px; color: #cbd5e1;">Use this secure single-use link (valid 72 hours) to create your private Learner password, then sign in with your Official Learner Number (<strong style="color: #38bdf8;">${learnerNumber}</strong>).</p>
+            <a href="${activationUrl}" style="display: inline-block; padding: 10px 18px; border-radius: 8px; background: #10b981; color: #ffffff; font-weight: 700; font-size: 13px; text-decoration: none;">Create Learner Password</a>
           </div>
         `
-        : '';
+        : learnerActivationMode === 'email_sent'
+          ? `
+            <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 14px 16px; margin: 16px 0;">
+              <h4 style="margin: 0 0 6px 0; color: #38bdf8; font-size: 13px;">Next Step: Learner Password Activation</h4>
+              <p style="margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+                A private single-use activation link has been emailed directly to <strong>${learnerName}</strong> so they can personally create their own Learner password. Once activated, they will sign in using their Official Learner Number (<strong style="color: #38bdf8;">${learnerNumber}</strong>) and their private password.
+              </p>
+            </div>
+          `
+          : `
+            <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 14px 16px; margin: 16px 0;">
+              <h4 style="margin: 0 0 6px 0; color: #38bdf8; font-size: 13px;">Next Step: Learner Password Setup</h4>
+              <p style="margin: 0; font-size: 13px; color: #cbd5e1; line-height: 1.5;">
+                Because no personal Learner email was provided, open your <strong>Parent Dashboard &rarr; Registration</strong> tab and click <strong>"Set Up Learner Login"</strong> when ${learnerName} is with you. This opens a short-lived, single-use screen where ${learnerName} personally enters and confirms their own private password. Afterwards, they sign in using Official Learner Number <strong style="color: #38bdf8;">${learnerNumber}</strong>.
+              </p>
+            </div>
+          `;
 
       const contentHtml = `
         <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName || 'Parent / Guardian'}</strong>,</p>
         <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
-          Registration for <strong>${learnerName}</strong> at <strong>${schoolName}</strong> for <strong>Grade ${grade} (${academicYear})</strong> is now <strong>COMPLETE</strong>. Full Learner Dashboard access has been activated.
+          Registration for <strong>${learnerName}</strong> at <strong>${schoolName}</strong> for <strong>Grade ${grade} (${academicYear})</strong> is now <strong>COMPLETE</strong>.
         </p>
         <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #10b981; border-radius: 12px; padding: 18px 22px; margin: 18px 0;">
           <table role="presentation" width="100%" style="font-size: 13px; border-collapse: collapse;">
@@ -2088,7 +2124,7 @@ const emailService = {
           <h5 style="margin: 14px 0 6px 0; color: #e2e8f0; font-size: 13px;">Registered Subjects:</h5>
           <ul style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6;">${subjectsHtml}</ul>
         </div>
-        ${activationSection}
+        ${learnerLoginGuidance}
       `;
 
       return {
@@ -2100,6 +2136,66 @@ const emailService = {
           contentHtml,
           ctaText: 'Open Geleza SA Dashboard',
           ctaLink: dashboardUrl
+        })
+      };
+    },
+
+    // 11g2. Email 7b — Learner Personal Password Activation Invitation (Sent ONLY AFTER Registration)
+    learnerActivationInvite: ({
+      learnerName,
+      learnerNumber,
+      schoolName,
+      grade,
+      academicYear,
+      className,
+      activationUrl
+    }) => {
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${learnerName || 'Learner'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Your registration at <strong>${schoolName || 'Geleza SA'}</strong>${grade ? ` for <strong>Grade ${grade}${academicYear ? ` (${academicYear})` : ''}</strong>` : ''}${className ? ` (${className})` : ''} is complete.
+        </p>
+        <div style="background: #0f172a; border: 1px solid #334155; border-left: 4px solid #38bdf8; border-radius: 12px; padding: 16px 20px; margin: 18px 0;">
+          <p style="margin: 0; font-size: 13px; color: #94a3b8;">Your Official Learner Number (used to sign in):</p>
+          <p style="margin: 6px 0 0 0; font-size: 20px; font-family: monospace; font-weight: 900; color: #38bdf8;">${learnerNumber}</p>
+        </div>
+        <p style="color: #cbd5e1; font-size: 13px; line-height: 1.6;">
+          Click the button below to personally create and confirm your private Learner password. This single-use link expires in <strong>72 hours</strong>. Keep your password private — never share it with anyone.
+        </p>
+      `;
+      return {
+        subject: `[Geleza SA] Activate Your Learner Account — Learner No: ${learnerNumber}`,
+        body: createBaseEmailTemplate({
+          preheader: `Create your private Learner password for Official Learner Number ${learnerNumber}`,
+          title: 'Activate Your Learner Portal',
+          subtitle: `${schoolName || 'Geleza SA'} • Official Learner No: ${learnerNumber}`,
+          contentHtml,
+          ctaText: 'Create My Private Learner Password',
+          ctaLink: activationUrl
+        })
+      };
+    },
+
+    // 11g3. Parent Email Ownership Verification (Resend / Standalone)
+    parentEmailVerification: ({ recipientName, schoolName, verificationUrl }) => {
+      const contentHtml = `
+        <p style="font-size: 15px; color: #ffffff; margin-top: 0;">Dear <strong>${recipientName || 'Parent / Guardian'}</strong>,</p>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+          Please confirm your email address for your Geleza SA Parent account${schoolName ? ` (${schoolName})` : ''}. Once verified, you can sign in using your email and the password you chose during application submission.
+        </p>
+        <p style="color: #94a3b8; font-size: 12px; line-height: 1.5;">
+          This single-use verification link expires in 72 hours. If you did not submit an application, you can safely ignore this email.
+        </p>
+      `;
+      return {
+        subject: '[Geleza SA] Verify Your Parent Email Address',
+        body: createBaseEmailTemplate({
+          preheader: 'Confirm your email address to activate Parent Portal login.',
+          title: 'Verify Your Email Address',
+          subtitle: schoolName || 'Geleza SA Secure Onboarding',
+          contentHtml,
+          ctaText: 'Verify Email Address',
+          ctaLink: verificationUrl
         })
       };
     },
@@ -2139,7 +2235,7 @@ const emailService = {
         <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 16px; margin: 20px 0;">
           <p style="margin: 0; color: #fbbf24; font-weight: 700; font-size: 14px;">Next Steps</p>
           <p style="margin: 6px 0 0 0; color: #cbd5e1; font-size: 13px;">
-            As soon as an enrollment opening becomes available, our Admissions Office will immediately contact you via email and SMS with final registration instructions.
+            As soon as an enrollment opening becomes available, our Admissions Office will contact you via email with final registration instructions.
           </p>
         </div>
       `;
@@ -2990,12 +3086,11 @@ const emailService = {
         </div>
 
         <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 16px 20px; margin: 20px 0;">
-          <h4 style="margin: 0 0 8px 0; color: #38bdf8; font-size: 13px; font-weight: 700;">Portal Access Credentials</h4>
+          <h4 style="margin: 0 0 8px 0; color: #38bdf8; font-size: 13px; font-weight: 700;">Portal Access</h4>
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 12px; color: #cbd5e1;">
             <tr><td style="padding: 3px 0; color: #94a3b8; width: 140px;">Parent Email:</td><td style="color: #ffffff; font-family: monospace;">${parentEmail}</td></tr>
-            ${parentPassword ? `<tr><td style="padding: 3px 0; color: #94a3b8;">Parent Password:</td><td style="color: #34d399; font-family: monospace;">${parentPassword}</td></tr>` : ''}
-            <tr><td style="padding: 3px 0; color: #94a3b8;">Learner Email:</td><td style="color: #ffffff; font-family: monospace;">${learnerEmail}</td></tr>
-            ${learnerPassword ? `<tr><td style="padding: 3px 0; color: #94a3b8;">Learner Password:</td><td style="color: #34d399; font-family: monospace;">${learnerPassword}</td></tr>` : ''}
+            <tr><td style="padding: 3px 0; color: #94a3b8;">Learner Sign-in:</td><td style="color: #ffffff; font-family: monospace;">Official Learner Number (${learnerNumber})</td></tr>
+            <tr><td style="padding: 3px 0; color: #94a3b8;">Passwords:</td><td style="color: #cbd5e1;">Private (set individually via secure activation — never emailed in plaintext).</td></tr>
           </table>
         </div>
       `;
@@ -3310,6 +3405,16 @@ const emailService = {
 
   sendRegistrationCompletedConfirmation: async (params) => {
     const template = emailService.templates.registrationCompletedConfirmation(params);
+    return await emailService.send(params.recipientEmail || params.parentEmail, template.subject, template.body);
+  },
+
+  sendLearnerActivationInvite: async (params) => {
+    const template = emailService.templates.learnerActivationInvite(params);
+    return await emailService.send(params.learnerEmail || params.recipientEmail, template.subject, template.body);
+  },
+
+  sendParentEmailVerification: async (params) => {
+    const template = emailService.templates.parentEmailVerification(params);
     return await emailService.send(params.recipientEmail || params.parentEmail, template.subject, template.body);
   },
 
@@ -3865,7 +3970,7 @@ const emailService = {
           <li><strong style="color: #f1f5f9;">Official Learner Number:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${learnerNumber}</code></li>
           <li><strong style="color: #f1f5f9;">Academic Grade:</strong> Grade ${grade || 10} • ${stream || 'General'}</li>
           ${loginEmail ? `<li><strong style="color: #f1f5f9;">Learner Portal Email:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${loginEmail}</code></li>` : ''}
-          ${password ? `<li><strong style="color: #f1f5f9;">Learner Access Password:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #f59e0b; font-weight: bold;">${password}</code></li>` : ''}
+          <li><strong style="color: #f1f5f9;">Learner Password:</strong> Set privately by the learner after registration (never emailed in plaintext).</li>
         </ul>
       </div>
       <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
@@ -3900,7 +4005,7 @@ Object.assign(emailService.templates, {
           <li><strong style="color: #f1f5f9;">Official Learner Number:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${learnerNumber}</code></li>
           <li><strong style="color: #f1f5f9;">Academic Grade:</strong> Grade ${grade || 10} • ${stream || 'General'}</li>
           ${loginEmail ? `<li><strong style="color: #f1f5f9;">Learner Portal Email:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">${loginEmail}</code></li>` : ''}
-          ${password ? `<li><strong style="color: #f1f5f9;">Learner Access Password:</strong> <code style="background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #f59e0b; font-weight: bold;">${password}</code></li>` : ''}
+          <li><strong style="color: #f1f5f9;">Learner Password:</strong> Set privately by the learner after registration (never emailed in plaintext).</li>
         </ul>
       </div>
       <p style="margin: 0 0 16px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;">
@@ -4108,9 +4213,8 @@ Object.assign(emailService.templates, {
         <p style="color: #cbd5e1; font-size: 13px; margin: 0 0 10px 0;">You and your child can now access live DBE report cards, attendance registers, homework, and communications:</p>
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #cbd5e1;">
           <tr><td style="padding: 4px 0; color: #94a3b8; width: 140px;">Parent Email:</td><td style="color: #ffffff; font-weight: 700;">${parentEmail}</td></tr>
-          ${parentPassword ? `<tr><td style="padding: 4px 0; color: #94a3b8;">Parent Password:</td><td style="color: #f59e0b; font-weight: 800; font-family: monospace;">${parentPassword}</td></tr>` : ''}
-          <tr><td style="padding: 4px 0; color: #94a3b8;">Learner Email:</td><td style="color: #ffffff; font-weight: 700;">${learnerEmail || `${learnerNumber.toLowerCase()}@fusionhigh.co.za`}</td></tr>
-          ${learnerPassword ? `<tr><td style="padding: 4px 0; color: #94a3b8;">Learner Password:</td><td style="color: #f59e0b; font-weight: 800; font-family: monospace;">${learnerPassword}</td></tr>` : ''}
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Learner Login:</td><td style="color: #ffffff; font-weight: 700;">Official Learner Number (${learnerNumber})</td></tr>
+          <tr><td style="padding: 4px 0; color: #94a3b8;">Passwords:</td><td style="color: #cbd5e1;">Private (set individually via secure activation — never sent in email).</td></tr>
         </table>
       </div>
     `;

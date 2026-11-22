@@ -6,6 +6,12 @@ const db = require('../../../db/db');
 const { withTransaction } = require('../../../db/transaction');
 const { isIsolatedRuntime, isStagingReadOnly } = require('../../../lib/testSafety');
 const principalActivation = require('./principalActivation');
+const accountTokenService = require('./accountTokenService');
+const {
+  TOKEN_PURPOSES,
+  isInternalPlaceholderEmail,
+  resolveFrontendOrigin
+} = require('../../../lib/authSecurity');
 const academicStreamService = require('./academicStreamService');
 const emailService = require('./emailService');
 const NotificationService = require('./notificationService');
@@ -682,25 +688,32 @@ async function getMyRegistrations(actor) {
     appRows = res.rows;
   }
 
-  // Fetch active children/enrollments owned by this user for deregistration & status display
+  // Fetch active children/enrollments owned by this user for deregistration, Learner password handoff & status display
   let childrenRows = [];
   if (isParentRole(role)) {
     const cRes = await db.query(
       `SELECT DISTINCT ON (c.id)
               c.id AS child_id,
+              c.learner_user_id,
               c.full_name,
               c.surname,
               c.grade,
               c.stream,
               c.learner_number,
+              c.application_number,
               c.school_id,
               c.class_id,
               c.subjects,
               COALESCE(c.is_active, TRUE) AS is_active,
+              (lu.password_hash IS NOT NULL) AS learner_has_password,
+              lu.email AS learner_account_email,
+              lr.application_id,
               s.name AS school_name,
               cl.name AS class_name,
               TRIM(CONCAT(COALESCE(tu.full_name, ''), ' ', COALESCE(tu.surname, ''))) AS class_teacher_name
        FROM children c
+       LEFT JOIN users lu ON lu.id = c.learner_user_id
+       LEFT JOIN learner_registrations lr ON lr.child_id = c.id AND lr.status = 'completed'
        LEFT JOIN schools s ON s.id = c.school_id
        LEFT JOIN classes cl ON cl.id = c.class_id
        LEFT JOIN users tu ON tu.id = COALESCE(cl.homeroom_teacher_id, cl.assigned_teacher_id)
@@ -710,23 +723,32 @@ async function getMyRegistrations(actor) {
        ORDER BY c.id DESC`,
       [actorId]
     );
-    childrenRows = cRes.rows;
+    childrenRows = cRes.rows.map((row) => ({
+      ...row,
+      learner_has_password: Boolean(row.learner_has_password),
+      learner_has_personal_email: Boolean(row.learner_account_email && !isInternalPlaceholderEmail(row.learner_account_email)),
+      learner_account_email: undefined
+    }));
   } else {
     const cRes = await db.query(
       `SELECT c.id AS child_id,
+              c.learner_user_id,
               c.full_name,
               c.surname,
               c.grade,
               c.stream,
               c.learner_number,
+              c.application_number,
               c.school_id,
               c.class_id,
               c.subjects,
               COALESCE(c.is_active, TRUE) AS is_active,
+              (lu.password_hash IS NOT NULL) AS learner_has_password,
               s.name AS school_name,
               cl.name AS class_name,
               TRIM(CONCAT(COALESCE(tu.full_name, ''), ' ', COALESCE(tu.surname, ''))) AS class_teacher_name
        FROM children c
+       LEFT JOIN users lu ON lu.id = c.learner_user_id
        LEFT JOIN schools s ON s.id = c.school_id
        LEFT JOIN classes cl ON cl.id = c.class_id
        LEFT JOIN users tu ON tu.id = COALESCE(cl.homeroom_teacher_id, cl.assigned_teacher_id)
@@ -953,7 +975,7 @@ async function getRegistrationContext({ applicationId, actor }) {
  * explicit Terms & Conditions consent audit, and dispatches deduplicated Class & Subject Teacher
  * notifications after commit.
  */
-async function completeLearnerRegistration({ applicationId, actor, payload = {} }) {
+async function completeLearnerRegistration({ applicationId, actor, payload = {}, baseUrl = '' }) {
   if (payload.terms_accepted !== true && payload.termsAccepted !== true) {
     const err = new Error('You must explicitly review and accept the Registration Terms & Conditions before completing registration.');
     err.status = 400;
@@ -1094,30 +1116,47 @@ async function completeLearnerRegistration({ applicationId, actor, payload = {} 
     }
 
     let learnerUserId = isLearnerRole(actor.role) ? Number(actor.id) : (existingRegistration?.learner_user_id || linkedChild?.learner_user_id || null);
+    const cleanLearnerEmailInput = normalizeEmail(app.email);
+    const cleanParentEmailInput = normalizeEmail(app.primary_parent_email);
+    const hasDistinctLearnerEmail = Boolean(
+      cleanLearnerEmailInput &&
+      !isInternalPlaceholderEmail(cleanLearnerEmailInput) &&
+      cleanLearnerEmailInput !== cleanParentEmailInput
+    );
+    const learnerEmailForAccount = hasDistinctLearnerEmail
+      ? cleanLearnerEmailInput
+      : `learner.${app.id}@${String(app.school_id)}.geleza.local`;
+
     if (!learnerUserId) {
-      const learnerEmail = normalizeEmail(app.email) || `learner.${app.id}@${String(app.school_id)}.geleza.local`;
       const existingLearner = await client.query(
         `SELECT id FROM users
          WHERE LOWER(email) = LOWER($1)
-            OR ($2 <> '' AND id_number IS NOT NULL AND REGEXP_REPLACE(id_number::text, '[^0-9]', '', 'g') = $2)
+            OR ($2 <> '' AND id_number IS NOT NULL AND REGEXP_REPLACE(id_number::text, '[^0-9]', '', 'g') = $2 AND LOWER(COALESCE(email, '')) <> LOWER($3))
          LIMIT 1`,
-        [learnerEmail, normalizeIdNumber(app.id_number)]
+        [learnerEmailForAccount, normalizeIdNumber(app.id_number), cleanParentEmailInput || '']
       );
       if (existingLearner.rows[0]?.id) {
         learnerUserId = existingLearner.rows[0].id;
         await client.query('UPDATE users SET school_id = $1 WHERE id = $2', [app.school_id, learnerUserId]);
       } else {
-        const ensuredLearner = await ensureAccountWithSafeActivation(client, {
-          email: learnerEmail,
-          fullName: app.first_name,
-          surname: app.surname,
-          phone: app.phone || app.primary_parent_phone || null,
-          idNumber: app.id_number || null,
-          roleName: 'learner',
-          fallbackRoleId: 3,
-          schoolId: app.school_id
-        });
-        learnerUserId = ensuredLearner.user?.id || null;
+        const learnerRoleId = await resolveRoleId(client, 'learner', 3);
+        const insLearner = await client.query(
+          `INSERT INTO users (
+             full_name, surname, email, phone, id_number, role_id, school_id,
+             password_hash, email_verification_status
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, 'pending_verification')
+           RETURNING id`,
+          [
+            String(app.first_name || 'Learner').trim(),
+            String(app.surname || '').trim(),
+            learnerEmailForAccount,
+            app.phone || app.primary_parent_phone || null,
+            app.id_number || null,
+            learnerRoleId,
+            app.school_id
+          ]
+        );
+        learnerUserId = insLearner.rows[0]?.id || null;
       }
     } else {
       await client.query('UPDATE users SET school_id = $1 WHERE id = $2', [app.school_id, learnerUserId]);
@@ -1346,6 +1385,9 @@ async function completeLearnerRegistration({ applicationId, actor, payload = {} 
       learnerNumber,
       parentUserId,
       learnerUserId,
+      hasDistinctLearnerEmail,
+      learnerEmailForAccount,
+      baseUrl,
       classAllocation,
       school,
       application: app,
@@ -1353,10 +1395,12 @@ async function completeLearnerRegistration({ applicationId, actor, payload = {} 
     };
   });
 
-  // Non-blocking post-commit distribution notifications (deduplicated)
+  // Non-blocking post-commit distribution notifications & Phase M2.4 Learner activation (deduplicated)
+  let postRegActivation = { mode: 'existing', activationEmailSent: false };
   if (!txResult.idempotentReplay) {
-    await dispatchPostRegistrationNotifications(txResult).catch((err) => {
+    postRegActivation = await dispatchPostRegistrationNotifications(txResult).catch((err) => {
       console.warn('[POST-REGISTRATION NOTIFICATION WARNING]:', err.message);
+      return { mode: 'parent_handoff', activationEmailSent: false };
     });
   }
 
@@ -1368,6 +1412,7 @@ async function completeLearnerRegistration({ applicationId, actor, payload = {} 
     learner_number: txResult.learnerNumber || null,
     class_allocation: txResult.classAllocation,
     selected_subjects: txResult.normalizedSubjects,
+    learner_activation_mode: postRegActivation?.mode || (txResult.hasDistinctLearnerEmail ? 'email_sent' : 'parent_handoff'),
     message: txResult.idempotentReplay
       ? 'Learner registration was already completed.'
       : 'Learner registration completed successfully. Your class teacher and subject teachers have been updated.'
@@ -1537,20 +1582,73 @@ async function dispatchPostRegistrationNotifications(txResult) {
     });
   }
 
-  // 5. Email 7 — Registration Completed Confirmation (idempotent, zero plaintext passwords)
+  // 5. Phase M2.4 — Email 7a (Parent Registration Confirmation) & Email 7b (Learner Personal Activation)
+  let activationMode = 'parent_handoff';
+  let activationEmailSent = false;
   try {
     const applicationLifecycleService = require('./applicationLifecycleService');
-    const cleanBaseUrl = String(process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:4000').replace(/\/+$/, '');
+    const cleanBaseUrl = String(txResult.baseUrl || resolveFrontendOrigin(null)).replace(/\/+$/, '');
     const resolvedLearnerNo = txResult.learnerNumber || application.provisional_learner_number || '';
     const parentFullName = `${application.primary_parent_name || ''} ${application.primary_parent_surname || ''}`.trim() || 'Parent / Guardian';
+    const cleanParentEmail = normalizeEmail(application.primary_parent_email);
+    const cleanLearnerEmail = normalizeEmail(application.email);
+    const learnerHasPersonalEmail = Boolean(
+      cleanLearnerEmail &&
+      !isInternalPlaceholderEmail(cleanLearnerEmail) &&
+      cleanLearnerEmail !== cleanParentEmail
+    );
 
+    // Check if Learner still needs to set their own private password
+    let learnerNeedsPassword = true;
+    if (learnerUserId) {
+      const luRes = await db.query('SELECT password_hash FROM users WHERE id = $1 LIMIT 1', [learnerUserId]);
+      learnerNeedsPassword = !luRes.rows[0]?.password_hash;
+    }
+
+    if (learnerHasPersonalEmail && learnerUserId && learnerNeedsPassword) {
+      activationMode = 'email_sent';
+      const issued = await accountTokenService.issueActionToken(db, {
+        userId: learnerUserId,
+        purpose: TOKEN_PURPOSES.LEARNER_EMAIL_ACTIVATION,
+        applicationId: application.id,
+        childId: registration.child_id,
+        schoolId
+      });
+      const learnerActivationUrl = `${cleanBaseUrl}/activate?token=${encodeURIComponent(issued.token)}`;
+
+      // Email 7b — Learner Personal Activation Link (72h single-use, sent ONLY AFTER registration)
+      const learnerMailRes = await applicationLifecycleService.dispatchIdempotentEmail({
+        applicationId: application.id,
+        schoolId,
+        eventType: 'learner_activation_invite',
+        recipientEmail: cleanLearnerEmail,
+        idempotencyKey: `learner_activate:${registration.id}:${cleanLearnerEmail}`,
+        sendFn: () => emailService.sendLearnerActivationInvite({
+          learnerEmail: cleanLearnerEmail,
+          learnerName,
+          learnerNumber: resolvedLearnerNo,
+          schoolName: school?.name || application.school_name || 'School',
+          grade,
+          academicYear: Number(application.academic_year || registration.academic_year || new Date().getFullYear()),
+          className,
+          activationUrl: learnerActivationUrl
+        })
+      });
+      activationEmailSent = Boolean(learnerMailRes.sent);
+    } else if (!learnerNeedsPassword) {
+      activationMode = 'already_activated';
+    } else {
+      activationMode = 'parent_handoff';
+    }
+
+    // Email 7a — Parent Registration Completed Confirmation (zero plaintext passwords)
     if (application.primary_parent_email) {
       const emailRes = await applicationLifecycleService.dispatchIdempotentEmail({
         applicationId: application.id,
         schoolId,
         eventType: 'registration_completed',
         recipientEmail: application.primary_parent_email,
-        idempotencyKey: `reg_completed:${registration.id}:${normalizeEmail(application.primary_parent_email)}`,
+        idempotencyKey: `reg_completed:${registration.id}:${cleanParentEmail}`,
         sendFn: () => emailService.sendRegistrationCompletedConfirmation({
           recipientEmail: application.primary_parent_email,
           recipientName: parentFullName,
@@ -1564,8 +1662,9 @@ async function dispatchPostRegistrationNotifications(txResult) {
           className,
           classTeacherName: classAllocation?.teacher_name ? classAllocation.teacher_name.trim() : null,
           selectedSubjects: normalizedSubjects,
-          dashboardUrl: `${cleanBaseUrl}/dashboard/parent`,
-          activationUrl: null
+          dashboardUrl: `${cleanBaseUrl}/dashboard/parent?tab=registration`,
+          activationUrl: null,
+          learnerActivationMode: activationMode
         })
       });
       if (emailRes.sent) {
@@ -1578,6 +1677,130 @@ async function dispatchPostRegistrationNotifications(txResult) {
   } catch (regMailErr) {
     console.warn('[REGISTRATION COMPLETE EMAIL WARNING]:', regMailErr.message);
   }
+  return { mode: activationMode, activationEmailSent };
+}
+
+/**
+ * Phase M2.4 — Authenticated Parent-Initiated Short-Lived Single-Use Handoff Session
+ * Allows a Learner (especially a minor without personal email) to personally create or reset
+ * their own private password after registration WITHOUT the Parent ever seeing or choosing it.
+ */
+async function createLearnerHandoffSession({
+  applicationId = null,
+  childId = null,
+  actor,
+  mode = 'setup',
+  baseUrl = ''
+}) {
+  if (!actor || !actor.id || !isParentRole(actor.role)) {
+    const err = new Error('Only an authenticated Parent / Guardian can start a Learner password handoff session.');
+    err.status = 403;
+    err.code = 'PARENT_AUTH_REQUIRED';
+    throw err;
+  }
+
+  const actorId = Number(actor.id);
+  let child = null;
+  let resolvedAppId = applicationId ? Number(applicationId) : null;
+
+  if (childId) {
+    const cRes = await db.query(
+      `SELECT c.*, u.password_hash AS learner_password_hash, u.email AS learner_email,
+              lr.application_id AS reg_application_id
+       FROM children c
+       LEFT JOIN users u ON u.id = c.learner_user_id
+       LEFT JOIN learner_registrations lr ON lr.child_id = c.id AND lr.status = 'completed'
+       WHERE c.id = $1
+       LIMIT 1`,
+      [Number(childId)]
+    );
+    child = cRes.rows[0] || null;
+    if (child && !resolvedAppId) resolvedAppId = child.reg_application_id || null;
+  } else if (resolvedAppId) {
+    const cRes = await db.query(
+      `SELECT c.*, u.password_hash AS learner_password_hash, u.email AS learner_email,
+              lr.application_id AS reg_application_id
+       FROM learner_registrations lr
+       JOIN children c ON c.id = lr.child_id
+       LEFT JOIN users u ON u.id = c.learner_user_id
+       WHERE lr.application_id = $1 AND lr.status = 'completed'
+       LIMIT 1`,
+      [resolvedAppId]
+    );
+    child = cRes.rows[0] || null;
+  }
+
+  if (!child) {
+    const err = new Error('Learner password setup is available only after school registration has been completed.');
+    err.status = 409;
+    err.code = 'registration_required';
+    throw err;
+  }
+
+  if (child.is_active === false || !child.learner_number || !child.learner_user_id) {
+    const err = new Error('This learner does not have an active registered enrolment with an Official Learner Number.');
+    err.status = 409;
+    err.code = 'registration_required';
+    throw err;
+  }
+
+  // Strictly verify owning Parent authorization (prevent another Parent from initiating handoff!)
+  const linkedParentIds = await findLinkedParentIds(db, child.id);
+  let authorized = linkedParentIds.includes(actorId);
+  if (!authorized && resolvedAppId) {
+    const appOwnerRes = await db.query(
+      'SELECT parent_user_id, LOWER(primary_parent_email) AS email FROM applications WHERE id = $1 LIMIT 1',
+      [resolvedAppId]
+    );
+    const appOwner = appOwnerRes.rows[0];
+    if (appOwner && (Number(appOwner.parent_user_id) === actorId || (actor.email && appOwner.email === normalizeEmail(actor.email)))) {
+      authorized = true;
+    }
+  }
+  if (!authorized) {
+    const err = new Error('You are not authorized to initiate a password setup session for this learner.');
+    err.status = 403;
+    err.code = 'UNAUTHORIZED_PARENT';
+    throw err;
+  }
+
+  const isReset = mode === 'reset';
+  if (!isReset && child.learner_password_hash) {
+    const err = new Error('This learner has already created their private password. Use Learner Password Reset if they forgot it.');
+    err.status = 409;
+    err.code = 'already_activated';
+    throw err;
+  }
+
+  const purpose = isReset
+    ? TOKEN_PURPOSES.LEARNER_PASSWORD_RESET_HANDOFF
+    : TOKEN_PURPOSES.LEARNER_PARENT_HANDOFF;
+
+  const issued = await accountTokenService.issueActionToken(db, {
+    userId: child.learner_user_id,
+    purpose,
+    createdByUserId: actorId,
+    applicationId: resolvedAppId,
+    childId: child.id,
+    schoolId: child.school_id,
+    ttlMinutes: 15
+  });
+
+  const cleanBaseUrl = String(baseUrl || resolveFrontendOrigin(null)).replace(/\/+$/, '');
+  const relativeUrl = `/activate?token=${encodeURIComponent(issued.token)}&purpose=${encodeURIComponent(purpose)}`;
+
+  return {
+    success: true,
+    mode: isReset ? 'reset' : 'setup',
+    purpose,
+    handoff_url: relativeUrl,
+    absolute_handoff_url: `${cleanBaseUrl}${relativeUrl}`,
+    expires_at: issued.expiresAt,
+    expires_in_minutes: 15,
+    learner_number: child.learner_number,
+    learner_name: `${child.full_name || ''} ${child.surname || ''}`.trim(),
+    instructions: 'Hand the device to the learner so they can personally enter and confirm their private password. This single-use session expires in 15 minutes.'
+  };
 }
 
 /**
@@ -2132,6 +2355,7 @@ module.exports = {
   getMyRegistrations,
   getRegistrationContext,
   completeLearnerRegistration,
+  createLearnerHandoffSession,
   getSchoolRegistrationDashboard,
   createDeregistrationRequest,
   listDeregistrationRequests,

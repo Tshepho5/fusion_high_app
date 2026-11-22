@@ -7,11 +7,158 @@ let currentStep = 1;
 const totalSteps = 4;
 let resumptionToken = null;
 let gradeCapacities = {};
+let authenticatedParentProfile = null;
 
-// Target Render backend in production (Firebase Hosting), or local port in development
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  ? ''
-  : 'https://fusion-high-backend.onrender.com';
+// Target Render backend in production (Firebase Hosting), or local port in development / staging
+const API_BASE = (window.__GELEZA_API_URL__)
+  ? String(window.__GELEZA_API_URL__).replace(/\/+$/, '')
+  : ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? ''
+      : 'https://fusion-high-backend.onrender.com');
+
+function readStoredBearerToken() {
+  try {
+    const raw = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    if (!raw || raw === 'null' || raw === 'undefined') return '';
+    return raw;
+  } catch (_) {
+    return '';
+  }
+}
+
+function clearStoredBearerSession() {
+  try {
+    ['token', 'user', 'userRole', 'schoolId'].forEach((k) => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
+  } catch (_) {}
+}
+
+// Preserve ONLY safe non-sensitive form fields across /login?next=/application.html redirect.
+// NEVER stores passwords, tokens, or SA ID numbers!
+const SAFE_DRAFT_KEY = 'geleza_safe_application_draft';
+function saveSafeApplicationDraft() {
+  try {
+    const safeFields = ['school_id', 'grade_applied', 'home_language', 'first_name', 'surname', 'previous_school', 'previous_grade'];
+    const draft = {};
+    safeFields.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.value) draft[id] = el.value;
+    });
+    sessionStorage.setItem(SAFE_DRAFT_KEY, JSON.stringify(draft));
+  } catch (_) {}
+}
+
+function restoreSafeApplicationDraft() {
+  try {
+    const raw = sessionStorage.getItem(SAFE_DRAFT_KEY);
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+    sessionStorage.removeItem(SAFE_DRAFT_KEY);
+    if (!draft || typeof draft !== 'object') return;
+    ['first_name', 'surname', 'previous_school', 'previous_grade'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && draft[id] && !el.value) el.value = draft[id];
+    });
+  } catch (_) {}
+}
+
+function validateParentPasswordClient(password) {
+  if (!password) return 'Parent password is required.';
+  if (password.length < 8) return 'Password must be at least 8 characters long.';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter.';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter.';
+  if (!/\d/.test(password)) return 'Password must contain at least one number.';
+  if (!/[!@#$%^&*(),.?":{}|<> ]/.test(password)) return 'Password must contain at least one special character.';
+  return null;
+}
+
+async function initAuthenticatedParentSession() {
+  const pwSection = document.getElementById('parent-password-section');
+  const pwInput = document.getElementById('parent_password');
+  const confirmInput = document.getElementById('confirm_parent_password');
+  const authBanner = document.getElementById('existing-parent-auth-banner');
+  const emailLabel = document.getElementById('existing-parent-email-label');
+  const loginPrompt = document.getElementById('existing-parent-login-prompt');
+  const btnExistingLogin = document.getElementById('btn-existing-parent-login');
+  const btnSignout = document.getElementById('btn-parent-signout-app');
+
+  const wireToggle = (btnId, inputId) => {
+    const btn = document.getElementById(btnId);
+    const inp = document.getElementById(inputId);
+    if (!btn || !inp) return;
+    btn.addEventListener('click', () => {
+      const showing = inp.type === 'text';
+      inp.type = showing ? 'password' : 'text';
+      btn.textContent = showing ? 'Show' : 'Hide';
+    });
+  };
+  wireToggle('toggle-parent-password', 'parent_password');
+  wireToggle('toggle-confirm-parent-password', 'confirm_parent_password');
+
+  if (btnExistingLogin) {
+    btnExistingLogin.addEventListener('click', () => {
+      saveSafeApplicationDraft();
+      window.location.assign('/login?next=%2Fapplication.html');
+    });
+  }
+
+  if (btnSignout) {
+    btnSignout.addEventListener('click', () => {
+      clearStoredBearerSession();
+      authenticatedParentProfile = null;
+      window.location.reload();
+    });
+  }
+
+  const token = readStoredBearerToken();
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-cache'
+    });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        clearStoredBearerSession();
+      }
+      return;
+    }
+    const profile = await res.json();
+    const role = String(profile.role || profile.role_name || '').toLowerCase();
+    if (role !== 'parent') return;
+
+    authenticatedParentProfile = profile;
+    if (authBanner) authBanner.style.display = 'block';
+    if (emailLabel) emailLabel.textContent = profile.email || '';
+    if (loginPrompt) loginPrompt.style.display = 'none';
+    if (pwSection) pwSection.style.display = 'none';
+    if (pwInput) {
+      pwInput.required = false;
+      pwInput.value = '';
+    }
+    if (confirmInput) {
+      confirmInput.required = false;
+      confirmInput.value = '';
+    }
+
+    // Safely prefill existing Parent contact details (email locked to authenticated account)
+    const setIfEmpty = (id, val, makeReadOnly = false) => {
+      const el = document.getElementById(id);
+      if (!el || !val) return;
+      if (!el.value || makeReadOnly) el.value = val;
+      if (makeReadOnly) el.setAttribute('readonly', 'true');
+    };
+    setIfEmpty('primary_parent_name', profile.full_name || '');
+    setIfEmpty('primary_parent_surname', profile.surname || '');
+    setIfEmpty('primary_parent_email', profile.email || '', true);
+    setIfEmpty('primary_parent_phone', profile.phone || '');
+    setIfEmpty('primary_parent_id_number', profile.id_number || '');
+    setIfEmpty('primary_parent_address', profile.physical_address || '');
+  } catch (_) {}
+}
 
 // South African ID Validation Algorithm (Client-Side)
 function validateSAIDClient(idNumber) {
@@ -111,6 +258,8 @@ async function guardAdmissionWindow() {
 document.addEventListener('DOMContentLoaded', async () => {
   initSchoolSelector();
   guardAdmissionWindow();
+  await initAuthenticatedParentSession();
+  restoreSafeApplicationDraft();
   initEnrolledLearnerLookup();
   initPaymentChoices();
   initRealtimeInputEnforcement();
@@ -207,11 +356,14 @@ function initSchoolSelector() {
 
   const loadSchoolsData = async () => {
     let schools = null;
-    const endpoints = [
-      `${API_BASE}/api/schools`,
-      '/api/schools',
-      'https://fusion-high-backend.onrender.com/api/schools'
-    ];
+    const isLocalHost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const endpoints = isLocalHost
+      ? [`${API_BASE}/api/schools`, '/api/schools']
+      : [
+          `${API_BASE}/api/schools`,
+          '/api/schools',
+          'https://fusion-high-backend.onrender.com/api/schools'
+        ];
 
     for (const ep of endpoints) {
       try {
@@ -845,6 +997,35 @@ function validateStep(step) {
       showError('primary_parent_address', 'Primary parent physical address is required.');
       if (!firstInvalidElement) firstInvalidElement = pAddress;
       isValid = false;
+    }
+
+    // Validate Parent password creation ONLY for unauthenticated new Parents
+    if (!authenticatedParentProfile) {
+      const pPass = document.getElementById('parent_password');
+      const pConfirm = document.getElementById('confirm_parent_password');
+      if (pPass) {
+        const pwProblem = validateParentPasswordClient(pPass.value || '');
+        if (pwProblem) {
+          showError('parent_password', pwProblem);
+          if (!firstInvalidElement) firstInvalidElement = pPass;
+          isValid = false;
+        } else {
+          clearFieldError('parent_password');
+        }
+      }
+      if (pConfirm) {
+        if (!pConfirm.value) {
+          showError('confirm_parent_password', 'Please confirm your Parent password.');
+          if (!firstInvalidElement) firstInvalidElement = pConfirm;
+          isValid = false;
+        } else if (pPass && pConfirm.value !== pPass.value) {
+          showError('confirm_parent_password', 'Parent password and confirmation password do not match.');
+          if (!firstInvalidElement) firstInvalidElement = pConfirm;
+          isValid = false;
+        } else {
+          clearFieldError('confirm_parent_password');
+        }
+      }
     }
 
     // Secondary parent check
@@ -1526,9 +1707,16 @@ function initFormSubmission() {
         ? `${API_BASE}/api/applications/resume/${resumptionToken}`
         : `${API_BASE}/api/applications/apply`;
 
+      const token = readStoredBearerToken();
+      const headers = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       try {
         const response = await fetch(endpoint, {
           method: 'POST',
+          headers,
           body: formData
         });
 
@@ -1537,6 +1725,14 @@ function initFormSubmission() {
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.innerHTML = `Submit Application & Verify`;
+        }
+
+        // Immediately clear password inputs from DOM memory after submission attempt
+        if (response.ok) {
+          const pwEl = document.getElementById('parent_password');
+          const cfEl = document.getElementById('confirm_parent_password');
+          if (pwEl) pwEl.value = '';
+          if (cfEl) cfEl.value = '';
         }
 
         handleSubmissionResult(result);
@@ -1565,13 +1761,35 @@ function handleSubmissionResult(result) {
 
   if (!modal) return;
 
+  if (result.code === 'EXISTING_ACCOUNT_LOGIN_REQUIRED') {
+    saveSafeApplicationDraft();
+    modalIcon.innerHTML = `<svg style="width:48px;height:48px;color:#38bdf8;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
+    modalTitle.textContent = 'Existing Parent Account Found';
+    modalBody.innerHTML = `
+      <div style="color: #e2e8f0; font-size: 0.92rem; line-height: 1.6;">
+        ${result.error || 'An account with this email already exists. Please sign in to your existing Parent account before submitting an application for another learner.'}
+      </div>
+    `;
+    modalRef.style.display = 'none';
+    modalCta.style.display = 'inline-block';
+    modalCta.textContent = 'Sign In & Return to Application';
+    modalCta.href = '/login?next=%2Fapplication.html';
+    modal.classList.add('active');
+    return;
+  }
+
   if (result.status === 'submitted' || result.status === 'pending' || (result.success && result.status !== 'approved' && result.status !== 'waitlisted' && result.status !== 'action_required')) {
     modalIcon.innerHTML = `<svg style="width:52px;height:52px;color:#10b981;margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
     modalTitle.textContent = 'Application Submitted Successfully!';
+    const nextStepText = result.email_verification_required
+      ? 'Check your email inbox for your Application Reference and click the <strong>Verify Email Address</strong> link before signing in to track your application.'
+      : 'This application has been linked to your existing Parent account. You can sign in or open your Parent Dashboard immediately to track review progress.';
     modalBody.innerHTML = `
-      ${result.message || 'Your admission application and supporting documents have been received and accepted.'}
+      ${result.message || 'Your admission application and supporting documents have been received.'}
       <br><br>
-      Your application is now <strong>awaiting review and approval</strong> by the school administration. You will receive an official notification via email once your application has been reviewed.
+      ${nextStepText}
+      <br><br>
+      <span style="color:#94a3b8; font-size:0.84rem;">Your Official Learner Number will be issued only after the School Principal / Administration approves this application.</span>
     `;
     modalRef.innerHTML = `
       <div>Application Ref: <strong>${result.applicationNumber || ''}</strong></div>
@@ -1579,24 +1797,29 @@ function handleSubmissionResult(result) {
     `;
     modalRef.style.display = 'block';
     modalCta.style.display = 'inline-block';
-    modalCta.textContent = 'Return to Home';
-    modalCta.href = '/';
+    if (result.existing_parent) {
+      modalCta.textContent = 'Open Parent Dashboard';
+      modalCta.href = '/dashboard/parent?tab=registration';
+    } else {
+      modalCta.textContent = 'Go to Sign In';
+      modalCta.href = '/login';
+    }
   } else if (result.status === 'approved') {
     modalIcon.innerHTML = '🎉';
     modalTitle.textContent = 'Application Approved!';
     modalBody.innerHTML = `
       ${result.message}
       <br><br>
-      An official acceptance confirmation has been sent to your email. You may now proceed to complete parent registration and link your child.
+      Sign in to your Parent Dashboard to complete Learner Registration.
     `;
     modalRef.innerHTML = `
       <div>Application Ref: <strong>${result.applicationNumber}</strong></div>
-      <div style="margin-top: 4px; color: #10b981;">Learner No: <strong>${result.learnerNumber}</strong></div>
+      ${result.learnerNumber ? `<div style="margin-top: 4px; color: #10b981;">Official Learner No: <strong>${result.learnerNumber}</strong></div>` : ''}
     `;
     modalRef.style.display = 'block';
     modalCta.style.display = 'inline-block';
-    modalCta.textContent = 'Continue to Parent Registration';
-    modalCta.href = result.registrationUrl || '/register';
+    modalCta.textContent = 'Sign In to Parent Dashboard';
+    modalCta.href = '/login';
   } else if (result.status === 'action_required') {
     modalIcon.innerHTML = '⚠️';
     modalTitle.textContent = 'Action Required';

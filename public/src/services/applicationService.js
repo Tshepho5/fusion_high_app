@@ -10,29 +10,43 @@ const SCHOOL_MAX_CAPACITY = 500;
 const CLASS_MAX_CAPACITY = 30;
 
 /**
- * Generate Unique Application Reference Number with School Prefix
- * e.g., MTH-2026-84920 (Mountainview), MKG-2026-84920 (Makgoka), FHS-2026-84920 (Fusion)
+ * Generate Cryptographically Unique Application Reference Number with Dynamic School Prefix
+ * e.g., MTH-2026-483921 (Mountainview), STG-2026-918274 (Staging Horizon)
+ * Never uses Math.random() and derives a clean school prefix dynamically for any registered school.
  */
-function generateApplicationNumber(schoolSlug = 'fusion-high') {
+function generateApplicationNumber(schoolSlug = 'geleza-school') {
   const year = new Date().getFullYear();
-  const randomDigits = Math.floor(10000 + Math.random() * 90000);
-  const slug = String(schoolSlug).toLowerCase();
-  let prefix = 'FHS';
-  
-  // Limpopo
+  const randomDigits = crypto.randomInt(100000, 1000000);
+  const slug = String(schoolSlug || '').toLowerCase().trim();
+  let prefix = '';
+
+  // Known partner school prefixes
   if (slug.includes('mountainview')) prefix = 'MTH';
   else if (slug.includes('makgoka')) prefix = 'MKG';
   else if (slug.includes('turfloop')) prefix = 'TRF';
   else if (slug.includes('hwiti')) prefix = 'HWT';
   else if (slug.includes('ngwana') || slug.includes('mohube')) prefix = 'NMH';
-  
-  // Gauteng (Lotus Gardens & Atteridgeville, Pretoria)
   else if (slug.includes('lotus') || slug.includes('fusion-secondary')) prefix = 'FSL';
+  else if (slug.includes('fusion')) prefix = 'FHS';
   else if (slug.includes('saulridge')) prefix = 'SLR';
   else if (slug.includes('phelindaba')) prefix = 'PLD';
   else if (slug.includes('flavius') || slug.includes('mareka')) prefix = 'FVM';
   else if (slug.includes('nkomo') || slug.includes('wf-nkomo')) prefix = 'WFN';
   else if (slug.includes('hofmeyr')) prefix = 'HFM';
+  else {
+    const tokens = slug
+      .replace(/[^a-z0-9\s-]/g, '')
+      .split(/[\s-]+/)
+      .filter((t) => t && !['high', 'secondary', 'school', 'the', 'of'].includes(t));
+    if (tokens.length >= 3) {
+      prefix = (tokens[0][0] + tokens[1][0] + tokens[2][0]).toUpperCase();
+    } else if (tokens.length === 2) {
+      prefix = (tokens[0].slice(0, 2) + tokens[1][0]).toUpperCase();
+    } else if (tokens.length === 1) {
+      prefix = tokens[0].slice(0, 3).toUpperCase();
+    }
+    if (!prefix || prefix.length < 2) prefix = 'APP';
+  }
 
   return `${prefix}-${year}-${randomDigits}`;
 }
